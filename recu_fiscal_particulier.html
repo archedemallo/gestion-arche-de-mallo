@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reçu fiscal particulier — L'Arche de Mallo</title>
+<link rel="stylesheet" href="formulaires-arche-mallo.css">
+<style>
+    .cerfa-box { border: 1.5px solid #333; padding: 10px 14px; margin: 10px 0; }
+    .cerfa-numero { float: right; border: 1.5px solid #333; padding: 6px 14px; text-align: center; min-width: 160px; }
+    .cerfa-numero .valeur { font-size: 15pt; font-weight: bold; margin-top: 4px; }
+    .cerfa-ref { font-size: 9pt; color: #555; text-align: right; }
+    .cerfa-case-fixe { display: inline-block; border: 1px solid #333; width: 12px; height: 12px; text-align: center; line-height: 11px; font-size: 11px; margin-right: 4px; }
+    .cerfa-static { color: #333; }
+    .avertissement { font-size: 9pt; color: #555; margin-top: 14px; border-top: 1px solid #ccc; padding-top: 8px; }
+</style>
+</head>
+<body data-form-id="recu_fiscal_particulier">
+<div id="login-screen" style="position:fixed;inset:0;background:#faf7f2;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid #ddd;border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;color:#3d2b1f;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:#888;margin-bottom:16px;">Connexion requise pour accéder à ce formulaire.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err" style="color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:#c96b2a;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+<div style="background:#fff4e5;border:1px solid #ffd699;color:#7a4a00;font-size:12.5px;padding:8px 14px;text-align:center;" class="no-print">
+  <strong>Formulaire pilote.</strong> Écrit directement dans Supabase. PDF/mail (Apps Script) activés. Numéro d'ordre généré à l'enregistrement (pas à l'ouverture).
+</div>
+
+<div class="buttons">
+    <button class="btn btn-save"  onclick="saveForm()">💾 Sauvegarder</button>
+    <button class="btn btn-print btn-print-disabled" onclick="printForm()" disabled>🖨️ Imprimer</button>
+</div>
+
+<div class="page-container">
+<div class="content">
+
+<div class="cerfa-numero">
+    Numéro d'ordre du reçu
+    <div class="valeur" id="numeroRecuFiscalAffiche" style="font-size:11pt;">généré à l'enregistrement</div>
+    <input type="hidden" class="editable" id="numeroRecuFiscal">
+</div>
+
+<div class="title">Reçu au titre des dons</div>
+<p style="text-align:center; margin-top:-6px; font-size:10pt;">
+    Reçu des dons et versements effectués par les particuliers au titre des articles 200 et 978 du code général des impôts
+</p>
+<p class="cerfa-ref">Cerfa n°11580*05 — 2041-RD</p>
+
+<div style="clear:both;"></div>
+
+<!-- Organisme bénéficiaire : informations fixes (toujours L'Arche de Mallo) -->
+<div><strong><span class="highlight-red">ORGANISME BÉNÉFICIAIRE DES DONS ET VERSEMENTS</span></strong></div>
+<div class="cerfa-box">
+    <p class="cerfa-static"><strong>Nom ou dénomination :</strong> Association L'Arche de Mallo</p>
+    <p class="cerfa-static"><strong>Numéro SIREN ou RNA :</strong> 908 128 812</p>
+    <p class="cerfa-static"><strong>Adresse :</strong> 8 ter rue d'Eschène, 90140 Autrechêne — France</p>
+    <p class="cerfa-static"><strong>Objet :</strong> Prendre soin des chats errants et abandonnés</p>
+    <p style="margin-top:10px;">
+        <span class="cerfa-case-fixe">☑</span>
+        Œuvre ou organisme d'intérêt général à caractère philanthropique, social ou humanitaire — <strong>Association loi 1901</strong>
+    </p>
+    <p style="font-size:9pt; color:#666; margin-top:4px;">
+        L'association certifie sur l'honneur relever de cette catégorie, au sens de l'article 200 du CGI.
+    </p>
+</div>
+
+<!-- Donateur -->
+<div><strong><span class="highlight-red">DONATEUR</span></strong></div>
+<div class="cerfa-box">
+    <p>
+        <span class="blue">Nom :</span>
+        <input type="text" class="editable editable-long" id="nom" data-required="true" data-label="Nom" oninput="this.value=this.value.toUpperCase()">
+    </p>
+    <p>
+        <span class="blue">Prénom :</span>
+        <input type="text" class="editable editable-long" id="prenom" data-required="true" data-label="Prénom" oninput="this.value=this.value.toUpperCase()">
+    </p>
+    <p>
+        <span class="blue">Adresse :</span>
+        <input type="text" class="editable editable-long" id="adresse" data-required="true" data-label="Adresse">
+    </p>
+    <p>
+        <span class="blue">Code postal :</span>
+        <input type="text" class="editable editable-short" id="codePostal" data-required="true" data-label="Code postal" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        &nbsp;&nbsp;
+        <span class="blue">Commune :</span>
+        <input type="text" class="editable editable-medium" id="ville" data-required="true" data-label="Commune" oninput="this.value=this.value.toUpperCase()">
+    </p>
+    <p>
+        <span class="blue">Pays :</span>
+        <input type="text" class="editable editable-medium" id="paysDonateur" value="France">
+    </p>
+    <!-- Email non affiché sur le Cerfa (pas une mention requise), transmis uniquement
+         pour que le donateur reçoive une copie du reçu par mail (rempli automatiquement
+         depuis Dons.html via appliquerPrefill) -->
+    <input type="hidden" class="editable" id="email">
+</div>
+
+<!-- Montant et modalités -->
+<div><strong><span class="highlight-red">DON ET VERSEMENT</span></strong></div>
+<div class="cerfa-box">
+    <p>
+        Le bénéficiaire reconnaît avoir reçu des dons et versements ouvrant droit à réduction d'impôt d'un montant de :
+        <input type="number" class="editable editable-num" id="montantDon" data-required="true" data-label="Montant du don (€)" min="0" step="0.01">
+        <span class="red">€</span>
+    </p>
+    <p>
+        <span class="blue">Somme en toutes lettres :</span>
+        <span id="montantLettresAffiche" class="bold" style="display:inline-block; min-width:300px; border-bottom:1px dotted #333;"></span>
+        <input type="hidden" class="editable" id="montantLettres">
+    </p>
+    <p>
+        <span class="blue">Date du versement ou du don :</span>
+        <input type="date" class="editable editable-date" id="dateSignature" data-required="true" data-label="Date du versement">
+    </p>
+
+    <p class="mt-20">
+        <span class="blue">Le bénéficiaire certifie que ce don ouvre droit à la réduction d'impôt prévue à l'article :</span>
+    </p>
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this, 'articleCGI')">
+            <span class="checkbox checked" data-group="articleCGI"></span> 200 du CGI
+        </span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'articleCGI')">
+            <span class="checkbox" data-group="articleCGI"></span> 978 du CGI (IFI)
+        </span>
+    </p>
+
+    <p class="mt-20"><span class="blue">Forme du don :</span> <span class="cerfa-static">Déclaration de don manuel</span></p>
+
+    <p class="mt-20"><span class="blue">Nature du don :</span></p>
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this, 'natureDon'); toggleDescriptionNature()">
+            <span class="checkbox checked" data-group="natureDon"></span> Numéraire
+        </span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'natureDon'); toggleDescriptionNature()">
+            <span class="checkbox" data-group="natureDon"></span> Dons en nature (biens / prestations)
+        </span>
+    </p>
+    <div id="bloc_description_nature" style="display:none;">
+        <p>
+            <span class="blue">Description des biens et prestations reçus :</span><br>
+            <textarea class="editable" id="descriptionNature" data-label="Description du don en nature" style="width:95%; min-height:50px;"></textarea>
+        </p>
+    </div>
+
+    <p class="mt-20"><span class="blue">En cas de don en numéraire, mode de versement :</span></p>
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this, 'modeVersement')">
+            <span class="checkbox" data-group="modeVersement" id="mv_espece"></span> Remise d'espèces
+        </span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'modeVersement')">
+            <span class="checkbox" data-group="modeVersement" id="mv_cheque"></span> Chèque
+        </span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'modeVersement')">
+            <span class="checkbox" data-group="modeVersement" id="mv_virement"></span> Virement ou carte bancaire
+        </span>
+    </p>
+</div>
+
+<!-- Signature -->
+<div class="section mt-30">
+    <p class="bold">Fait à Autrechêne, le <input type="date" class="editable editable-date" id="dateEmission"></p>
+    <div class="section mt-20">
+        <p class="bold underline">Signature (représentant de L'Arche de Mallo) :</p>
+        <div id="sig1"></div>
+        <div id="sig1-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+    </div>
+</div>
+
+<p class="avertissement">
+    Il est rappelé que le fait de délivrer sciemment des documents permettant à un contribuable d'obtenir indûment
+    une réduction d'impôt entraîne l'application de l'amende prévue à l'article 1740 A du code général des impôts,
+    égale à 25 % des sommes indûment mentionnées sur ce document.
+</p>
+
+</div><!-- /content -->
+</div><!-- /page-container -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script>
+// SUPABASE — remplace l'envoi vers Apps Script pour la génération du
+// numéro et son rattachement au don. PDF + mail restent sur Apps Script
+// (ENVOYER_PDF_MAIL=true), exactement comme les autres formulaires.
+const ENVOYER_PDF_MAIL = true;
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+
+creerSignature('sig1');
+
+var today = new Date().toISOString().split('T')[0];
+var elEmission = document.getElementById('dateEmission');
+if (elEmission && !elEmission.value) elEmission.value = today;
+
+// donId du don d'origine (transmis par don.html via ?prefill=...), pour
+// rattacher le numéro généré au bon don en base. Récupéré plus bas, en
+// même temps que le reste du prefill.
+var donIdPrefill = null;
+
+// ============================================================
+// MONTANT EN TOUTES LETTRES
+// ============================================================
+function nombreEnLettres(n) {
+    n = Math.round(n);
+    if (n === 0) return 'zéro';
+    var unites = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix',
+        'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
+    var dizaines = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante-dix', 'quatre-vingt', 'quatre-vingt-dix'];
+
+    function troisChiffres(n) {
+        var s = '';
+        var c = Math.floor(n / 100);
+        var r = n % 100;
+        if (c > 0) {
+            s += (c > 1 ? unites[c] + ' ' : '') + 'cent';
+            if (c > 1 && r === 0) s += 's';
+            if (r > 0) s += ' ';
+        }
+        if (r > 0) {
+            if (r < 20) {
+                s += unites[r];
+            } else {
+                var d = Math.floor(r / 10);
+                var u = r % 10;
+                if (d === 7 || d === 9) {
+                    s += dizaines[d - 1] + '-' + unites[10 + u];
+                } else {
+                    s += dizaines[d];
+                    if (u === 1 && d !== 8) s += ' et un';
+                    else if (u > 0) s += '-' + unites[u];
+                    else if (d === 8) s += 's';
+                }
+            }
+        }
+        return s;
+    }
+
+    var groupes = [
+        { valeur: 1000000000, nom: 'milliard' },
+        { valeur: 1000000, nom: 'million' },
+        { valeur: 1000, nom: 'mille' }
+    ];
+
+    var resultat = '';
+    var reste = n;
+    groupes.forEach(function(g) {
+        var q = Math.floor(reste / g.valeur);
+        if (q > 0) {
+            if (g.valeur === 1000 && q === 1) {
+                resultat += 'mille ';
+            } else {
+                resultat += troisChiffres(q) + ' ' + g.nom + (q > 1 ? 's' : '') + ' ';
+            }
+            reste = reste % g.valeur;
+        }
+    });
+    if (reste > 0 || resultat === '') {
+        resultat += troisChiffres(reste);
+    }
+    return resultat.trim();
+}
+
+function montantEnLettres(montant) {
+    montant = parseFloat(montant) || 0;
+    var euros = Math.floor(montant);
+    var centimes = Math.round((montant - euros) * 100);
+    var texte = nombreEnLettres(euros) + ' euro' + (euros > 1 ? 's' : '');
+    if (centimes > 0) {
+        texte += ' et ' + nombreEnLettres(centimes) + ' centime' + (centimes > 1 ? 's' : '');
+    }
+    return texte.charAt(0).toUpperCase() + texte.slice(1);
+}
+
+var champMontant = document.getElementById('montantDon');
+champMontant.addEventListener('input', function() {
+    var lettres = this.value ? montantEnLettres(this.value) : '';
+    document.getElementById('montantLettresAffiche').textContent = lettres;
+    document.getElementById('montantLettres').value = lettres;
+});
+
+// Affiche/masque la description du don en nature selon la case cochée
+function toggleDescriptionNature() {
+    var natureCoche = document.querySelector('.checkbox[data-group="natureDon"].checked');
+    var estNature = natureCoche && natureCoche.parentElement.textContent.trim().indexOf('en nature') >= 0;
+    var bloc = document.getElementById('bloc_description_nature');
+    bloc.style.display = estNature ? '' : 'none';
+    document.getElementById('descriptionNature').toggleAttribute('data-required', !!estNature);
+    if (estNature) document.getElementById('descriptionNature').setAttribute('data-label', 'Description du don en nature');
+}
+
+// ============================================================
+// PRÉ-REMPLISSAGE depuis Dons.html (?prefill=...)
+// ============================================================
+appliquerPrefill(); // remplit nom/prenom/adresse/codePostal/ville/email/montantDon/dateSignature (mêmes id que Dons.html)
+
+(function completerPrefill() {
+    try {
+        var params = new URLSearchParams(window.location.search);
+        var raw = params.get('prefill');
+        if (!raw) return;
+        var data = JSON.parse(decodeURIComponent(raw));
+
+        donIdPrefill = data.donId || null;
+
+        var paiement = (data.check_paiement || '').toLowerCase();
+        if (paiement.indexOf('espèce') >= 0 || paiement.indexOf('espece') >= 0) {
+            document.getElementById('mv_espece').classList.add('checked');
+        }
+        if (paiement.indexOf('chèque') >= 0 || paiement.indexOf('cheque') >= 0) {
+            document.getElementById('mv_cheque').classList.add('checked');
+        }
+        if (paiement.indexOf('virement') >= 0 || paiement.indexOf('cb') >= 0) {
+            document.getElementById('mv_virement').classList.add('checked');
+        }
+
+        if (data.montantDon) {
+            var lettres = montantEnLettres(data.montantDon);
+            document.getElementById('montantLettresAffiche').textContent = lettres;
+            document.getElementById('montantLettres').value = lettres;
+        }
+    } catch (e) {
+        console.warn('[Recu_fiscal_particulier] Erreur complément prefill :', e.message);
+    }
+})();
+
+// ============================================================
+// Validation spécifique
+// ============================================================
+validateRequiredFields = function() {
+    var missing = [];
+
+    document.querySelectorAll('[data-required="true"]').forEach(function(el) {
+        var label = el.getAttribute('data-label') || el.id;
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+            if (!el.value || el.value.trim() === '') {
+                missing.push(label);
+                el.style.borderBottom = '2px solid red';
+            } else {
+                el.style.borderBottom = '';
+            }
+        }
+    });
+
+    // Le numéro d'ordre n'est plus vérifié ici : il est généré au moment
+    // même de la sauvegarde (voir saveForm ci-dessous), pas avant.
+
+    var sig = document.getElementById('sig1');
+    if (sig && !sig._signed) {
+        missing.push('Signature du représentant de L\'Arche de Mallo');
+    }
+
+    return missing;
+};
+
+// ============================================================
+// SAUVEGARDE — génère le numéro d'ordre, le rattache au don d'origine,
+// puis envoie PDF + mail via Apps Script comme les autres formulaires.
+// ============================================================
+async function saveForm() {
+    var missing = validateRequiredFields();
+    if (missing.length > 0) {
+        afficherMessage('⚠️ Veuillez remplir les champs obligatoires :<br><br>• ' + missing.join('<br>• '), 'erreur');
+        return;
+    }
+
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:bold;font-family:Arial;';
+    overlay.innerHTML = '<div style="text-align:center">En cours...<br><br><small>Veuillez patienter</small></div>';
+    document.body.appendChild(overlay);
+
+    try {
+        // Le numéro n'est tiré qu'une fois : si on ré-appuie sur Sauvegarder
+        // après avoir corrigé un champ manquant, on ne redemande pas de
+        // numéro (pas de trou inutile dans la numérotation).
+        var champNumero = document.getElementById('numeroRecuFiscal');
+        if (!champNumero.value) {
+            const { data: numero, error: errNumero } = await supabaseClient.rpc('numero_recu_fiscal_suivant', { p_type: 'particulier' });
+            if (errNumero) throw errNumero;
+            champNumero.value = numero;
+            document.getElementById('numeroRecuFiscalAffiche').textContent = numero;
+        }
+
+        if (donIdPrefill) {
+            const { error: errRattachement } = await supabaseClient.rpc('enregistrer_numero_recu_fiscal', {
+                p_don_id: donIdPrefill,
+                p_numero: champNumero.value
+            });
+            if (errRattachement) throw errRattachement;
+        }
+
+        var data = collectFormData();
+        data.signatureImage = getSignatureImage();
+        data.htmlContent = encodeBase64Unicode(buildHtmlWithData());
+        data.filename = buildFilename(data);
+
+        if (ENVOYER_PDF_MAIL) {
+            await sendToGoogle(data);
+        }
+
+        document.body.removeChild(overlay);
+        formSaved = true;
+        var btnSave = document.querySelector('.btn-save');
+        var btnPrint = document.querySelector('.btn-print');
+        if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
+        if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
+        afficherMessage('✅ Reçu fiscal n°' + champNumero.value + ' enregistré.');
+    } catch (err) {
+        document.body.removeChild(overlay);
+        console.error(err);
+        afficherMessage('⚠️ Erreur lors de la sauvegarde : ' + (err.message || err), 'erreur');
+    }
+}
+</script>
+
+</body>
+</html>

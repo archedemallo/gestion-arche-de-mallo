@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dépôt de chat — L'Arche de Mallo</title>
+<link rel="stylesheet" href="formulaires-arche-mallo.css">
+</head>
+<body data-form-id="depot_chat">
+<div id="login-screen" style="position:fixed;inset:0;background:#faf7f2;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid #ddd;border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;color:#3d2b1f;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:#888;margin-bottom:16px;">Connexion requise pour accéder à ce formulaire.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err" style="color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:#c96b2a;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+<div style="background:#fff4e5;border:1px solid #ffd699;color:#7a4a00;font-size:12.5px;padding:8px 14px;text-align:center;" class="no-print">
+  <strong>Formulaire pilote.</strong> Écrit directement dans Supabase. PDF/mail (Apps Script) activés.
+</div>
+
+
+<div class="buttons">
+    <button class="btn btn-save"  onclick="saveForm()">💾 Sauvegarder</button>
+    <button class="btn btn-print btn-print-disabled" onclick="printForm()" disabled>🖨️ Imprimer</button>
+</div>
+
+<div class="page-container">
+<div class="content">
+
+ <!-- En-tête -->
+<div id="entete"></div>
+
+
+ 
+    <div class="title strong blue underline">Formulaire de dépôt chat / chaton</div>
+    <div class="section">
+        <p><span class ="bold">
+		L’association L’ARCHE DE MALLO, déclarée en préfecture de Belfort le 25 novembre 2021 sous le n°W901006456, représentée par Mallory ORTEGA
+		</span>
+		</p>
+		
+	</div>	
+    <div class="section">
+        <p>
+            <span class="clickable-row" onclick="toggleCheck(this, 'civilite')">
+                <span class="checkbox" data-group="civilite"></span>
+                <span class="blue bold">Monsieur</span>
+            </span>
+            <span class="clickable-row" onclick="toggleCheck(this, 'civilite')">
+                <span class="checkbox" data-group="civilite"></span>
+                <span class="blue bold">Madame</span>
+            </span>
+        </p>
+        <p>
+            <span class="blue">Nom :</span>
+            <input type="text" class="editable editable-long" id="nom" data-required="true" data-label="Nom" oninput="this.value=this.value.toUpperCase(); majNomComplet()">
+        </p>
+        <p><span class="blue">Prénom :</span>
+            <input type="text" class="editable editable-long" id="prenom" data-required="true" data-label="Prénom" oninput="this.value=this.value.toUpperCase(); majNomComplet()">
+        </p>
+        <p><span class="blue">Adresse :</span>
+            <input type="text" class="editable editable-long" id="adresse" data-required="true" data-label="Adresse">
+        </p>
+        <p>
+            <span class="blue">Code postal :</span>
+            <input type="text" class="editable editable-short" id="codePostal" data-required="true" data-label="Code postal" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+            &nbsp;&nbsp;
+            <span class="blue">Ville :</span>
+            <input type="text" class="editable editable-medium" id="ville" data-required="true" data-label="Ville" oninput="this.value=this.value.toUpperCase()">
+        </p>
+        <p><span class="blue">Téléphone :</span>
+            <input type="tel" class="editable editable-tel" id="telephone" data-required="true" data-label="Téléphone" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        </p>
+        <p><span class="blue">Email :</span>
+            <input type="email" class="editable editable-email" id="email" data-required="true" data-label="Email">
+        </p>
+    </div>
+
+    <div class="section mt-30">
+    <p>
+        Je soussigné(e)
+        <input type="text" class="editable editable-long" id="nomComplet" style="width:60%;">
+        atteste avoir déposé ce jour
+        <input type="date" class="editable editable-date" id="dateDepot"> :
+    </p>
+
+    <table style="border-collapse:collapse; margin-top:10px; margin-left:10px;">
+        <tr>
+            <td style="padding:4px 8px 4px 0; white-space:nowrap;">
+                &#8226; &nbsp;
+                <input type="number" class="editable editable-num" id="nombreChats" min="0" value="0" data-label="Nombre de chats">
+                &nbsp; chat(s)
+            </td>
+            <td style="padding:4px 8px; color:#666;">et/ou</td>
+            <td style="padding:4px 0; white-space:nowrap;">
+                <input type="number" class="editable editable-num" id="nombreChatons" min="0" value="0" data-label="Nombre de chatons">
+                &nbsp; chaton(s) errant(s),
+            </td>
+        </tr>
+        <tr>
+            <td colspan="3" style="padding:4px 0; white-space:nowrap;">
+                &#8226; &nbsp;
+                <input type="number" class="editable editable-num" id="nombreAutres" min="0" value="0" data-label="Nombre d'autres animaux" oninput="togglePreciserAutre()">
+                &nbsp; autre(s) animal(aux) errant(s)
+                &nbsp;
+                <span style="white-space:nowrap;">
+                    (préciser :
+                    <input type="text" class="editable editable-long" id="preciserAutre" data-label="Préciser autre animal" placeholder="ex : lapin, oiseau…" style="width:220px;">)
+                </span>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="3" style="padding:8px 0 4px 0; white-space:nowrap;">
+                provenant de la commune de
+                <input type="text" class="editable editable-long" id="commune" placeholder="Nom de la commune" data-required="true" data-label="Commune">
+            </td>
+        </tr>
+    </table>
+
+    <p class="mt-20 red">
+        Par la présente, je déclare confier et céder définitivement le ou les animaux à l'association
+        l'Arche de Mallo dès signature du présent contrat.
+    </p>
+</div>
+
+    <div class="signature-section mt-30">
+        <p class="bold">Autrechêne, le <input type="date" class="editable editable-date" id="dateFait"></p>
+    <p class="bold no-print">Saisi par <select id="saisiPar" class="editable"></select></p>
+        <table class="signature-table">
+            <tr>
+                <td>
+                    <p>L'Arche de Mallo :</p>
+                    <p class="mt-20">
+                        <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve1_dep">
+                            <span class="checkbox"></span>
+                            <span class="bold"> Lu et approuvé</span>
+                        </span>
+                    </p>
+                    <p class="bold underline">Signature de l'Arche de Mallo :</p>
+                    <div id="sig1"></div>
+                    <div id="sig1-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+                </td>
+                <td>
+                    <p>Le dépositaire :</p>
+                    <p class="mt-20">
+                        <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve2_dep">
+                            <span class="checkbox"></span>
+                            <span class="bold"> Lu et approuvé</span>
+                        </span>
+                    </p>
+                    <p class="bold underline">Signature du dépositaire :</p>
+                    <div id="sig2"></div>
+                    <div id="sig2-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+</div><!-- /content -->
+</div><!-- /page-container -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script>
+    creerEntete({ dateId: 'dateFait', dateLabel: 'Date :' });
+creerSignature('sig1');
+    creerSignature('sig2');
+    appliquerPrefill();
+
+    var today = new Date().toISOString().split('T')[0];
+    var el = document.getElementById('dateFait');
+    if (el && !el.value) el.value = today;
+    var elDepot = document.getElementById('dateDepot');
+    if (elDepot && !elDepot.value) elDepot.value = today;
+
+    function majNomComplet() {
+        var nom    = document.getElementById('nom')    ? document.getElementById('nom').value    : '';
+        var prenom = document.getElementById('prenom') ? document.getElementById('prenom').value : '';
+        var champ  = document.getElementById('nomComplet');
+        if (champ) champ.value = (prenom + ' ' + nom).trim();
+    }
+
+    // Grise/active le champ "préciser" selon la valeur de nombreAutres
+    function togglePreciserAutre() {
+        var nb = parseInt(document.getElementById('nombreAutres').value) || 0;
+        var elPreciser = document.getElementById('preciserAutre');
+        if (!elPreciser) return;
+        if (nb > 0) {
+            elPreciser.removeAttribute('disabled');
+            elPreciser.style.opacity = '1';
+            elPreciser.focus();
+        } else {
+            elPreciser.value = '';
+            elPreciser.setAttribute('disabled', 'disabled');
+            elPreciser.style.opacity = '0.4';
+            elPreciser.style.borderBottom = '';
+        }
+    }
+    // État initial au chargement
+    document.addEventListener('DOMContentLoaded', function() {
+        togglePreciserAutre();
+    });
+
+    validateRequiredFields = function() {
+        var missing = [];
+
+        document.querySelectorAll('[data-required="true"]').forEach(function(el) {
+            var label = el.getAttribute('data-label') || el.id;
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                if (!el.value || el.value.trim() === '') {
+                    missing.push(label);
+                    el.style.borderBottom = '2px solid red';
+                } else {
+                    el.style.borderBottom = '';
+                }
+            }
+        });
+
+        var elEmail = document.getElementById('email');
+        if (elEmail && elEmail.value.trim()) {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(elEmail.value.trim())) {
+                missing.push('Email invalide');
+                elEmail.style.borderBottom = '2px solid red';
+            }
+        }
+
+// Lu et approuvé
+        ['luApprouve1_dep', 'luApprouve2_dep'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) {
+                var cb = el.querySelector('.checkbox');
+                if (!cb.classList.contains('checked')) {
+                    var labels = { luApprouve1_dep: 'Lu et approuvé (Dépositaire)', luApprouve2_dep: 'Lu et approuvé (Arche de Mallo)' };
+                    missing.push(labels[id]);
+                    cb.style.outline = '2px solid red'; cb.style.outlineOffset = '1px';
+                } else { cb.style.outline = ''; }
+            }
+        });
+
+        // Signatures
+        ['sig1', 'sig2'].forEach(function(sigId) {
+            var container = document.getElementById(sigId);
+            if (container && !container._signed) {
+                var labels = { sig1: 'Signature dépositaire', sig2: 'Signature Arche de Mallo' };
+                missing.push(labels[sigId]);
+            }
+        });
+
+// Au moins un animal obligatoire (chat, chaton ou autre)
+var nbChats   = parseInt(document.getElementById('nombreChats')   ? document.getElementById('nombreChats').value   : '0') || 0;
+var nbChatons = parseInt(document.getElementById('nombreChatons') ? document.getElementById('nombreChatons').value : '0') || 0;
+var nbAutres  = parseInt(document.getElementById('nombreAutres')  ? document.getElementById('nombreAutres').value  : '0') || 0;
+
+var elChats   = document.getElementById('nombreChats');
+var elChatons = document.getElementById('nombreChatons');
+var elAutres  = document.getElementById('nombreAutres');
+
+if (nbChats === 0 && nbChatons === 0 && nbAutres === 0) {
+    missing.push('Au moins un animal doit être renseigné (chat, chaton ou autre)');
+    if (elChats)   elChats.style.borderBottom   = '2px solid red';
+    if (elChatons) elChatons.style.borderBottom = '2px solid red';
+    if (elAutres)  elAutres.style.borderBottom  = '2px solid red';
+} else {
+    if (elChats)   elChats.style.borderBottom   = '';
+    if (elChatons) elChatons.style.borderBottom = '';
+    if (elAutres)  elAutres.style.borderBottom  = '';
+}
+
+// Si "Autre" > 0, le champ "préciser" devient obligatoire
+if (nbAutres > 0) {
+    var elPreciser = document.getElementById('preciserAutre');
+    if (elPreciser && (!elPreciser.value || elPreciser.value.trim() === '')) {
+        missing.push('Préciser le type d\'animal (champ "préciser")');
+        elPreciser.style.borderBottom = '2px solid red';
+    } else if (elPreciser) {
+        elPreciser.style.borderBottom = '';
+    }
+}
+		
+        return missing;
+    };
+
+    // ============================================================
+    // SUPABASE
+    // ============================================================
+    const ENVOYER_PDF_MAIL = true;
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+chargerListeSaisisseurs();
+
+    async function saveForm() {
+        var missing = validateRequiredFields();
+        if (missing.length > 0) {
+            afficherMessage('⚠️ Veuillez remplir les champs obligatoires :<br><br>• ' + missing.join('<br>• '), 'erreur');
+            return;
+        }
+        var data = collectFormData();
+        data.onglet = 'depot_chat';
+        data.signatureImage = getSignatureImage();
+        data.htmlContent = encodeBase64Unicode(buildHtmlWithData());
+
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:bold;font-family:Arial;';
+        overlay.innerHTML = '<div style="text-align:center">En cours...<br><br><small>Veuillez patienter</small></div>';
+        document.body.appendChild(overlay);
+
+        try {
+            const { data: depotId, error } = await supabaseClient.rpc('creer_depot_chat', {
+                p_nom: data.nom,
+                p_prenom: data.prenom,
+                p_adresse: data.adresse,
+                p_code_postal: data.codePostal,
+                p_ville: data.ville,
+                p_telephone: data.telephone,
+                p_email: data.email,
+                p_commune: data.commune,
+                p_date_depot: data.dateDepot || null,
+                p_nombre_chats: data.nombreChats ? parseInt(data.nombreChats) : 0,
+                p_nombre_chatons: data.nombreChatons ? parseInt(data.nombreChatons) : 0,
+                p_nombre_autres: data.nombreAutres ? parseInt(data.nombreAutres) : 0,
+                p_preciser_autre: data.preciserAutre,
+                p_date_fait: data.dateFait || null,
+                p_saisi_par_id: data.saisiPar || null
+            });
+
+            document.body.removeChild(overlay);
+            if (error) throw error;
+
+            if (ENVOYER_PDF_MAIL) {
+                data.filename = buildFilename(data);
+                await sendToGoogle(data);
+            }
+
+            formSaved = true;
+            var btnSave = document.querySelector('.btn-save');
+            var btnPrint = document.querySelector('.btn-print');
+            if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
+            if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
+            afficherMessage('✅ Dépôt enregistré (id ' + depotId + ').');
+        } catch (err) {
+            document.body.removeChild(overlay);
+            console.error(err);
+            alert('Erreur lors de la sauvegarde : ' + (err.message || err));
+        }
+    }
+</script>
+</body>
+</html>

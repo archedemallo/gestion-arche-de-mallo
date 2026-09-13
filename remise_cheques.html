@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Remises de chèques — Compta Arche de Mallo</title>
+<link rel="stylesheet" href="compta-style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  .split-layout{display:grid;grid-template-columns:1fr 420px;gap:14px;align-items:start;}
+  .form-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:18px 20px;position:sticky;top:14px;max-height:calc(100vh - 30px);overflow-y:auto;}
+  .form-card-title{font-size:13px;font-weight:600;margin-bottom:14px;padding-bottom:10px;border-bottom:0.5px solid var(--border);}
+  .form-group{margin-bottom:10px;}
+  .form-label{display:block;font-size:10px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;}
+  .form-label.req::after{content:' *';color:var(--red);}
+  .form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .list-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+  .list-head{padding:12px 16px;border-bottom:0.5px solid var(--border);}
+  .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+  .kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px 14px;}
+  .kpi-label{font-size:9px;color:var(--text-3);text-transform:uppercase;margin-bottom:3px;}
+  .kpi-value{font-size:18px;font-weight:600;}
+  .f-select{font-size:11px;padding:4px 8px;border-radius:var(--radius-sm);border:0.5px solid var(--border-mid);background:var(--surface);}
+  table{width:100%;border-collapse:collapse;font-size:11px;}
+  thead th{text-align:left;font-size:9px;font-weight:600;color:var(--text-3);text-transform:uppercase;padding:7px 10px;border-bottom:0.5px solid var(--border);background:var(--surface-2);position:sticky;top:0;z-index:1;}
+  tbody td{padding:7px 10px;border-bottom:0.5px solid var(--border);vertical-align:middle;}
+  tbody tr:hover{background:var(--cream);}
+  .r{text-align:right;font-variant-numeric:tabular-nums;}
+  .del-btn,.edit-btn{background:none;border:none;cursor:pointer;font-size:13px;padding:0 3px;}
+  .del-btn{color:var(--red);} .edit-btn{color:var(--blue);}
+  .expand-btn{background:none;border:0.5px solid var(--border-mid);border-radius:4px;cursor:pointer;font-size:11px;padding:2px 6px;}
+  .expand-btn.open{background:var(--orange);color:white;border-color:var(--orange);}
+  .detail-row td{padding:0!important;}
+  .detail-inner{background:var(--surface-2);padding:10px 16px;}
+  .detail-inner table{margin:0;}
+  .cheque-item{background:var(--surface-2);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px;}
+  .cheque-item-title{font-size:10px;font-weight:600;color:var(--orange);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+  .remove-cheque-btn{background:none;border:none;cursor:pointer;color:var(--red);font-size:14px;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(61,43,31,0.35);z-index:200;display:flex;align-items:center;justify-content:center;}
+  .modal{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);width:420px;max-width:95vw;}
+  .modal-header{padding:14px 18px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+  .modal-close{background:none;border:none;font-size:18px;color:var(--text-3);cursor:pointer;}
+  .modal-body{padding:18px;} .modal-footer{padding:12px 18px;border-top:0.5px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+  .confirm-detail{margin-top:10px;padding:10px;background:var(--red-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--red);}
+  .success-toast{position:fixed;bottom:20px;right:20px;background:var(--green);color:white;padding:10px 18px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;z-index:999;}
+  .lock-icon{font-size:12px;color:var(--green);}
+  .hidden{display:none!important;}
+  #login-screen{max-width:340px;margin:80px auto;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:28px;}
+  #login-screen input{width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-size:13px;}
+  #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <h1 style="font-size:16px;">Compta — L'Arche de Mallo</h1>
+  <p style="font-size:12px;color:var(--text-3);margin-bottom:16px;">Connexion requise.</p>
+  <input type="email" id="login-email" placeholder="Email">
+  <input type="password" id="login-password" placeholder="Mot de passe">
+  <div id="login-err"></div>
+  <button class="btn btn-primary" style="width:100%;" onclick="seConnecter()">Se connecter</button>
+</div>
+
+<div id="app" class="hidden">
+<div class="main" style="margin:0;">
+  <div class="topbar">
+    <div class="topbar-title"><i class="ti ti-file-invoice" style="color:var(--orange)"></i> Remises de chèques</div>
+    <div class="topbar-right" style="display:flex;align-items:center;gap:14px;">
+      <span style="font-size:11px;color:var(--text-3);" id="topbar-user"></span>
+      <button class="btn btn-secondary btn-sm" onclick="seDeconnecter()">Déconnexion</button>
+    </div>
+  </div>
+  <div class="page-content">
+    <div class="kpi-row" id="kpi-bar"></div>
+
+    <div class="list-card">
+      <div class="list-head">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <span style="font-size:13px;font-weight:600;">Remises</span>
+          <button class="btn btn-primary btn-sm" id="btn-new" onclick="openNewRemise()"><i class="ti ti-plus"></i> Nouvelle remise</button>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;">
+          <select class="f-select" id="fl-per" onchange="onFilterChange()"></select>
+          <input class="f-input" type="text" id="fl-search" placeholder="Rechercher…" oninput="renderTable()">
+          <select class="f-select" id="fl-statut" onchange="renderTable()">
+            <option value="">Tous statuts</option><option value="en_attente">En attente</option><option value="encaissee">Encaissées</option>
+          </select>
+          <select class="f-select" id="fl-type" onchange="renderTable()"><option value="">Tous types</option></select>
+          <select class="f-select" id="fl-chat" onchange="renderTable()"><option value="">Tous chats</option></select>
+          <input class="f-input" type="date" id="fl-date-from" onchange="renderTable()" title="Du">
+          <input class="f-input" type="date" id="fl-date-to" onchange="renderTable()" title="Au">
+          <input class="f-input" type="number" step="0.01" id="fl-montant-min" placeholder="Montant min" style="width:90px;" oninput="renderTable()">
+          <input class="f-input" type="number" step="0.01" id="fl-montant-max" placeholder="Montant max" style="width:90px;" oninput="renderTable()">
+        </div>
+      </div>
+      <div style="overflow-x:auto;max-height:600px;overflow-y:auto;" id="table-wrap">
+        <div style="padding:24px;text-align:center;color:var(--text-3);">Chargement…</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- MODAL NOUVELLE REMISE / MODIFIER -->
+<div class="modal-overlay hidden" id="modal-newremise">
+  <div class="modal" style="width:520px;">
+    <div class="modal-header"><span class="modal-title" id="form-mode-lbl">Nouvelle remise</span><button class="modal-close" onclick="closeNewRemise()">×</button></div>
+    <div class="modal-body">
+      <div class="form-row-2">
+        <div class="form-group"><label class="form-label">N° bordereau</label><input type="text" id="rem-bordereau" placeholder="Ex: RB-2026-001"></div>
+        <div class="form-group"><label class="form-label req">Date de remise</label><input type="date" id="rem-date"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Période</label><select id="rem-per"></select></div>
+
+      <div id="cheques-remise-list"></div>
+      <button class="btn btn-secondary btn-sm" onclick="addChequeRemise()" type="button"><i class="ti ti-plus"></i> Ajouter un chèque</button>
+
+      <div style="margin-top:12px;padding-top:12px;border-top:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:11px;color:var(--text-3);">Total</span>
+        <span style="font-size:16px;font-weight:600;" id="rem-total">0,00 €</span>
+      </div>
+      <div id="rem-err" class="hidden" style="color:var(--red);font-size:11px;padding:6px 0;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="resetRemise()"><i class="ti ti-refresh"></i> Vider</button>
+      <button class="btn btn-primary" style="flex:1;" id="rem-submit" onclick="submitRemise()"><i class="ti ti-device-floppy"></i> Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SUPPRIMER -->
+<div class="modal-overlay hidden" id="modal-del">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Supprimer la remise</span><button class="modal-close" onclick="closeDel()">×</button></div>
+    <div class="modal-body"><div style="font-size:12px;">Êtes-vous sûr de vouloir supprimer cette remise (et ses lignes de chèques) ?</div><div class="confirm-detail" id="del-detail"></div></div>
+    <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="closeDel()">Annuler</button><button class="btn btn-danger btn-sm" onclick="confirmDel()">Supprimer</button></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script>
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let allRemises = [], allDetails = [], editId = null, delId = null, roleActuel = null, chqCounter = 0;
+let typesEtDescriptions = [];
+const openRows = new Set();
+
+async function seConnecter() {
+  document.getElementById('login-err').textContent = '';
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) { document.getElementById('login-err').textContent = 'Connexion refusée : ' + error.message; return; }
+  await demarrerApp(data.user);
+}
+async function seDeconnecter() { await supabaseClient.auth.signOut(); location.reload(); }
+async function demarrerApp(user) {
+  const { data: profil, error } = await supabaseClient.from('profils_compta').select('role, email').eq('user_id', user.id).maybeSingle();
+  if (error || !profil) { document.getElementById('login-err').textContent = "Ce compte n'est pas autorisé sur la Compta."; await supabaseClient.auth.signOut(); return; }
+  roleActuel = profil.role;
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('topbar-user').textContent = profil.email + (roleActuel==='lecteur' ? ' (lecture seule)' : '');
+  if (roleActuel === 'lecteur') document.getElementById('btn-new').style.display = 'none';
+  await chargerPeriodes(); await chargerTypesEtDescriptions();
+  document.getElementById('rem-date').value = new Date().toISOString().split('T')[0];
+  resetRemise();
+  await loadData();
+}
+(async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(data.session.user); })();
+
+async function chargerPeriodes() {
+  let periodes = null;
+  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'periodes').maybeSingle();
+  if (data && Array.isArray(data.valeur) && data.valeur.length) periodes = data.valeur;
+  if (!periodes) { const y=new Date().getFullYear(), m=new Date().getMonth()+1, start=m>=11?y:y-1; periodes=[]; for(let i=2024;i<=start;i++) periodes.push(`${i} - ${i+1}`); }
+  const actuelle = periodes[periodes.length-1];
+  ['rem-per','fl-per'].forEach(id => { const s=document.getElementById(id); s.innerHTML=''; periodes.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;if(p===actuelle)o.selected=true;s.appendChild(o);}); });
+}
+async function chargerTypesEtDescriptions() {
+  const { data: types } = await supabaseClient.from('types_mouvement').select('id, valeur, ordre').order('ordre');
+  const { data: descs } = await supabaseClient.from('descriptions_mouvement').select('id, type_mouvement_id, valeur, ordre').order('ordre');
+  typesEtDescriptions = (types||[]).map(t => ({...t, descriptions:(descs||[]).filter(d=>d.type_mouvement_id===t.id)}));
+}
+function onFilterChange() { renderKPIs(); renderTable(); }
+
+// ============================================================
+// LIGNES DE CHÈQUES DANS LE FORMULAIRE
+// ============================================================
+function addChequeRemise(prefill) {
+  const id = 'chq-rem-' + (chqCounter++);
+  const topts = '<option value="">— Choisir —</option>' + typesEtDescriptions.map(t=>`<option ${prefill&&prefill.type_mouvement===t.valeur?'selected':''}>${escH(t.valeur)}</option>`).join('');
+  const nb = document.getElementById('cheques-remise-list').children.length + 1;
+  const div = document.createElement('div');
+  div.className = 'cheque-item'; div.id = id;
+  div.innerHTML = `
+    <div class="cheque-item-title"><span>Chèque ${nb}</span><button class="remove-cheque-btn" type="button" onclick="removeChequeRemise('${id}')"><i class="ti ti-trash"></i></button></div>
+    <div class="form-row-2">
+      <div class="form-group"><label class="form-label req">Donateur / Nom</label><input type="text" class="rem-donateur" placeholder="Nom" value="${escH(prefill?.donateur||'')}"></div>
+      <div class="form-group"><label class="form-label req">Montant (€)</label><input type="number" class="rem-montant" step="0.01" min="0" placeholder="0,00" oninput="updateRemTotal()" value="${prefill?.montant||''}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">N° chèque</label><input type="text" class="rem-num-cheque" placeholder="Ex: 1234567" value="${escH(prefill?.cheque_ref||'')}"></div>
+    <div class="form-group"><label class="form-label req">Type de mouvement</label><select class="rem-type" onchange="onRemTypeChange(this)">${topts}</select></div>
+    <div class="form-group"><label class="form-label">Description</label><select class="rem-desc"><option value="">—</option></select></div>
+    <div class="form-group"><label class="form-label">Libellé complémentaire</label><input type="text" class="rem-libelle-comp" value="${escH(prefill?.libelle_complementaire||'')}"></div>
+    <div class="form-row-2">
+      <div class="form-group"><label class="form-label">Nom du chat</label><input type="text" class="rem-nom-chat" value="${escH(prefill?.nom_chat||'')}"></div>
+      <div class="form-group"><label class="form-label">N° reçu fiscal don</label><input type="text" class="rem-recu-fiscal" value="${escH(prefill?.numero_recu||'')}"></div>
+    </div>`;
+  document.getElementById('cheques-remise-list').appendChild(div);
+  if (prefill && prefill.type_mouvement) { onRemTypeChange(div.querySelector('.rem-type'), prefill.description); }
+  updateRemTotal();
+}
+function onRemTypeChange(sel, presetDesc) {
+  const t = typesEtDescriptions.find(x => x.valeur === sel.value);
+  const descSel = sel.closest('.cheque-item').querySelector('.rem-desc');
+  descSel.innerHTML = '<option value="">—</option>' + (t?.descriptions||[]).map(d=>`<option ${presetDesc===d.valeur?'selected':''}>${escH(d.valeur)}</option>`).join('');
+}
+function removeChequeRemise(id) {
+  document.getElementById(id)?.remove();
+  updateRemTotal();
+  document.querySelectorAll('#cheques-remise-list .cheque-item-title span').forEach((el,i) => el.textContent = 'Chèque ' + (i+1));
+}
+function updateRemTotal() {
+  const total = [...document.querySelectorAll('.rem-montant')].reduce((s,i) => s + (parseFloat(i.value)||0), 0);
+  document.getElementById('rem-total').textContent = fmt(total);
+}
+function openNewRemise() { resetRemise(); document.getElementById('modal-newremise').classList.remove('hidden'); }
+function closeNewRemise() { document.getElementById('modal-newremise').classList.add('hidden'); }
+function resetRemise() {
+  editId = null;
+  document.getElementById('rem-bordereau').value = '';
+  document.getElementById('rem-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('rem-err').classList.add('hidden');
+  document.getElementById('cheques-remise-list').innerHTML = '';
+  chqCounter = 0;
+  addChequeRemise();
+  document.getElementById('form-mode-lbl').textContent = 'Nouvelle remise';
+}
+
+// ============================================================
+// CHARGEMENT / KPI / TABLEAU
+// ============================================================
+async function loadData() {
+  const { data: remises, error: e1 } = await supabaseClient.from('remises_cheques').select('*').order('date_remise', { ascending: false });
+  const { data: details, error: e2 } = await supabaseClient.from('remise_cheques_details').select('*').order('numero_ordre');
+  if (e1 || e2) { showToast('Erreur de chargement'); return; }
+  allRemises = remises || []; allDetails = details || [];
+  renderKPIs(); renderTable();
+}
+function renderKPIs() {
+  const per = document.getElementById('fl-per')?.value;
+  const rows = allRemises.filter(r => r.periode === per);
+  const att = rows.filter(r => r.statut === 'en_attente');
+  const enc = rows.filter(r => r.statut === 'encaissee');
+  document.getElementById('kpi-bar').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Remises sur la période</div><div class="kpi-value">${rows.length}</div><div style="font-size:10px;color:var(--text-3);">${enc.length} encaissée(s) — ${att.length} en attente</div></div>
+    <div class="kpi"><div class="kpi-label">En attente</div><div class="kpi-value" style="color:var(--amber)">${fmt(att.reduce((s,r)=>s+parseFloat(r.montant_total||0),0))}</div></div>
+    <div class="kpi"><div class="kpi-label">Total période</div><div class="kpi-value">${fmt(rows.reduce((s,r)=>s+parseFloat(r.montant_total||0),0))}</div></div>`;
+}
+function renderTable() {
+  const per = document.getElementById('fl-per')?.value;
+  const search = (document.getElementById('fl-search')?.value || '').toLowerCase();
+  const statutF = document.getElementById('fl-statut')?.value || '';
+  const typeF = document.getElementById('fl-type')?.value || '';
+  const chatF = document.getElementById('fl-chat')?.value || '';
+  const dFrom = document.getElementById('fl-date-from')?.value || '';
+  const dTo = document.getElementById('fl-date-to')?.value || '';
+  const mMin = document.getElementById('fl-montant-min')?.value;
+  const mMax = document.getElementById('fl-montant-max')?.value;
+
+  const perRows = allRemises.filter(r => r.periode === per);
+  const detailsDe = r => allDetails.filter(d => d.remise_id === r.id);
+  let rows = perRows;
+  if (statutF) rows = rows.filter(r => r.statut === statutF);
+  if (typeF)   rows = rows.filter(r => detailsDe(r).some(d => d.type_mouvement === typeF));
+  if (chatF)   rows = rows.filter(r => detailsDe(r).some(d => d.nom_chat === chatF));
+  if (dFrom)   rows = rows.filter(r => r.date_remise >= dFrom);
+  if (dTo)     rows = rows.filter(r => r.date_remise <= dTo);
+  if (mMin)    rows = rows.filter(r => (parseFloat(r.montant_total)||0) >= parseFloat(mMin));
+  if (mMax)    rows = rows.filter(r => (parseFloat(r.montant_total)||0) <= parseFloat(mMax));
+  if (search)  rows = rows.filter(r => r.numero_bordereau && r.numero_bordereau.toLowerCase().includes(search) || detailsDe(r).some(d => (d.donateur||'').toLowerCase().includes(search)));
+
+  const perDetails = perRows.flatMap(detailsDe);
+  const remplirSelect = (id, valeurs, placeholder) => {
+    const el = document.getElementById(id); const cur = el.value;
+    el.innerHTML = `<option value="">${placeholder}</option>` + valeurs.map(v=>`<option ${v===cur?'selected':''}>${escH(v)}</option>`).join('');
+  };
+  remplirSelect('fl-type', [...new Set(perDetails.map(d=>d.type_mouvement).filter(Boolean))].sort(), 'Tous types');
+  remplirSelect('fl-chat', [...new Set(perDetails.map(d=>d.nom_chat).filter(Boolean))].sort(), 'Tous chats');
+
+  if (!rows.length) { document.getElementById('table-wrap').innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-3);font-size:12px;">Aucune remise</div>'; return; }
+
+  const trs = rows.map(r => {
+    const isOpen = openRows.has(r.id);
+    const details = detailsDe(r);
+    const detailRows = details.map(d => `<tr><td>${escH(d.donateur||'')}</td><td>${escH(d.cheque_ref||'')}</td><td>${escH(d.type_mouvement||'')}</td><td>${escH(d.description||'')}</td><td>${escH(d.nom_chat||'')}</td><td class="r">${fmt(d.montant)}</td></tr>`).join('');
+    return `<tr>
+      <td><button class="expand-btn ${isOpen?'open':''}" onclick="toggleRow('${r.id}')">${isOpen?'−':'+'}</button></td>
+      <td>${formatDateFR(r.date_remise)}</td>
+      <td style="font-weight:500;">${r.numero_bordereau||'—'}</td>
+      <td class="r">${details.length}</td>
+      <td class="r" style="font-weight:600;">${fmt(r.montant_total)}</td>
+      <td>${r.statut==='encaissee'?'<span style="color:var(--green);">Encaissée</span>':'<span style="color:var(--amber);">En attente</span>'}</td>
+      <td class="r" style="white-space:nowrap;">
+        ${roleActuel==='admin' ? (r.verifie ? `<span class="lock-icon"><i class="ti ti-lock"></i></span>` :
+          `<button class="edit-btn" onclick="openEdit('${r.id}')"><i class="ti ti-pencil"></i></button>
+           <button class="del-btn" onclick="openDel('${r.id}')"><i class="ti ti-trash"></i></button>`) : ''}
+      </td>
+    </tr>
+    <tr class="detail-row" style="${isOpen?'':'display:none;'}"><td colspan="7">
+      <div class="detail-inner"><table><thead><tr><th>Donateur</th><th>N° chèque</th><th>Type</th><th>Description</th><th>Chat</th><th class="r">Montant</th></tr></thead><tbody>${detailRows}</tbody></table></div>
+    </td></tr>`;
+  }).join('');
+
+  document.getElementById('table-wrap').innerHTML = `<table><thead><tr>
+    <th style="width:36px;"></th><th>Date</th><th>N° bordereau</th><th class="r">Nb chèques</th><th class="r">Montant</th><th>Statut</th><th class="r">Actions</th>
+  </tr></thead><tbody>${trs}</tbody></table>`;
+}
+function toggleRow(id) { if (openRows.has(id)) openRows.delete(id); else openRows.add(id); renderTable(); }
+
+// ============================================================
+// ENREGISTREMENT
+// ============================================================
+async function submitRemise() {
+  document.getElementById('rem-err').classList.add('hidden');
+  const date = document.getElementById('rem-date').value;
+  if (!date) { showErr('La date est obligatoire.'); return; }
+  const items = [...document.querySelectorAll('#cheques-remise-list .cheque-item')];
+  if (!items.length) { showErr('Ajoutez au moins un chèque.'); return; }
+  const cheques = [];
+  for (const item of items) {
+    const montant = parseFloat(item.querySelector('.rem-montant')?.value) || 0;
+    if (!montant) { showErr('Tous les montants sont obligatoires.'); return; }
+    const type_mouvement = item.querySelector('.rem-type')?.value || '';
+    if (!type_mouvement) { showErr('Le type de mouvement est obligatoire pour chaque chèque.'); return; }
+    cheques.push({
+      donateur: item.querySelector('.rem-donateur')?.value.trim()||'',
+      montant,
+      numero_cheque: item.querySelector('.rem-num-cheque')?.value.trim()||'',
+      type_mouvement,
+      description: item.querySelector('.rem-desc')?.value||'',
+      libelle_complementaire: item.querySelector('.rem-libelle-comp')?.value.trim()||'',
+      nom_chat: item.querySelector('.rem-nom-chat')?.value.trim()||'',
+      numero_recu: item.querySelector('.rem-recu-fiscal')?.value.trim()||'',
+    });
+  }
+  const params = {
+    p_numero_bordereau: document.getElementById('rem-bordereau').value.trim() || null,
+    p_date_remise: date,
+    p_periode: document.getElementById('rem-per').value,
+    p_cheques: cheques,
+  };
+  const btn = document.getElementById('rem-submit'); btn.disabled = true;
+  try {
+    if (editId) { const { error } = await supabaseClient.rpc('modifier_remise_cheques', { p_id: editId, ...params }); if (error) throw error; showToast('Remise modifiée !'); }
+    else { const { error } = await supabaseClient.rpc('creer_remise_cheques', params); if (error) throw error; showToast('Remise enregistrée !'); }
+    closeNewRemise(); await loadData();
+  } catch(e) { showErr('Erreur : ' + (e.message||'?')); }
+  finally { btn.disabled = false; }
+}
+
+function openEdit(id) {
+  const r = allRemises.find(x => x.id === id);
+  if (!r || r.verifie) { showToast('⚠️ Remise verrouillée'); return; }
+  editId = id;
+  document.getElementById('rem-bordereau').value = r.numero_bordereau || '';
+  document.getElementById('rem-date').value = r.date_remise || '';
+  document.getElementById('rem-per').value = r.periode || '';
+  document.getElementById('cheques-remise-list').innerHTML = '';
+  chqCounter = 0;
+  const details = allDetails.filter(d => d.remise_id === id).sort((a,b) => a.numero_ordre - b.numero_ordre);
+  details.forEach(d => addChequeRemise(d));
+  if (!details.length) addChequeRemise();
+  document.getElementById('form-mode-lbl').textContent = 'Modifier la remise';
+  document.getElementById('modal-newremise').classList.remove('hidden');
+}
+
+function openDel(id) {
+  const r = allRemises.find(x => x.id === id); if (!r) return;
+  delId = id;
+  document.getElementById('del-detail').textContent = (r.numero_bordereau||'sans bordereau') + ' — ' + fmt(r.montant_total);
+  document.getElementById('modal-del').classList.remove('hidden');
+}
+function closeDel() { document.getElementById('modal-del').classList.add('hidden'); delId = null; }
+async function confirmDel() {
+  if (!delId) return;
+  try { const { error } = await supabaseClient.rpc('supprimer_remise_cheques', { p_id: delId }); if (error) throw error; closeDel(); showToast('Remise supprimée'); await loadData(); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+
+function fmt(v) { if (v===null||v===undefined||v==='') return '—'; return parseFloat(v).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+function showErr(m) { const e=document.getElementById('rem-err'); e.textContent=m; e.classList.remove('hidden'); }
+function showToast(m) { const t=document.createElement('div'); t.className='success-toast'; t.textContent=m; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
+function formatDateFR(d) { if (!d) return '—'; const s=String(d).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const p=s.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; } return s; }
+</script>
+</body>
+</html>

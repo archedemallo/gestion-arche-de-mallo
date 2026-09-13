@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Banque — Compta Arche de Mallo</title>
+<link rel="stylesheet" href="compta-style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  .form-title{font-size:13px;font-weight:600;margin-bottom:14px;padding-bottom:10px;border-bottom:0.5px solid var(--border);}
+  .form-group{margin-bottom:10px;}
+  .form-label{display:block;font-size:10px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;}
+  .form-label.req::after{content:' *';color:var(--red);}
+  .form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .list-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:14px;}
+  .list-head{padding:12px 16px;border-bottom:0.5px solid var(--border);}
+  .list-title{font-size:13px;font-weight:600;margin-bottom:8px;}
+  .filters-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  .f-select{font-size:11px;padding:4px 8px;border-radius:var(--radius-sm);border:0.5px solid var(--border-mid);background:var(--surface);}
+  .f-input{font-size:11px;padding:4px 10px;border-radius:var(--radius-sm);border:0.5px solid var(--border-mid);background:var(--surface);}
+  .kpi-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;}
+  .kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px 14px;}
+  .kpi-label{font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;}
+  .kpi-value{font-size:18px;font-weight:600;}
+  .kpi-sub{font-size:10px;color:var(--text-3);margin-top:2px;}
+  .tbl-scroll-body{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 300px);}
+  table{border-collapse:collapse;font-size:11px;min-width:100%;}
+  thead th{text-align:left;font-size:9px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.6px;padding:7px 10px;border-bottom:0.5px solid var(--border);background:var(--surface-2);cursor:pointer;white-space:nowrap;position:sticky;top:0;}
+  tbody td{padding:7px 10px;border-bottom:0.5px solid var(--border);vertical-align:middle;}
+  tbody tr:hover{background:var(--cream);}
+  tbody tr.verified-row{background:rgba(59,109,17,0.04);}
+  .r{text-align:right;font-variant-numeric:tabular-nums;}
+  .amount-c{color:var(--green);} .amount-d{color:var(--red);}
+  .chip{font-size:9px;padding:2px 7px;border-radius:10px;border:0.5px solid;white-space:nowrap;}
+  .chip-link{font-size:9px;padding:1px 6px;border-radius:8px;background:var(--warm);border:0.5px solid var(--border-mid);white-space:nowrap;}
+  .edit-btn,.del-btn,.flag-btn,.search-btn{background:none;border:none;cursor:pointer;font-size:13px;padding:0 3px;color:var(--text-2);}
+  .del-btn{color:var(--red);} .flag-btn.on,.search-btn.on{color:var(--green);}
+  .lock-icon{font-size:12px;color:var(--green);}
+  .sens-toggle{display:flex;gap:6px;}
+  .sens-btn{flex:1;padding:8px;border-radius:var(--radius-sm);border:0.5px solid var(--border-mid);background:var(--surface);cursor:pointer;font-size:12px;}
+  .sens-btn.credit.active{background:var(--green);color:white;border-color:var(--green);}
+  .sens-btn.debit.active{background:var(--red);color:white;border-color:var(--red);}
+  .modal-overlay{position:fixed;inset:0;background:rgba(61,43,31,0.35);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
+  .modal{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);width:540px;max-width:95vw;max-height:90vh;overflow-y:auto;}
+  .modal-header{padding:14px 18px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+  .modal-title{font-size:13px;font-weight:600;}
+  .modal-close{background:none;border:none;font-size:18px;color:var(--text-3);cursor:pointer;}
+  .modal-body{padding:18px;}
+  .modal-footer{padding:12px 18px;border-top:0.5px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+  .confirm-detail{margin-top:10px;padding:10px;background:var(--red-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--red);}
+  .success-toast{position:fixed;bottom:20px;right:20px;background:var(--green);color:white;padding:10px 18px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;z-index:999;}
+  .hidden{display:none!important;}
+  .info-box{background:var(--blue-bg);border:0.5px solid rgba(24,95,165,0.15);border-radius:var(--radius-sm);padding:8px 12px;font-size:11px;color:var(--blue);margin-bottom:12px;}
+  #login-screen{max-width:340px;margin:80px auto;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:28px;}
+  #login-screen input{width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-size:13px;}
+  #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <h1 style="font-size:16px;">Compta — L'Arche de Mallo</h1>
+  <p style="font-size:12px;color:var(--text-3);margin-bottom:16px;">Connexion requise.</p>
+  <input type="email" id="login-email" placeholder="Email">
+  <input type="password" id="login-password" placeholder="Mot de passe">
+  <div id="login-err"></div>
+  <button class="btn btn-primary" style="width:100%;" onclick="seConnecter()">Se connecter</button>
+</div>
+
+<div id="app" class="hidden">
+<div class="main" style="margin:0;">
+  <div class="topbar">
+    <div class="topbar-title"><i class="ti ti-building-bank" style="color:var(--orange)"></i> Banque</div>
+    <div class="topbar-right" style="display:flex;align-items:center;gap:14px;">
+      <span style="font-size:11px;color:var(--text-3);" id="topbar-user"></span>
+      <button class="btn btn-secondary btn-sm" onclick="seDeconnecter()">Déconnexion</button>
+    </div>
+  </div>
+  <div class="page-content">
+
+    <div class="kpi-bar" id="kpi-bar"></div>
+
+    <div class="list-card">
+      <div class="list-head">
+        <div class="list-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <span>Opérations bancaires</span>
+          <button class="btn btn-primary btn-sm" id="btn-new" onclick="openNewOp()"><i class="ti ti-plus"></i> Nouvelle opération</button>
+        </div>
+        <div class="filters-bar">
+          <select class="f-select" id="fl-per" onchange="onFilterChange()"></select>
+          <input class="f-input" type="text" id="fl-search" placeholder="Rechercher…" oninput="renderTable()">
+          <select class="f-select" id="fl-type" onchange="renderTable()"><option value="">Tous types</option></select>
+          <select class="f-select" id="fl-desc" onchange="renderTable()"><option value="">Tous mouvements</option></select>
+          <select class="f-select" id="fl-sens" onchange="renderTable()">
+            <option value="">Débits + Crédits</option><option value="credit">Crédits</option><option value="debit">Débits</option>
+          </select>
+          <select class="f-select" id="fl-flag" onchange="renderTable()">
+            <option value="">Toutes lignes</option><option value="verifie">Vérifiées</option><option value="non-verifie">Non vérifiées</option>
+          </select>
+          <select class="f-select" id="fl-chat" onchange="renderTable()"><option value="">Tous chats</option></select>
+          <select class="f-select" id="fl-recu" onchange="renderTable()"><option value="">Tous reçus</option></select>
+          <select class="f-select" id="fl-bordereau" onchange="renderTable()"><option value="">Tous bordereaux</option></select>
+          <input class="f-input" type="date" id="fl-date-from" onchange="renderTable()" title="Du">
+          <input class="f-input" type="date" id="fl-date-to" onchange="renderTable()" title="Au">
+          <input class="f-input" type="number" step="0.01" id="fl-montant-min" placeholder="Montant min" style="width:90px;" oninput="renderTable()">
+          <input class="f-input" type="number" step="0.01" id="fl-montant-max" placeholder="Montant max" style="width:90px;" oninput="renderTable()">
+          <button class="btn btn-secondary btn-sm" onclick="clearFilters()"><i class="ti ti-x"></i> Effacer</button>
+        </div>
+      </div>
+      <div class="tbl-scroll-body" id="table-wrap">
+        <div style="padding:32px;text-align:center;color:var(--text-3);">Chargement…</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- MODAL NOUVELLE OPÉRATION / MODIFIER -->
+<div class="modal-overlay hidden" id="modal-newop">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title" id="form-mode-lbl">Nouvelle opération</span><button class="modal-close" onclick="closeNewOp()">×</button></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Sens</label>
+        <div class="sens-toggle">
+          <button class="sens-btn credit active" id="btn-credit" onclick="setSens('credit')" type="button"><i class="ti ti-arrow-down-left"></i> Entrée</button>
+          <button class="sens-btn debit" id="btn-debit" onclick="setSens('debit')" type="button"><i class="ti ti-arrow-up-right"></i> Sortie</button>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Période</label><select id="f-per"></select></div>
+      <div class="form-row-2">
+        <div class="form-group"><label class="form-label req">Date</label><input type="date" id="f-date"></div>
+        <div class="form-group"><label class="form-label req">Montant (€)</label><input type="number" id="f-montant" step="0.01" min="0"></div>
+      </div>
+      <div class="form-group"><label class="form-label req">Libellé</label><input type="text" id="f-libelle" placeholder="Nom, description courte"></div>
+      <div class="form-group"><label class="form-label req">Type mouvement</label><select id="f-type" onchange="onTypeChange()"></select></div>
+      <div class="form-group"><label class="form-label">Description</label><select id="f-desc"><option value="">— Choisir un type d'abord —</option></select></div>
+      <div class="form-row-2">
+        <div class="form-group"><label class="form-label">Fournisseur</label><select id="f-fourn"></select></div>
+        <div class="form-group"><label class="form-label">Mode de règlement</label><input type="text" id="f-mode-reglement" placeholder="Virement, CB, chèque…"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Libellé complémentaire</label><input type="text" id="f-libelle-comp"></div>
+      <div class="form-row-2">
+        <div class="form-group"><label class="form-label">Nom du chat</label><input type="text" id="f-chat"></div>
+        <div class="form-group"><label class="form-label">N° facture</label><input type="text" id="f-facture"></div>
+      </div>
+      <div class="form-group"><label class="form-label">N° reçu fiscal don</label><input type="text" id="f-recu-fiscal"></div>
+
+      <div class="form-row-2" id="encaissement-fields">
+        <div class="form-group"><label class="form-label"><i class="ti ti-writing" style="font-size:11px;"></i> Encaisser un chèque</label><select id="f-ref-cheque"><option value="">—</option></select></div>
+        <div class="form-group"><label class="form-label"><i class="ti ti-file-invoice" style="font-size:11px;"></i> Encaisser une remise</label><select id="f-ref-remise"><option value="">—</option></select></div>
+      </div>
+
+      <div id="form-err" class="hidden" style="color:var(--red);font-size:11px;padding:6px 0;margin-top:4px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="resetForm()"><i class="ti ti-refresh"></i> Vider</button>
+      <button class="btn btn-primary" id="btn-submit" onclick="submitForm()"><i class="ti ti-device-floppy"></i> Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FLAG -->
+<div class="modal-overlay hidden" id="modal-flag">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Annoter la ligne</span><button class="modal-close" onclick="closeFlag()">×</button></div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:12px;" id="flag-info"></div>
+      <div class="form-group"><label class="form-label">Commentaire</label><textarea id="flag-comment" rows="3" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-size:11px;"></textarea></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;margin-top:10px;"><input type="checkbox" id="flag-resolved"> Marquer comme résolu</label>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="closeFlag()">Annuler</button><button class="btn btn-primary btn-sm" onclick="saveFlag()">Enregistrer</button></div>
+  </div>
+</div>
+
+<!-- MODAL VENTILATION -->
+<div class="modal-overlay hidden" id="modal-ventilation">
+  <div class="modal" style="width:640px;">
+    <div class="modal-header"><span class="modal-title"><i class="ti ti-git-merge"></i> Lier à un/des enregistrement(s) Suivi</span><button class="modal-close" onclick="closeVentilation()">×</button></div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;" id="vent-info"></div>
+      <div class="form-group"><input type="text" id="vent-search" class="f-input" style="width:100%;" placeholder="Rechercher par nom (adhésion, don, adoption, réservation)…" oninput="rechercherVentilation()"></div>
+      <div id="vent-resultats" style="max-height:160px;overflow-y:auto;margin-bottom:12px;"></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Répartition</div>
+      <div id="vent-lignes" style="margin-bottom:8px;"></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding-top:8px;border-top:0.5px solid var(--border);">
+        <span>Total ventilé</span>
+        <span id="vent-total" style="font-weight:600;">0,00 €</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);">
+        <span>Montant du mouvement</span>
+        <span id="vent-montant-mouvement">—</span>
+      </div>
+      <div id="vent-err" class="hidden" style="color:var(--red);font-size:11px;padding:6px 0;"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="closeVentilation()">Annuler</button><button class="btn btn-primary btn-sm" onclick="confirmVentilation()"><i class="ti ti-check"></i> Enregistrer la ventilation</button></div>
+  </div>
+</div>
+
+<!-- MODAL RAPPROCHEMENT -->
+<div class="modal-overlay hidden" id="modal-rappr">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title"><i class="ti ti-link"></i> Rapprochement</span><button class="modal-close" onclick="closeRapprochement()">×</button></div>
+    <div class="modal-body" id="rappr-body"></div>
+    <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="closeRapprochement()">Fermer</button></div>
+  </div>
+</div>
+
+<!-- MODAL SUPPRIMER -->
+<div class="modal-overlay hidden" id="modal-del">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Supprimer</span><button class="modal-close" onclick="closeDel()">×</button></div>
+    <div class="modal-body"><div style="font-size:12px;">Supprimer cette opération ? Un chèque/une remise rattaché(e) sera remis en attente.</div><div class="confirm-detail" id="del-detail"></div></div>
+    <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="closeDel()">Annuler</button><button class="btn btn-danger btn-sm" onclick="confirmDel()">Supprimer</button></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script>
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let allRows = [], editId = null, delId = null, flagTarget = null;
+let sortCol = 'date_mouvement', sortAsc = false;
+let roleActuel = null, typesEtDescriptions = [], activeSens = 'credit';
+let soldeInitialActuel = 0; // rempli par renderKPIs(), utilisé par renderTable() pour le solde cumulé
+
+async function seConnecter() {
+  document.getElementById('login-err').textContent = '';
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) { document.getElementById('login-err').textContent = 'Connexion refusée : ' + error.message; return; }
+  await demarrerApp(data.user);
+}
+async function seDeconnecter() { await supabaseClient.auth.signOut(); location.reload(); }
+async function demarrerApp(user) {
+  const { data: profil, error } = await supabaseClient.from('profils_compta').select('role, email').eq('user_id', user.id).maybeSingle();
+  if (error || !profil) { document.getElementById('login-err').textContent = "Ce compte n'est pas autorisé sur la Compta."; await supabaseClient.auth.signOut(); return; }
+  roleActuel = profil.role;
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('topbar-user').textContent = profil.email + (roleActuel==='lecteur' ? ' (lecture seule)' : '');
+  if (roleActuel === 'lecteur') document.getElementById('btn-new').style.display = 'none';
+  await chargerPeriodes(); await chargerTypesEtDescriptions(); await chargerFournisseurs();
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  await loadData();
+}
+(async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(data.session.user); })();
+
+async function chargerPeriodes() {
+  let periodes = null;
+  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'periodes').maybeSingle();
+  if (data && Array.isArray(data.valeur) && data.valeur.length) periodes = data.valeur;
+  if (!periodes) { const y=new Date().getFullYear(), m=new Date().getMonth()+1, start=m>=11?y:y-1; periodes=[]; for(let i=2024;i<=start;i++) periodes.push(`${i} - ${i+1}`); }
+  const actuelle = periodes[periodes.length-1];
+  ['f-per','fl-per'].forEach(id => { const s=document.getElementById(id); s.innerHTML=''; periodes.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;if(p===actuelle)o.selected=true;s.appendChild(o);}); });
+}
+async function chargerTypesEtDescriptions() {
+  const { data: types } = await supabaseClient.from('types_mouvement').select('id, valeur, ordre').order('ordre');
+  const { data: descs } = await supabaseClient.from('descriptions_mouvement').select('id, type_mouvement_id, valeur, ordre').order('ordre');
+  typesEtDescriptions = (types||[]).map(t => ({...t, descriptions:(descs||[]).filter(d=>d.type_mouvement_id===t.id)}));
+  document.getElementById('f-type').innerHTML = '<option value="">— Choisir —</option>' + typesEtDescriptions.map(t=>`<option>${escH(t.valeur)}</option>`).join('');
+}
+function onTypeChange() {
+  const t = typesEtDescriptions.find(x => x.valeur === document.getElementById('f-type').value);
+  document.getElementById('f-desc').innerHTML = '<option value="">—</option>' + (t?.descriptions||[]).map(d=>`<option>${escH(d.valeur)}</option>`).join('');
+}
+async function chargerFournisseurs() {
+  const { data } = await supabaseClient.from('fournisseurs').select('nom').eq('actif', true).order('nom');
+  document.getElementById('f-fourn').innerHTML = '<option value="">—</option>' + (data||[]).map(f=>`<option>${escH(f.nom)}</option>`).join('');
+}
+// Chèques/remises pas encore encaissés, proposés pour rattachement direct à une nouvelle opération
+async function chargerEncaissables() {
+  const { data: chq } = await supabaseClient.from('cheques').select('id, numero_cheque, beneficiaire, montant').eq('statut', 'en_attente').order('date_emission');
+  const { data: rem } = await supabaseClient.from('remises_cheques').select('id, numero_bordereau, montant_total').eq('statut', 'en_attente').order('date_remise');
+  document.getElementById('f-ref-cheque').innerHTML = '<option value="">—</option>' + (chq||[]).map(c=>`<option value="${c.id}">${escH(c.numero_cheque||'?')} — ${escH(c.beneficiaire||'')} (${fmt(c.montant)})</option>`).join('');
+  document.getElementById('f-ref-remise').innerHTML = '<option value="">—</option>' + (rem||[]).map(r=>`<option value="${r.id}">${escH(r.numero_bordereau||'sans bordereau')} (${fmt(r.montant_total)})</option>`).join('');
+}
+function onFilterChange() { renderKPIs(); }
+
+let remisesMap = {}; // ref_remise (id) -> numero_bordereau, pour filtrer/afficher le bordereau sur les mouvements bancaires (banque_mouvements n'a pas ce champ directement, seulement via la remise liée)
+async function loadData() {
+  const [mvt, rem] = await Promise.all([
+    supabaseClient.from('banque_mouvements').select('*').order('date_mouvement'),
+    supabaseClient.from('remises_cheques').select('id, numero_bordereau'),
+  ]);
+  if (mvt.error) { showToast('Erreur : ' + mvt.error.message); return; }
+  allRows = mvt.data || [];
+  remisesMap = {};
+  (rem.data || []).forEach(r => { remisesMap[r.id] = r.numero_bordereau; });
+  await renderKPIs();
+}
+
+async function renderKPIs() {
+  const per = document.getElementById('fl-per')?.value;
+  const rows = allRows.filter(r => r.periode === per);
+  const inn = rows.reduce((s,r) => s + (parseFloat(r.credit)||0), 0);
+  const out = rows.reduce((s,r) => s + (parseFloat(r.debit)||0), 0);
+  const { data: soldeRow } = await supabaseClient.from('soldes').select('montant').eq('periode', per).eq('compte', 'banque').eq('type_solde', 'initial').maybeSingle();
+  const soldInit = soldeRow ? parseFloat(soldeRow.montant) || 0 : 0;
+  soldeInitialActuel = soldInit; // utilisé par renderTable() pour le solde cumulé ligne par ligne
+  const soldActuel = soldInit + inn - out;
+  document.getElementById('kpi-bar').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Solde actuel</div><div class="kpi-value" style="color:${soldActuel>=0?'var(--green)':'var(--red)'}">${fmt(soldActuel)}</div></div>
+    <div class="kpi"><div class="kpi-label">Entrées</div><div class="kpi-value" style="color:var(--green)">${fmt(inn)}</div><div class="kpi-sub">${rows.filter(r=>r.credit>0).length} op.</div></div>
+    <div class="kpi"><div class="kpi-label">Sorties</div><div class="kpi-value" style="color:var(--red)">${fmt(out)}</div><div class="kpi-sub">${rows.filter(r=>r.debit>0).length} op.</div></div>
+    <div class="kpi"><div class="kpi-label">Net période</div><div class="kpi-value" style="color:${inn-out>=0?'var(--green)':'var(--red)'}">${fmt(inn-out)}</div></div>
+    <div class="kpi"><div class="kpi-label">Solde initial</div><div class="kpi-value" style="color:var(--blue)">${fmt(soldInit)}</div></div>`;
+  renderTable();
+}
+
+// ============================================================
+// TABLEAU — solde cumulé calculé par ID (jamais par référence d'objet
+// ni par ordre d'affichage) et dans un ordre chronologique STABLE
+// (date puis date de création en tie-break) : c'est précisément ce qui
+// manquait dans l'ancien système et causait le décalage d'une ligne
+// signalé (le solde affiché ne correspondait pas à la bonne ligne dès
+// que deux mouvements avaient la même date).
+// ============================================================
+function renderTable() {
+  const per     = document.getElementById('fl-per')?.value;
+  const search  = (document.getElementById('fl-search')?.value || '').toLowerCase();
+  const typeF   = document.getElementById('fl-type')?.value || '';
+  const descF   = document.getElementById('fl-desc')?.value || '';
+  const sensF   = document.getElementById('fl-sens')?.value || '';
+  const flagF   = document.getElementById('fl-flag')?.value || '';
+  const chatF   = document.getElementById('fl-chat')?.value || '';
+  const recuF   = document.getElementById('fl-recu')?.value || '';
+  const bordF   = document.getElementById('fl-bordereau')?.value || '';
+  const dFrom   = document.getElementById('fl-date-from')?.value || '';
+  const dTo     = document.getElementById('fl-date-to')?.value || '';
+  const mMin    = document.getElementById('fl-montant-min')?.value;
+  const mMax    = document.getElementById('fl-montant-max')?.value;
+
+  const bordereauDe = r => r.ref_remise ? (remisesMap[r.ref_remise] || '') : '';
+
+  const perRows = allRows.filter(r => r.periode === per);
+  let rows = perRows;
+  if (typeF)  rows = rows.filter(r => r.type_mouvement === typeF);
+  if (descF)  rows = rows.filter(r => r.description === descF);
+  if (sensF==='credit') rows = rows.filter(r => parseFloat(r.credit) > 0);
+  if (sensF==='debit')  rows = rows.filter(r => parseFloat(r.debit) > 0);
+  if (flagF==='verifie')     rows = rows.filter(r => r.statut === 'verifie');
+  if (flagF==='non-verifie') rows = rows.filter(r => r.statut !== 'verifie');
+  if (chatF)  rows = rows.filter(r => r.nom_chat === chatF);
+  if (recuF)  rows = rows.filter(r => r.numero_don_fiscal === recuF);
+  if (bordF)  rows = rows.filter(r => bordereauDe(r) === bordF);
+  if (dFrom)  rows = rows.filter(r => r.date_mouvement >= dFrom);
+  if (dTo)    rows = rows.filter(r => r.date_mouvement <= dTo);
+  if (mMin)   rows = rows.filter(r => (parseFloat(r.credit)||parseFloat(r.debit)||0) >= parseFloat(mMin));
+  if (mMax)   rows = rows.filter(r => (parseFloat(r.credit)||parseFloat(r.debit)||0) <= parseFloat(mMax));
+  if (search) rows = rows.filter(r => [r.libelle, r.type_mouvement, r.description, r.libelle_complementaire, r.numero_facture, r.fournisseur].join(' ').toLowerCase().includes(search));
+
+  rows = [...rows].sort((a,b) => {
+    let va=a[sortCol], vb=b[sortCol]; va=va??''; vb=vb??'';
+    const cmp = typeof va === 'number' ? va-vb : String(va).localeCompare(String(vb),'fr');
+    return sortAsc ? cmp : -cmp;
+  });
+
+  const remplirSelect = (id, valeurs, placeholder) => {
+    const el = document.getElementById(id);
+    const cur = el.value;
+    el.innerHTML = `<option value="">${placeholder}</option>` + valeurs.map(v => `<option ${v===cur?'selected':''}>${escH(v)}</option>`).join('');
+  };
+  remplirSelect('fl-type', [...new Set(perRows.map(r => r.type_mouvement).filter(Boolean))].sort(), 'Tous types');
+  remplirSelect('fl-desc', [...new Set(perRows.map(r => r.description).filter(Boolean))].sort(), 'Tous mouvements');
+  remplirSelect('fl-chat', [...new Set(perRows.map(r => r.nom_chat).filter(Boolean))].sort(), 'Tous chats');
+  remplirSelect('fl-recu', [...new Set(perRows.map(r => r.numero_don_fiscal).filter(Boolean))].sort(), 'Tous reçus');
+  remplirSelect('fl-bordereau', [...new Set(perRows.map(bordereauDe).filter(Boolean))].sort(), 'Tous bordereaux');
+
+  if (!rows.length) { document.getElementById('table-wrap').innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-3);font-size:12px;">Aucune opération</div>'; return; }
+
+  // Solde cumulé : tri chronologique stable (date, puis cree_le en
+  // tie-break) + clé = id (uuid), jamais une référence d'objet ni
+  // l'ordre d'affichage courant.
+  const chrono = [...perRows].sort((a,b) => {
+    if (a.date_mouvement !== b.date_mouvement) return a.date_mouvement < b.date_mouvement ? -1 : 1;
+    return a.cree_le < b.cree_le ? -1 : a.cree_le > b.cree_le ? 1 : 0;
+  });
+  // Part du solde initial de la période (voir la note ci-dessus sur le
+  // décalage : partir de 0 était le même bug que celui déjà corrigé,
+  // simplement recopié ici par erreur au moment d'écrire cette page).
+  let running = soldeInitialActuel;
+  const soldeMap = new Map();
+  chrono.forEach(r => { running += (parseFloat(r.credit)||0) - (parseFloat(r.debit)||0); soldeMap.set(r.id, running); });
+
+  const si = col => sortCol===col ? (sortAsc?'↑':'↓') : '↕';
+  const mkTh = (label, col) => `<th onclick="setSort('${col}')">${label} <span style="opacity:.5">${si(col)}</span></th>`;
+
+  const trs = rows.map(r => {
+    const isVerified = r.statut === 'verifie';
+    const flagged = r.flag_verifie;
+    const rapproche = !!(r.ref_cheque || r.ref_remise || r.suivi_ref);
+    return `<tr class="${isVerified?'verified-row':''}">
+      <td style="text-align:center;"><input type="checkbox" ${isVerified?'checked':''} ${roleActuel!=='admin'?'disabled':''} onchange="toggleVerified('${r.id}',this.checked)"></td>
+      <td style="white-space:nowrap;">${formatDateFR(r.date_mouvement)}</td>
+      <td title="${escH(r.libelle||'')}">${r.libelle||''}</td>
+      <td class="r amount-d">${r.debit?fmt(r.debit):''}</td>
+      <td class="r amount-c">${r.credit?fmt(r.credit):''}</td>
+      <td class="r" style="font-size:10px;">${fmt(soldeMap.get(r.id))}</td>
+      <td style="font-size:10px;">${escH(r.fournisseur||'')||'—'}</td>
+      <td><span class="chip">${r.type_mouvement||''}</span></td>
+      <td style="font-size:10px;">${r.description||''}</td>
+      <td style="font-size:10px;">${r.nom_chat||''}</td>
+      <td class="r" style="white-space:nowrap;">
+        ${roleActuel==='admin' ? `
+          <button class="flag-btn ${flagged?'on':''}" onclick="openFlag('${r.id}','${escH(r.libelle||'')}','${escH(r.flag_commentaire||'')}')" title="${flagged ? 'Annotation : '+escH(r.flag_commentaire||'') : 'Annoter'}"><i class="ti ti-flag"></i></button>
+          <button class="search-btn ${flagged?'on':''}" onclick="openFlag('${r.id}','${escH(r.libelle||'')}','${escH(r.flag_commentaire||'')}')" title="${flagged ? escH(r.flag_commentaire||'') : 'Aucune annotation'}"><i class="ti ti-search"></i></button>
+        ` : (flagged ? `<i class="ti ti-flag" style="color:var(--green);" title="${escH(r.flag_commentaire||'')}"></i>` : '')}
+      </td>
+      <td class="r" style="white-space:nowrap;">
+        ${roleActuel==='admin' ? (isVerified
+          ? `<span class="lock-icon"><i class="ti ti-lock"></i></span>`
+          : `<button class="edit-btn" onclick="openEdit('${r.id}')" title="Modifier"><i class="ti ti-pencil"></i></button>
+             <button class="del-btn" onclick="openDel('${r.id}')" title="Supprimer"><i class="ti ti-trash"></i></button>
+             ${rapproche
+                ? `<button class="edit-btn" onclick="voirRapprochement('${r.id}')" title="Voir le rapprochement (chèque/remise/Suivi)"><i class="ti ti-link"></i></button>`
+                : `<button class="edit-btn" onclick="openVentilation('${r.id}','${escH(r.libelle||'')}',${parseFloat(r.credit||r.debit)||0})" title="Lier à un/des enregistrement(s) Suivi"><i class="ti ti-git-merge"></i></button>`}`)
+          : (rapproche ? `<i class="ti ti-link" style="color:var(--text-3);" title="Rapproché"></i>` : '')}
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('table-wrap').innerHTML = `<table><thead><tr>
+    <th style="width:36px;">✓</th>
+    ${mkTh('Date','date_mouvement')}${mkTh('Libellé','libelle')}${mkTh('Débit','debit')}${mkTh('Crédit','credit')}
+    <th class="r">Solde</th>${mkTh('Fournisseur','fournisseur')}${mkTh('Type','type_mouvement')}${mkTh('Mouvement','description')}
+    <th>Chat</th><th class="r">Annoter</th><th class="r">Actions</th>
+  </tr></thead><tbody>${trs}</tbody></table>`;
+}
+function setSort(col) { if (sortCol===col) sortAsc=!sortAsc; else { sortCol=col; sortAsc=true; } renderTable(); }
+function clearFilters() {
+  document.getElementById('fl-search').value = '';
+  ['fl-date-from','fl-date-to','fl-montant-min','fl-montant-max'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
+  ['fl-type','fl-desc','fl-sens','fl-flag','fl-chat','fl-recu','fl-bordereau'].forEach(id => document.getElementById(id).selectedIndex = 0);
+  renderTable();
+}
+
+async function toggleVerified(id, checked) {
+  try { const { error } = await supabaseClient.rpc('verrouiller_operation_banque', { p_id: id, p_verrouiller: checked }); if (error) throw error; await loadData(); showToast(checked?'Verrouillée':'Déverrouillée'); }
+  catch(e) { alert('Erreur : ' + e.message); await loadData(); }
+}
+
+function setSens(s) { activeSens = s; document.getElementById('btn-credit').classList.toggle('active', s==='credit'); document.getElementById('btn-debit').classList.toggle('active', s==='debit'); }
+async function openNewOp() { resetForm(); await chargerEncaissables(); document.getElementById('modal-newop').classList.remove('hidden'); }
+function closeNewOp() { document.getElementById('modal-newop').classList.add('hidden'); editId = null; }
+function resetForm() {
+  ['f-date','f-montant','f-libelle','f-libelle-comp','f-chat','f-facture','f-recu-fiscal','f-mode-reglement'].forEach(id => { const e=document.getElementById(id); e.value = id==='f-date' ? new Date().toISOString().split('T')[0] : ''; });
+  document.getElementById('f-type').selectedIndex = 0;
+  document.getElementById('f-desc').innerHTML = '<option value="">— Choisir un type d\'abord —</option>';
+  document.getElementById('f-fourn').selectedIndex = 0;
+  document.getElementById('f-ref-cheque').innerHTML = '<option value="">—</option>';
+  document.getElementById('f-ref-remise').innerHTML = '<option value="">—</option>';
+  document.getElementById('encaissement-fields').style.display = '';
+  document.getElementById('form-err').classList.add('hidden');
+  document.getElementById('form-mode-lbl').textContent = 'Nouvelle opération';
+  setSens('credit'); editId = null;
+}
+
+async function submitForm() {
+  document.getElementById('form-err').classList.add('hidden');
+  const date = document.getElementById('f-date').value;
+  const montant = parseFloat(document.getElementById('f-montant').value);
+  const libelle = document.getElementById('f-libelle').value.trim();
+  const type_mvt = document.getElementById('f-type').value;
+  if (!date) { showErr('La date est obligatoire.'); return; }
+  if (!montant || montant<=0) { showErr('Le montant doit être > 0.'); return; }
+  if (!libelle) { showErr('Le libellé est obligatoire.'); return; }
+  if (!type_mvt) { showErr('Le type de mouvement est obligatoire.'); return; }
+
+  const params = {
+    p_date: date, p_libelle: libelle,
+    p_debit: activeSens==='debit' ? montant : 0,
+    p_credit: activeSens==='credit' ? montant : 0,
+    p_periode: document.getElementById('f-per').value,
+    p_type_mouvement: type_mvt,
+    p_description: document.getElementById('f-desc').value || null,
+    p_libelle_complementaire: document.getElementById('f-libelle-comp').value.trim() || null,
+    p_fournisseur: document.getElementById('f-fourn').value || null,
+    p_nom_chat: document.getElementById('f-chat').value.trim() || null,
+    p_numero_facture: document.getElementById('f-facture').value.trim() || null,
+    p_numero_don_fiscal: document.getElementById('f-recu-fiscal').value.trim() || null,
+    p_mode_reglement: document.getElementById('f-mode-reglement').value.trim() || null,
+  };
+
+  const btn = document.getElementById('btn-submit'); btn.disabled = true;
+  try {
+    if (editId) {
+      const { error } = await supabaseClient.rpc('modifier_operation_banque', { p_id: editId, ...params });
+      if (error) throw error;
+      showToast('Opération modifiée !');
+    } else {
+      params.p_ref_cheque = document.getElementById('f-ref-cheque').value || null;
+      params.p_ref_remise = document.getElementById('f-ref-remise').value || null;
+      const { error } = await supabaseClient.rpc('creer_operation_banque', params);
+      if (error) throw error;
+      showToast('Opération enregistrée !');
+    }
+    closeNewOp(); await loadData();
+  } catch(e) { showErr('Erreur : ' + (e.message || '?')); }
+  finally { btn.disabled = false; }
+}
+
+function openEdit(id) {
+  const r = allRows.find(x => x.id === id);
+  if (!r || r.statut === 'verifie') { showToast('⚠️ Ligne verrouillée'); return; }
+  editId = id;
+  document.getElementById('f-date').value = r.date_mouvement;
+  document.getElementById('f-montant').value = r.credit || r.debit || '';
+  document.getElementById('f-libelle').value = r.libelle || '';
+  document.getElementById('f-type').value = r.type_mouvement || '';
+  onTypeChange();
+  document.getElementById('f-desc').value = r.description || '';
+  document.getElementById('f-fourn').value = r.fournisseur || '';
+  document.getElementById('f-libelle-comp').value = r.libelle_complementaire || '';
+  document.getElementById('f-chat').value = r.nom_chat || '';
+  document.getElementById('f-facture').value = r.numero_facture || '';
+  document.getElementById('f-recu-fiscal').value = r.numero_don_fiscal || '';
+  document.getElementById('f-mode-reglement').value = r.mode_reglement || '';
+  document.getElementById('encaissement-fields').style.display = 'none'; // pas de ré-encaissement depuis la modif
+  setSens(parseFloat(r.credit) > 0 ? 'credit' : 'debit');
+  document.getElementById('form-mode-lbl').textContent = "Modifier l'opération";
+  document.getElementById('modal-newop').classList.remove('hidden');
+}
+
+function openDel(id) {
+  const r = allRows.find(x => x.id === id); if (!r) return;
+  delId = id;
+  document.getElementById('del-detail').innerHTML = `<strong>${formatDateFR(r.date_mouvement)}</strong> — ${r.libelle||'—'}<br>${r.credit?'+'+fmt(r.credit):r.debit?'−'+fmt(r.debit):''}`;
+  document.getElementById('modal-del').classList.remove('hidden');
+}
+function closeDel() { document.getElementById('modal-del').classList.add('hidden'); delId = null; }
+async function confirmDel() {
+  if (!delId) return;
+  try { const { error } = await supabaseClient.rpc('supprimer_operation_banque', { p_id: delId }); if (error) throw error; closeDel(); showToast('Supprimée'); await loadData(); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+
+function openFlag(id, libelle, comment) {
+  flagTarget = id;
+  document.getElementById('flag-info').textContent = 'Ligne : ' + libelle;
+  document.getElementById('flag-comment').value = comment || '';
+  document.getElementById('flag-resolved').checked = false;
+  document.getElementById('modal-flag').classList.remove('hidden');
+}
+function closeFlag() { document.getElementById('modal-flag').classList.add('hidden'); flagTarget = null; }
+async function saveFlag() {
+  if (!flagTarget) return;
+  try {
+    const { error } = await supabaseClient.rpc('annoter_operation_banque', { p_id: flagTarget, p_commentaire: document.getElementById('flag-comment').value.trim(), p_resolu: document.getElementById('flag-resolved').checked });
+    if (error) throw error;
+    closeFlag(); await loadData(); showToast('Annotation enregistrée');
+  } catch(e) { alert('Erreur : ' + e.message); }
+}
+
+async function delier(type, id) {
+  const fn = type==='cheque' ? 'delier_banque_cheque' : type==='remise' ? 'delier_banque_remise' : 'delier_banque_suivi';
+  if (!confirm('Supprimer ce rapprochement ?')) return;
+  try { const { error } = await supabaseClient.rpc(fn, { p_banque_mouvement_id: id }); if (error) throw error; showToast('Rapprochement supprimé'); closeRapprochement(); await loadData(); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+
+// Remplace l'ancienne colonne "Rapproché" (chips CHQ/BRD/Suivi toujours
+// visibles) par une icône dans Actions — la colonne prenait trop de
+// place pour une info qu'on ne consulte qu'occasionnellement.
+function voirRapprochement(id) {
+  const r = allRows.find(x => x.id === id); if (!r) return;
+  const lignes = [];
+  if (r.ref_cheque) lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);"><span>Chèque encaissé</span><button class="btn btn-danger btn-sm" onclick="delier('cheque','${r.id}')">Délier</button></div>`);
+  if (r.ref_remise) lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);"><span>Remise de chèques ${remisesMap[r.ref_remise]?'— '+escH(remisesMap[r.ref_remise]):''}</span><button class="btn btn-danger btn-sm" onclick="delier('remise','${r.id}')">Délier</button></div>`);
+  if (r.suivi_ref) lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;"><span>Enregistrement(s) Suivi (ventilation)</span><button class="btn btn-danger btn-sm" onclick="delier('suivi','${r.id}')">Délier</button></div>`);
+  document.getElementById('rappr-body').innerHTML = lignes.join('') || '<div style="color:var(--text-3);font-size:12px;">Aucun rapprochement</div>';
+  document.getElementById('modal-rappr').classList.remove('hidden');
+}
+function closeRapprochement() { document.getElementById('modal-rappr').classList.add('hidden'); }
+
+// ============================================================
+// VENTILATION — lier un mouvement à un ou plusieurs enregistrements
+// Suivi en une fois (n'existait pas du tout avant, seul "délier"
+// fonctionnait).
+// ============================================================
+let ventMouvementId = null, ventMontantMouvement = 0, ventLignes = [];
+function openVentilation(id, libelle, montant) {
+  ventMouvementId = id; ventMontantMouvement = montant; ventLignes = [];
+  document.getElementById('vent-info').textContent = libelle + ' — ' + fmt(montant);
+  document.getElementById('vent-search').value = '';
+  document.getElementById('vent-resultats').innerHTML = '';
+  document.getElementById('vent-err').classList.add('hidden');
+  document.getElementById('vent-montant-mouvement').textContent = fmt(montant);
+  renderVentLignes();
+  document.getElementById('modal-ventilation').classList.remove('hidden');
+}
+function closeVentilation() { document.getElementById('modal-ventilation').classList.add('hidden'); }
+
+let ventSearchTimer = null;
+function rechercherVentilation() {
+  clearTimeout(ventSearchTimer);
+  const texte = document.getElementById('vent-search').value.trim();
+  ventSearchTimer = setTimeout(async () => {
+    try {
+      const { data, error } = await supabaseClient.rpc('rechercher_suivi_pour_ventilation', { p_recherche: texte || null });
+      if (error) throw error;
+      const labels = { adhesion:'Adhésion', don:'Don', adoption:'Adoption', reservation:'Réservation', materiel_mouvement:'Prêt de matériel' };
+      document.getElementById('vent-resultats').innerHTML = (data||[]).map(r => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-bottom:0.5px solid var(--border);font-size:11px;cursor:pointer;" onclick="ajouterLigneVentilation('${r.type}','${r.id}','${escH(labels[r.type]+' — '+r.nom_affiche)}',${parseFloat(r.montant_suggere)||0})">
+          <span>${escH(labels[r.type])} — ${escH(r.nom_affiche)} <span style="color:var(--text-3);">${r.date_operation||''}</span></span>
+          <span style="font-weight:500;">${fmt(r.montant_suggere)}</span>
+        </div>`).join('') || '<div style="padding:8px;color:var(--text-3);font-size:11px;">Aucun résultat</div>';
+    } catch(e) { console.error(e); }
+  }, 300);
+}
+function ajouterLigneVentilation(type, id, label, montantSuggere) {
+  const dejaMontant = ventLignes.reduce((s,l)=>s+l.montant,0);
+  const restant = Math.max(0, ventMontantMouvement - dejaMontant);
+  ventLignes.push({ type, id, label, montant: restant > 0 ? Math.min(restant, montantSuggere || restant) : (montantSuggere || 0) });
+  renderVentLignes();
+}
+function retirerLigneVentilation(i) { ventLignes.splice(i,1); renderVentLignes(); }
+function majMontantVentilation(i, val) { ventLignes[i].montant = parseFloat(val) || 0; renderVentLignes(false); }
+function renderVentLignes(rerenderInputs) {
+  const el = document.getElementById('vent-lignes');
+  if (rerenderInputs !== false) {
+    el.innerHTML = ventLignes.map((l,i) => `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+        <span style="flex:1;font-size:11px;">${escH(l.label)}</span>
+        <input type="number" step="0.01" value="${l.montant}" oninput="majMontantVentilation(${i},this.value)" style="width:90px;font-size:11px;padding:3px 6px;border:0.5px solid var(--border-mid);border-radius:4px;text-align:right;">
+        <button onclick="retirerLigneVentilation(${i})" style="border:none;background:none;color:var(--red);cursor:pointer;">✕</button>
+      </div>`).join('') || '<div style="font-size:11px;color:var(--text-3);">Aucune ligne — cherchez ci-dessus et cliquez sur un résultat.</div>';
+  }
+  const total = ventLignes.reduce((s,l)=>s+l.montant,0);
+  document.getElementById('vent-total').textContent = fmt(total);
+  document.getElementById('vent-total').style.color = Math.abs(total - ventMontantMouvement) < 0.01 ? 'var(--green)' : 'var(--amber)';
+}
+async function confirmVentilation() {
+  if (!ventLignes.length) { const e=document.getElementById('vent-err'); e.textContent='Ajoutez au moins une ligne.'; e.classList.remove('hidden'); return; }
+  const liens = ventLignes.map(l => ({ [l.type + '_id']: l.id, montant: l.montant }));
+  try {
+    const { error } = await supabaseClient.rpc('lier_banque_suivi', { p_banque_mouvement_id: ventMouvementId, p_liens: liens });
+    if (error) throw error;
+    closeVentilation(); showToast('Ventilation enregistrée !'); await loadData();
+  } catch(e) { const el=document.getElementById('vent-err'); el.textContent='Erreur : '+e.message; el.classList.remove('hidden'); }
+}
+
+function fmt(v) { if (v===null||v===undefined||v==='') return '—'; return parseFloat(v).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+function showErr(m) { const e=document.getElementById('form-err'); e.textContent=m; e.classList.remove('hidden'); }
+function showToast(m) { const t=document.createElement('div'); t.className='success-toast'; t.textContent=m; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
+function formatDateFR(d) { if (!d) return '—'; const s=String(d).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const p=s.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; } return s; }
+</script>
+</body>
+</html>

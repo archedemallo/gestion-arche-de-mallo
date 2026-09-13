@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retour de matériel — L'Arche de Mallo</title>
+<link rel="stylesheet" href="formulaires-arche-mallo.css">
+</head>
+<body data-form-id="retour_materiel">
+<div id="login-screen" style="position:fixed;inset:0;background:#faf7f2;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid #ddd;border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;color:#3d2b1f;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:#888;margin-bottom:16px;">Connexion requise pour accéder à ce formulaire.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err" style="color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:#c96b2a;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+<div style="background:#fff4e5;border:1px solid #ffd699;color:#7a4a00;font-size:12.5px;padding:8px 14px;text-align:center;" class="no-print">
+  <strong>Formulaire pilote.</strong> Écrit directement dans Supabase. PDF/mail (Apps Script) activés. État/caution/montants ajoutés en texte dans le champ matériel (pas encore de colonnes dédiées).
+</div>
+
+<div class="buttons">
+    <button class="btn btn-save" onclick="saveForm()">💾 Sauvegarder</button>
+    <button class="btn btn-print btn-print-disabled" onclick="printForm()" disabled>🖨️ Imprimer</button>
+</div>
+
+<div class="page-container">
+<div class="content">
+
+    <div id="entete"></div>
+
+    <div class="title" style="text-align:center; margin-top:5px;">Constat de retour de matériel</div>
+
+    <div class="section" style="text-align:center; font-style:italic; font-size:0.9em; color:#555; margin:6px 0 10px;">
+        <p>Ce document formalise le retour du matériel prêté par l'association et l'état constaté lors de la restitution.</p>
+    </div>
+
+    <!-- Référence au contrat de prêt -->
+    <div class="section">
+        <p class="bold underline">Référence au contrat de prêt :</p>
+        <p>
+            <span class="blue">Nom de l'emprunteur :</span>
+            <input type="text" class="editable editable-long" id="nomEmprunteur"
+                data-required="true" data-label="Nom de l'emprunteur" oninput="this.value=this.value.toUpperCase()">
+        </p>
+        <p>
+            <span class="blue">Prénom :</span>
+            <input type="text" class="editable editable-long" id="prenomEmprunteur"
+                data-label="Prénom de l'emprunteur" oninput="this.value=this.value.toUpperCase()">
+        </p>
+        <p>
+            <span class="blue">E-mail :</span>
+            <input type="email" class="editable editable-email" id="emailEmprunteur" data-label="Email emprunteur">
+        </p>
+        <p>
+            <span class="blue">Date de prise en charge du matériel :</span>
+            <input type="date" class="editable editable-date" id="datePriseEnCharge" data-required="true" data-label="Date de prise en charge">
+        </p>
+        <p>
+            <span class="blue">Matériel concerné :</span>
+        </p>
+        <div class="motif-ligne" onclick="toggleCheckMulti(this)">
+            <span class="checkbox" id="materiel_cage_trappe"></span>
+            <span>Cage trappe</span>
+        </div>
+        <div class="motif-ligne" onclick="toggleCheckMulti(this)">
+            <span class="checkbox" id="materiel_cage_transport"></span>
+            <span>Cage transport</span>
+        </div>
+        <div class="motif-ligne" onclick="toggleCheckMulti(this)">
+            <span class="checkbox" id="materiel_autre"></span>
+            <span>Autre : <input type="text" class="editable editable-medium" onclick="event.stopPropagation()" id="materiel_autre_texte"></span>
+        </div>
+        <p>
+            <span class="blue">N° de la cage / trappe ou de transport :</span>
+            <input type="text" class="editable editable-medium" id="numeroCage" data-required="true" data-label="N° cage ou trappe">
+        </p>
+    </div>
+
+    <!-- Constat de retour -->
+    <div class="section">
+        <p class="bold underline">Constat de retour :</p>
+        <p>
+            <span class="blue">Date de retour effectif :</span>
+            <input type="date" class="editable editable-date" id="dateRetourEffectif" data-required="true" data-label="Date de retour effectif">
+        </p>
+        <p><span class="blue bold">État du matériel à la restitution :</span></p>
+        <div class="motif-ligne" onclick="toggleCheckEtat(this, 'bon')">
+            <span class="checkbox" id="etat_bon" data-group="etat"></span>
+            <span>✅ Bon état — propre, fonctionnel et bien conditionné</span>
+        </div>
+        <div class="motif-ligne" onclick="toggleCheckEtat(this, 'degrade')">
+            <span class="checkbox" id="etat_degrade" data-group="etat"></span>
+            <span>⚠️ État dégradé — anomalie constatée (préciser ci-dessous)</span>
+        </div>
+        <div class="motif-ligne" onclick="toggleCheckEtat(this, 'inutilisable')">
+            <span class="checkbox" id="etat_inutilisable" data-group="etat"></span>
+            <span>❌ Inutilisable — remplacement à la charge de l'emprunteur</span>
+        </div>
+        <p>
+            <span class="blue">Détail des anomalies constatées (si applicable) :</span><br>
+            <textarea class="editable" id="anomalies" rows="3"
+                style="width:100%;margin-top:4px;font-family:inherit;font-size:inherit;padding:6px;border:none;border-bottom:1px dotted #333;resize:vertical;"></textarea>
+        </p>
+    </div>
+
+    <!-- Restitution caution -->
+    <div class="section">
+        <p class="bold underline">Restitution de la caution (100 €) :</p>
+        <div class="motif-ligne" onclick="toggleCheckCaution(this, 'restituee')">
+            <span class="checkbox" id="caution_restituee" data-group="caution"></span>
+            <span>Caution intégralement restituée (matériel en bon état)</span>
+        </div>
+        <div class="motif-ligne" onclick="toggleCheckCaution(this, 'conservee')">
+            <span class="checkbox" id="caution_conservee" data-group="caution"></span>
+            <span>Caution intégralement conservée (anomalie constatée)</span>
+        </div>
+        <div class="motif-ligne" onclick="toggleCheckCaution(this, 'partielle')">
+            <span class="checkbox" id="caution_partielle" data-group="caution"></span>
+            <span>Restitution partielle :
+                <input type="number" class="editable editable-num" id="montantRestitue" min="0" max="100" step="0.01"> €
+                restitués /
+                <input type="number" class="editable editable-num" id="montantConserve" min="0" max="100" step="0.01"> € conservés
+            </span>
+        </div>
+        <p>
+            <span class="blue">Mode de restitution de la caution :</span>
+        </p>
+        <div class="motif-ligne" onclick="toggleCheckMulti(this)">
+            <span class="checkbox" id="restitution_cheque" onclick="event.stopPropagation()"></span>
+            <span>Restitution par chèque — N°
+                <input type="text" class="editable editable-medium" onclick="event.stopPropagation()" id="numeroChequeRestitution" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+            </span>
+        </div>
+        <div class="motif-ligne" onclick="toggleCheckMulti(this)">
+            <span class="checkbox" id="restitution_espece"></span>
+            <span>Restitution en espèces</span>
+        </div>
+        <div class="motif-ligne" onclick="toggleCheckMulti(this)">
+            <span class="checkbox" id="restitution_virement"></span>
+            <span>Restitution par virement</span>
+        </div>
+    </div>
+
+    <!-- Signatures -->
+    <div class="section">
+        <p class="bold">Fait à Autrechêne, le
+            <input type="date" class="editable editable-date" id="dateFait">
+        </p>
+    <p class="bold no-print">Saisi par <select id="saisiPar" class="editable"></select></p>
+        <table class="signature-table">
+            <tr>
+                <td>
+                    <p>Le Prêteur — L'Arche de Mallo :</p>
+                    <p class="mt-20">
+                        <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve1_rm">
+                            <span class="checkbox"></span>
+                            <span class="bold"> Lu et approuvé</span>
+                        </span>
+                    </p>
+                    <div id="sig1"></div>
+                    <div id="sig1-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+                </td>
+                <td>
+                    <p>L'Emprunteur :</p>
+                    <p class="mt-20">
+                        <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve2_rm">
+                            <span class="checkbox"></span>
+                            <span class="bold"> Lu et approuvé</span>
+                        </span>
+                    </p>
+                    <div id="sig2"></div>
+                    <div id="sig2-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script>
+    creerEntete({ dateId: 'dateRetourMateriel', dateLabel: 'Date :' });
+    creerSignature('sig1');
+    creerSignature('sig2');
+
+    var today = new Date().toISOString().split('T')[0];
+    var el = document.getElementById('dateFait');
+    if (el && !el.value) el.value = today;
+    var el2 = document.getElementById('dateRetourEffectif');
+    if (el2 && !el2.value) el2.value = today;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        appliquerPrefill();
+        var el = document.getElementById('datePriseEnCharge');
+        if (el) el.value = '';
+    });
+
+    function toggleCheckMulti(element) {
+        var box = element.querySelector('.checkbox');
+        if (box) box.classList.toggle('checked');
+    }
+
+    function toggleCheckEtat(element, mode) {
+        // Radio : un seul état possible
+        ['bon','degrade','inutilisable'].forEach(function(id) {
+            var e = document.getElementById('etat_' + id);
+            if (e) e.classList.remove('checked');
+        });
+        var box = element.querySelector('.checkbox');
+        if (box) box.classList.add('checked');
+    }
+
+    function toggleCheckCaution(element, mode) {
+        // Radio : un seul mode possible
+        ['restituee','conservee','partielle'].forEach(function(id) {
+            var e = document.getElementById('caution_' + id);
+            if (e) e.classList.remove('checked');
+        });
+        var box = element.querySelector('.checkbox');
+        if (box) box.classList.add('checked');
+    }
+
+    validateRequiredFields = function() {
+        var missing = [];
+
+        document.querySelectorAll('[data-required="true"]').forEach(function(el) {
+            var label = el.getAttribute('data-label') || el.id;
+            if (!el.value || el.value.trim() === '') {
+                missing.push(label);
+                el.style.borderBottom = '2px solid red';
+            } else {
+                el.style.borderBottom = '';
+            }
+        });
+
+        // Matériel : au moins un coché
+        var matIds = ['materiel_cage_trappe','materiel_cage_transport','materiel_autre'];
+        var matCoche = matIds.some(function(id) {
+            var e = document.getElementById(id);
+            return e && e.classList.contains('checked');
+        });
+        if (!matCoche) missing.push('Matériel concerné (au moins un à cocher)');
+
+        // État : obligatoire
+        var etatIds = ['etat_bon','etat_degrade','etat_inutilisable'];
+        var etatCoche = etatIds.some(function(id) {
+            var e = document.getElementById(id);
+            return e && e.classList.contains('checked');
+        });
+        if (!etatCoche) missing.push('État du matériel à la restitution');
+
+        // Caution : obligatoire
+        var cautionIds = ['caution_restituee','caution_conservee','caution_partielle'];
+        var cautionCoche = cautionIds.some(function(id) {
+            var e = document.getElementById(id);
+            return e && e.classList.contains('checked');
+        });
+        if (!cautionCoche) missing.push('Restitution de la caution');
+
+        // Lu et approuvé
+        ['luApprouve1_rm','luApprouve2_rm'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) {
+                var box = el.querySelector('.checkbox');
+                if (box && !box.classList.contains('checked')) {
+                    missing.push('Lu et approuvé (' + (id === 'luApprouve1_rm' ? 'Prêteur' : 'Emprunteur') + ')');
+                }
+            }
+        });
+
+        // Signatures
+        ['sig1','sig2'].forEach(function(sigId) {
+            var container = document.getElementById(sigId);
+            if (container && !container._signed) {
+                missing.push('Signature ' + (sigId === 'sig1' ? 'Prêteur' : 'Emprunteur'));
+            }
+        });
+
+        return missing;
+    };
+
+    collectFormData = function() {
+        var data = {};
+        data.onglet   = 'Retour_Materiel';
+        data.filename = 'RetourMateriel_' + (document.getElementById('nomEmprunteur').value || '').replace(/\s+/g,'_') + '_' + today;
+
+        var ids = ['nomEmprunteur','prenomEmprunteur','emailEmprunteur','datePriseEnCharge','numeroCage','dateRetourEffectif',
+                   'anomalies','montantRestitue','montantConserve','numeroChequeRestitution','dateFait',
+                   'materiel_autre_texte'];
+        ids.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) data[id] = el.value || '';
+        });
+
+        // Matériel
+        var mats = ['materiel_cage_trappe','materiel_cage_transport','materiel_autre'];
+        data.materiel = mats.filter(function(id) {
+            var e = document.getElementById(id);
+            return e && e.classList.contains('checked');
+        }).map(function(id) { return id.replace('materiel_',''); }).join(', ');
+
+        // État
+        var etats = ['etat_bon','etat_degrade','etat_inutilisable'];
+        data.etatMateriel = etats.filter(function(id) {
+            var e = document.getElementById(id);
+            return e && e.classList.contains('checked');
+        }).map(function(id) { return id.replace('etat_',''); }).join('');
+
+        // Caution
+        var cautions = ['caution_restituee','caution_conservee','caution_partielle'];
+        data.restitutionCaution = cautions.filter(function(id) {
+            var e = document.getElementById(id);
+            return e && e.classList.contains('checked');
+        }).map(function(id) { return id.replace('caution_',''); }).join('');
+
+        // Mode restitution
+        var modes = ['restitution_cheque','restitution_espece','restitution_virement'];
+        data.modeRestitution = modes.filter(function(id) {
+            var e = document.getElementById(id);
+            return e && e.classList.contains('checked');
+        }).map(function(id) { return id.replace('restitution_',''); }).join(', ');
+
+        data.htmlContent = btoa(unescape(encodeURIComponent(document.querySelector('.page-container').outerHTML)));
+        return data;
+    };
+
+    // ============================================================
+    // SUPABASE
+    // ============================================================
+    const ENVOYER_PDF_MAIL = true;
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+chargerListeSaisisseurs();
+
+    async function saveForm() {
+        var missing = validateRequiredFields();
+        if (missing.length > 0) {
+            afficherMessage('⚠️ Veuillez remplir les champs obligatoires :<br><br>• ' + missing.join('<br>• '), 'erreur');
+            return;
+        }
+        var data = collectFormData();
+        data.signatureImage = getSignatureImage();
+        var saisiPar = (document.getElementById('saisiPar') || {}).value || null;
+
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:bold;font-family:Arial;';
+        overlay.innerHTML = '<div style="text-align:center">En cours...<br><br><small>Veuillez patienter</small></div>';
+        document.body.appendChild(overlay);
+
+        try {
+            const { data: retourId, error } = await supabaseClient.rpc('creer_retour_materiel', {
+                p_nom: data.nomEmprunteur,
+                p_prenom: data.prenomEmprunteur,
+                p_email: data.emailEmprunteur,
+                p_materiel: data.materiel + (data.materiel_autre_texte ? ' (' + data.materiel_autre_texte + ')' : ''),
+                p_numero_cage: data.numeroCage,
+                p_date_retour_effectif: data.dateRetourEffectif || null,
+                p_etat: data.etatMateriel || null,
+                p_anomalies: data.anomalies || null,
+                p_statut_caution: data.restitutionCaution || null,
+                p_montant_conserve: data.montantConserve ? parseFloat(data.montantConserve) : null,
+                p_montant_restitue: data.montantRestitue ? parseFloat(data.montantRestitue) : null,
+                p_mode_restitution: data.modeRestitution || null,
+                p_numero_cheque_restitution: data.numeroChequeRestitution,
+                p_date_fait: data.dateFait || null,
+                p_saisi_par_id: saisiPar
+            });
+
+            document.body.removeChild(overlay);
+            if (error) throw error;
+
+            if (ENVOYER_PDF_MAIL) {
+                await sendToGoogle(data);
+            }
+
+            formSaved = true;
+            var btnSave = document.querySelector('.btn-save');
+            var btnPrint = document.querySelector('.btn-print');
+            if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
+            if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
+            afficherMessage('✅ Retour enregistré (id ' + retourId + ').');
+        } catch (err) {
+            document.body.removeChild(overlay);
+            console.error(err);
+            alert('Erreur lors de la sauvegarde : ' + (err.message || err));
+        }
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tableau de bord — Compta Arche de Mallo</title>
+<link rel="stylesheet" href="compta-style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  .metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+  .metric-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:12px 16px;}
+  .metric-label{font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;}
+  .metric-value{font-size:20px;font-weight:600;}
+  .metric-sub{font-size:10px;color:var(--text-3);margin-top:2px;}
+  .v-blue{color:var(--blue);} .v-green{color:var(--green);} .v-orange{color:var(--orange);} .v-red{color:var(--red);}
+  .flux-wrap{margin-bottom:16px;}
+  .flux-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .flux-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:12px 14px;}
+  .flux-name{font-size:11px;font-weight:600;margin-bottom:8px;}
+  .flux-row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;}
+  .flux-row-label{color:var(--text-3);}
+  .flux-in{color:var(--green);} .flux-out{color:var(--red);}
+  .flux-net{font-weight:600;}
+  .ops-wrap{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+  .ops-head{padding:10px 14px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+  .ops-title{font-size:13px;font-weight:600;}
+  .ops-filters{display:flex;gap:6px;}
+  .filter-select{font-size:11px;padding:4px 8px;border-radius:var(--radius-sm);border:0.5px solid var(--border-mid);background:var(--surface);}
+  table{width:100%;border-collapse:collapse;font-size:11px;}
+  thead th{text-align:left;font-size:9px;font-weight:600;color:var(--text-3);text-transform:uppercase;padding:6px 10px;border-bottom:0.5px solid var(--border);background:var(--surface-2);}
+  tbody td{padding:6px 10px;border-bottom:0.5px solid var(--border);}
+  .r{text-align:right;font-variant-numeric:tabular-nums;}
+  .amount-c{color:var(--green);} .amount-d{color:var(--red);}
+  .chip{font-size:9px;padding:2px 7px;border-radius:10px;border:0.5px solid;}
+  .ops-empty{padding:24px;text-align:center;color:var(--text-3);font-size:12px;}
+  .ops-footer{padding:8px 14px;text-align:right;}
+  .link-all{font-size:11px;color:var(--blue);text-decoration:none;}
+  .hidden{display:none!important;}
+  #login-screen{max-width:340px;margin:80px auto;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:28px;}
+  #login-screen input{width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-size:13px;}
+  #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <h1 style="font-size:16px;">Compta — L'Arche de Mallo</h1>
+  <p style="font-size:12px;color:var(--text-3);margin-bottom:16px;">Connexion requise.</p>
+  <input type="email" id="login-email" placeholder="Email">
+  <input type="password" id="login-password" placeholder="Mot de passe">
+  <div id="login-err"></div>
+  <button class="btn btn-primary" style="width:100%;" onclick="seConnecter()">Se connecter</button>
+</div>
+
+<div id="app" class="hidden">
+<div class="main" style="margin:0;">
+  <div class="topbar">
+    <div class="topbar-title"><i class="ti ti-layout-dashboard" style="color:var(--orange)"></i> Tableau de bord</div>
+    <div class="topbar-right" style="display:flex;align-items:center;gap:14px;">
+      <select id="periode-select" class="filter-select" onchange="onPeriodeChange(this.value)"></select>
+      <span style="font-size:11px;color:var(--text-3);" id="topbar-user"></span>
+      <button class="btn btn-secondary btn-sm" onclick="seDeconnecter()">Déconnexion</button>
+    </div>
+  </div>
+  <div class="page-content" id="page-content">
+    <div style="padding:40px;text-align:center;color:var(--text-3);">Chargement…</div>
+  </div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script>
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let allCaisse=[], allBanque=[], activePer='', periodes=[];
+
+async function seConnecter() {
+  document.getElementById('login-err').textContent = '';
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) { document.getElementById('login-err').textContent = 'Connexion refusée : ' + error.message; return; }
+  await demarrerApp();
+}
+async function seDeconnecter() { await supabaseClient.auth.signOut(); location.reload(); }
+async function demarrerApp() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  const { data: profil, error } = await supabaseClient.from('profils_compta').select('role, email').eq('user_id', user.id).maybeSingle();
+  if (error || !profil) { document.getElementById('login-err').textContent = "Ce compte n'est pas autorisé sur la Compta."; await supabaseClient.auth.signOut(); return; }
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('topbar-user').textContent = profil.email + (profil.role==='lecteur' ? ' (lecture seule)' : '');
+  await chargerPeriodes();
+  await loadData();
+}
+(async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(); })();
+
+async function chargerPeriodes() {
+  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle','periodes').maybeSingle();
+  periodes = (data && Array.isArray(data.valeur) && data.valeur.length) ? data.valeur : [];
+  if (!periodes.length) { const y=new Date().getFullYear(), m=new Date().getMonth()+1, start=m>=11?y:y-1; periodes=[]; for(let i=2024;i<=start;i++) periodes.push(`${i} - ${i+1}`); }
+  activePer = periodes[periodes.length-1];
+  document.getElementById('periode-select').innerHTML = periodes.map(p=>`<option value="${p}" ${p===activePer?'selected':''}>${p}</option>`).join('');
+}
+function onPeriodeChange(p) { activePer = p; renderDashboard(); }
+
+async function loadData() {
+  const [c,b,cp1,cp2] = await Promise.all([
+    supabaseClient.from('caisse_mouvements').select('*'),
+    supabaseClient.from('banque_mouvements').select('*'),
+    supabaseClient.from('caisse_physique_comptages').select('*').eq('caisse','caisse1').order('date_comptage',{ascending:false}).limit(1),
+    supabaseClient.from('caisse_physique_comptages').select('*').eq('caisse','caisse2').order('date_comptage',{ascending:false}).limit(1),
+  ]);
+  allCaisse = c.data||[]; allBanque = b.data||[];
+  window._lastC1 = (cp1.data||[])[0]||null; window._lastC2 = (cp2.data||[])[0]||null;
+  renderDashboard();
+}
+
+// ============================================================
+// SOLDE — recalculé à partir des mouvements + solde initial, jamais lu
+// depuis une colonne stockée (voir la note dans banque.html sur le bug
+// de solde décalé trouvé dans l'ancien système).
+// ============================================================
+async function soldeActuel(compte) {
+  const rows = (compte==='banque'?allBanque:allCaisse.filter(r=>r.caisse===compte)).filter(r=>r.periode===activePer);
+  const { data } = await supabaseClient.from('soldes').select('montant').eq('periode',activePer).eq('compte',compte).eq('type_solde','initial').maybeSingle();
+  const initial = data ? parseFloat(data.montant)||0 : 0;
+  return initial + rows.reduce((s,r)=>s+(parseFloat(r.credit)||0)-(parseFloat(r.debit)||0), 0);
+}
+
+const fmt = v => (parseFloat(v)||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+function getCurrentMois() { return new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'}); }
+function rowInMonth(dateStr, moisLabel) { if (!dateStr) return false; const d=new Date(dateStr); if(isNaN(d))return false; return d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}).toLowerCase()===moisLabel.toLowerCase(); }
+function calcFlux(rows, moisLabel) {
+  const inMonth = rows.filter(r=>rowInMonth(r.date_mouvement, moisLabel));
+  return { entrees: inMonth.reduce((s,r)=>s+(parseFloat(r.credit)||0),0), sorties: inMonth.reduce((s,r)=>s+(parseFloat(r.debit)||0),0) };
+}
+function chipType(type) {
+  const t=(type||'').toLowerCase();
+  if (t.includes('adopt')) return {cls:'adoption',color:'#c96b2a'};
+  if (t.includes('don')) return {cls:'don',color:'#3b6d11'};
+  if (t.includes('adh')) return {cls:'adhesion',color:'#10a37f'};
+  if (t.includes('event')||t.includes('évén')) return {cls:'evenement',color:'#534ab7'};
+  return {cls:'depense',color:'#8a7968'};
+}
+
+async function renderDashboard() {
+  const content = document.getElementById('page-content');
+  const caisseRows = allCaisse.filter(r=>r.periode===activePer);
+  const banqueRows = allBanque.filter(r=>r.periode===activePer);
+  const c1rows = caisseRows.filter(r=>r.caisse==='caisse1');
+  const c2rows = caisseRows.filter(r=>r.caisse==='caisse2');
+
+  const [soldBq, soldC1calc] = await Promise.all([soldeActuel('banque'), soldeActuel('caisse1')]);
+  const soldC2calc = await soldeActuel('caisse2');
+  const soldC1phys = window._lastC1 ? parseFloat(window._lastC1.total)||0 : null;
+  const soldC2phys = window._lastC2 ? parseFloat(window._lastC2.total)||0 : null;
+
+  const moisCourant = getCurrentMois();
+  const fluxBq = calcFlux(banqueRows, moisCourant);
+  const fluxC1 = calcFlux(c1rows, moisCourant);
+  const fluxC2 = calcFlux(c2rows, moisCourant);
+  const adoptions = caisseRows.filter(r => (r.type_mouvement||'').toLowerCase().includes('adopt') && rowInMonth(r.date_mouvement, moisCourant)).length
+                  + banqueRows.filter(r => (r.type_mouvement||'').toLowerCase().includes('adopt') && rowInMonth(r.date_mouvement, moisCourant)).length;
+
+  const recent = [...caisseRows.map(r=>({...r,_src:r.caisse})), ...banqueRows.map(r=>({...r,_src:'banque'}))]
+    .filter(r=>r.date_mouvement).sort((a,b)=>b.date_mouvement.localeCompare(a.date_mouvement)).slice(0,20);
+
+  content.innerHTML = `
+    <div class="metrics-row">
+      <div class="metric-card"><div class="metric-label">Solde banque</div><div class="metric-value v-blue">${fmt(soldBq)}</div><div class="metric-sub">Recalculé — période ${activePer}</div></div>
+      <div class="metric-card"><div class="metric-label">Solde Caisse 1 (théorique)</div><div class="metric-value v-green">${fmt(soldC1calc)}</div><div class="metric-sub">${soldC1phys!==null?'Dernier comptage physique : '+fmt(soldC1phys):'Aucun comptage physique'}</div></div>
+      <div class="metric-card"><div class="metric-label">Solde Caisse 2 (théorique)</div><div class="metric-value v-green">${fmt(soldC2calc)}</div><div class="metric-sub">${soldC2phys!==null?'Dernier comptage physique : '+fmt(soldC2phys):'Aucun comptage physique'}</div></div>
+      <div class="metric-card"><div class="metric-label">Adoptions — ${moisCourant}</div><div class="metric-value v-orange">${adoptions}</div><div class="metric-sub">Ce mois</div></div>
+    </div>
+
+    <div class="flux-wrap">
+      <div style="font-size:11px;font-weight:600;margin-bottom:8px;color:var(--text-2);"><i class="ti ti-calendar-stats" style="color:var(--orange)"></i> Flux — ${moisCourant}</div>
+      <div class="flux-grid">
+        ${renderFluxCard('Banque', fluxBq)}
+        ${renderFluxCard('Caisse 1', fluxC1)}
+        ${renderFluxCard('Caisse 2', fluxC2)}
+      </div>
+    </div>
+
+    <div class="ops-wrap">
+      <div class="ops-head">
+        <div class="ops-title">Dernières opérations</div>
+        <div class="ops-filters">
+          <select class="filter-select" id="filter-source" onchange="filterOps()"><option value="">Toutes les sources</option><option value="banque">Banque</option><option value="caisse1">Caisse 1</option><option value="caisse2">Caisse 2</option></select>
+          <select class="filter-select" id="filter-type" onchange="filterOps()"><option value="">Tous les types</option><option value="adopt">Adoption</option><option value="don">Don</option><option value="adh">Adhésion</option><option value="event">Événement</option></select>
+        </div>
+      </div>
+      <div id="ops-table-wrap">${renderOpsTable(recent)}</div>
+      <div class="ops-footer"><a class="link-all" href="caisse.html">Voir toutes les opérations →</a> · <a class="link-all" href="banque.html">Banque →</a></div>
+    </div>`;
+  window._recentOps = recent;
+}
+function renderFluxCard(name, flux) {
+  const net = flux.entrees - flux.sorties;
+  return `<div class="flux-card"><div class="flux-name">${name}</div>
+    <div class="flux-row"><span class="flux-row-label">Entrées</span><span class="flux-in">${fmt(flux.entrees)}</span></div>
+    <div class="flux-row"><span class="flux-row-label">Sorties</span><span class="flux-out">${flux.sorties>0?'−':''}${fmt(flux.sorties)}</span></div>
+    <div class="flux-row" style="margin-top:4px;border-top:0.5px solid var(--border);padding-top:6px;"><span class="flux-row-label" style="font-weight:500;">Net</span><span class="flux-net ${net>=0?'v-green':'v-red'}">${net>=0?'+':'−'}${fmt(Math.abs(net))}</span></div>
+  </div>`;
+}
+function renderOpsTable(rows) {
+  if (!rows.length) return `<div class="ops-empty"><i class="ti ti-inbox"></i><br>Aucune opération pour cette période</div>`;
+  const trs = rows.map(r => { const ct=chipType(r.type_mouvement); const srcLabel = r._src==='banque'?'Banque':r._src==='caisse1'?'Caisse 1':'Caisse 2';
+    return `<tr data-source="${r._src}" data-type="${(r.type_mouvement||'').toLowerCase()}">
+      <td style="font-size:10px;color:var(--text-3);white-space:nowrap;">${formatDateFR(r.date_mouvement)}</td>
+      <td>${escH(r.libelle||'')}</td>
+      <td><span class="chip" style="color:${ct.color};border-color:${ct.color};">${escH(r.type_mouvement||'')}</span></td>
+      <td style="font-size:10px;color:var(--text-3);">${srcLabel}</td>
+      <td class="r amount-d">${r.debit?fmt(r.debit):''}</td>
+      <td class="r amount-c">${r.credit?fmt(r.credit):''}</td>
+    </tr>`; }).join('');
+  return `<table><thead><tr><th>Date</th><th>Libellé</th><th>Type</th><th>Source</th><th class="r">Débit</th><th class="r">Crédit</th></tr></thead><tbody>${trs}</tbody></table>`;
+}
+function filterOps() {
+  const src = document.getElementById('filter-source').value;
+  const type = document.getElementById('filter-type').value;
+  let rows = window._recentOps || [];
+  if (src) rows = rows.filter(r=>r._src===src);
+  if (type) rows = rows.filter(r=>(r.type_mouvement||'').toLowerCase().includes(type));
+  document.getElementById('ops-table-wrap').innerHTML = renderOpsTable(rows);
+}
+function formatDateFR(d) { if (!d) return '—'; const s=String(d).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const p=s.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; } return s; }
+</script>
+</body>
+</html>

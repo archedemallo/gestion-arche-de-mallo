@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Journal — Compta Arche de Mallo</title>
+<link rel="stylesheet" href="compta-style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+  .kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px 14px;}
+  .kpi-label{font-size:9px;color:var(--text-3);text-transform:uppercase;margin-bottom:3px;}
+  .kpi-value{font-size:18px;font-weight:600;}
+  .filters-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+  .f-select,.f-input{font-size:11px;padding:5px 9px;border-radius:var(--radius-sm);border:0.5px solid var(--border-mid);background:var(--surface);}
+  table{width:100%;border-collapse:collapse;font-size:11px;}
+  thead th{text-align:left;font-size:9px;font-weight:600;color:var(--text-3);text-transform:uppercase;padding:7px 10px;border-bottom:0.5px solid var(--border);background:var(--surface-2);white-space:nowrap;}
+  tbody td{padding:7px 10px;border-bottom:0.5px solid var(--border);vertical-align:top;}
+  .badge{font-size:9px;padding:2px 7px;border-radius:10px;}
+  .a-ajout{background:var(--green-bg);color:var(--green);} .a-modif{background:rgba(24,95,165,0.1);color:var(--blue);}
+  .a-suppression{background:var(--red-bg);color:var(--red);} .a-import{background:rgba(201,107,42,0.12);color:var(--orange);}
+  .empty-state{padding:24px;text-align:center;color:var(--text-3);font-size:12px;}
+  .hidden{display:none!important;}
+  #login-screen{max-width:340px;margin:80px auto;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:28px;}
+  #login-screen input{width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-size:13px;}
+  #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <h1 style="font-size:16px;">Compta — L'Arche de Mallo</h1>
+  <p style="font-size:12px;color:var(--text-3);margin-bottom:16px;">Connexion requise.</p>
+  <input type="email" id="login-email" placeholder="Email">
+  <input type="password" id="login-password" placeholder="Mot de passe">
+  <div id="login-err"></div>
+  <button class="btn btn-primary" style="width:100%;" onclick="seConnecter()">Se connecter</button>
+</div>
+
+<div id="app" class="hidden">
+<div class="main" style="margin:0;">
+  <div class="topbar">
+    <div class="topbar-title"><i class="ti ti-history" style="color:var(--orange)"></i> Journal</div>
+    <div class="topbar-right" style="display:flex;align-items:center;gap:14px;">
+      <span style="font-size:11px;color:var(--text-3);" id="topbar-user"></span>
+      <button class="btn btn-secondary btn-sm" onclick="seDeconnecter()">Déconnexion</button>
+    </div>
+  </div>
+  <div class="page-content">
+    <div style="font-size:11px;color:var(--text-3);margin-bottom:12px;">
+      <i class="ti ti-info-circle"></i> Remplace l'ancienne page Alertes : celle-ci distinguait les saisies "admin" des saisies "externes" (bénévoles avec un accès limité). Cette distinction n'existe plus — seul un compte admin peut désormais écrire dans la Compta — donc il n'y a plus de saisie à surveiller spécifiquement. Il reste l'historique complet de toutes les actions, ci-dessous.
+    </div>
+    <div class="kpi-row" id="kpi-row"></div>
+    <div class="filters-bar">
+      <input class="f-input" type="text" id="fl-search" placeholder="Rechercher…" oninput="renderTable()">
+      <select class="f-select" id="fl-action" onchange="renderTable()"><option value="">Toutes actions</option><option>AJOUT</option><option>MODIF</option><option>SUPPRESSION</option></select>
+      <select class="f-select" id="fl-onglet" onchange="renderTable()"><option value="">Tous les écrans</option></select>
+      <input class="f-input" type="date" id="fl-date-from" onchange="renderTable()" title="Du">
+      <input class="f-input" type="date" id="fl-date-to" onchange="renderTable()" title="Au">
+      <button class="btn btn-secondary btn-sm" onclick="clearFilters()"><i class="ti ti-x"></i> Effacer</button>
+    </div>
+    <div id="table-wrap" style="overflow-x:auto;max-height:600px;overflow-y:auto;"><div style="padding:24px;text-align:center;color:var(--text-3);">Chargement…</div></div>
+  </div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script>
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let allRows = [];
+
+async function seConnecter() {
+  document.getElementById('login-err').textContent = '';
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) { document.getElementById('login-err').textContent = 'Connexion refusée : ' + error.message; return; }
+  await demarrerApp();
+}
+async function seDeconnecter() { await supabaseClient.auth.signOut(); location.reload(); }
+async function demarrerApp() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  const { data: profil, error } = await supabaseClient.from('profils_compta').select('role, email').eq('user_id', user.id).maybeSingle();
+  if (error || !profil) { document.getElementById('login-err').textContent = "Ce compte n'est pas autorisé sur la Compta."; await supabaseClient.auth.signOut(); return; }
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('topbar-user').textContent = profil.email;
+  await loadData();
+}
+(async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(); })();
+
+async function loadData() {
+  const { data, error } = await supabaseClient.from('journal_audit_compta').select('*').order('horodatage', { ascending:false }).limit(500);
+  if (error) { document.getElementById('table-wrap').innerHTML = '<div class="empty-state">Erreur : '+error.message+'</div>'; return; }
+  allRows = data || [];
+  const onglets = [...new Set(allRows.map(r=>r.onglet).filter(Boolean))].sort();
+  document.getElementById('fl-onglet').innerHTML = '<option value="">Tous les écrans</option>' + onglets.map(o=>`<option>${escH(o)}</option>`).join('');
+  renderKPIs(); renderTable();
+}
+function renderKPIs() {
+  const ajouts = allRows.filter(r=>r.action==='AJOUT').length;
+  const modifs = allRows.filter(r=>r.action==='MODIF').length;
+  const suppr = allRows.filter(r=>r.action==='SUPPRESSION').length;
+  document.getElementById('kpi-row').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Ajouts (500 derniers)</div><div class="kpi-value" style="color:var(--green)">${ajouts}</div></div>
+    <div class="kpi"><div class="kpi-label">Modifications</div><div class="kpi-value" style="color:var(--blue)">${modifs}</div></div>
+    <div class="kpi"><div class="kpi-label">Suppressions</div><div class="kpi-value" style="color:var(--red)">${suppr}</div></div>`;
+}
+function renderTable() {
+  const search = (document.getElementById('fl-search').value||'').toLowerCase();
+  const action = document.getElementById('fl-action').value;
+  const onglet = document.getElementById('fl-onglet').value;
+  const dFrom = document.getElementById('fl-date-from').value;
+  const dTo = document.getElementById('fl-date-to').value;
+  let rows = allRows;
+  if (action) rows = rows.filter(r=>r.action===action);
+  if (onglet) rows = rows.filter(r=>r.onglet===onglet);
+  if (dFrom) rows = rows.filter(r=>r.horodatage >= dFrom);
+  if (dTo) rows = rows.filter(r=>r.horodatage <= dTo+'T23:59:59');
+  if (search) rows = rows.filter(r=>[r.user_email,r.user_name,r.detail,r.ligne_ref,r.onglet].join(' ').toLowerCase().includes(search));
+
+  if (!rows.length) { document.getElementById('table-wrap').innerHTML = '<div class="empty-state">Aucune entrée</div>'; return; }
+  const trs = rows.map(r => `<tr>
+    <td style="color:var(--text-3);white-space:nowrap;font-size:10px;">${formatDT(r.horodatage)}</td>
+    <td style="font-size:11px;">${escH(r.user_email||'—')}</td>
+    <td><span class="badge a-${(r.action||'').toLowerCase()}">${r.action||'—'}</span></td>
+    <td style="font-size:10px;">${escH(r.onglet||'—')}</td>
+    <td style="font-size:10px;color:var(--text-3);">${escH(r.ligne_ref||'—')}</td>
+    <td style="font-size:10px;color:var(--text-3);max-width:280px;">${escH(r.detail||'—')}</td>
+  </tr>`).join('');
+  document.getElementById('table-wrap').innerHTML = `<table><thead><tr><th>Date/Heure</th><th>Utilisateur</th><th>Action</th><th>Écran</th><th>Référence</th><th>Détail</th></tr></thead><tbody>${trs}</tbody></table>`;
+}
+function clearFilters() { document.getElementById('fl-search').value=''; document.getElementById('fl-action').selectedIndex=0; document.getElementById('fl-onglet').selectedIndex=0; document.getElementById('fl-date-from').value=''; document.getElementById('fl-date-to').value=''; renderTable(); }
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+function formatDT(d) { if (!d) return '—'; const dt=new Date(d); return dt.toLocaleDateString('fr-FR')+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
+</script>
+</body>
+</html>

@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Décharge 2ème vaccin — L'Arche de Mallo</title>
+<link rel="stylesheet" href="formulaires-arche-mallo.css">
+</head>
+<body data-form-id="decharge_vaccin">
+<div id="login-screen" style="position:fixed;inset:0;background:#faf7f2;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid #ddd;border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;color:#3d2b1f;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:#888;margin-bottom:16px;">Connexion requise pour accéder à ce formulaire.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err" style="color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:#c96b2a;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+<div style="background:#fff4e5;border:1px solid #ffd699;color:#7a4a00;font-size:12.5px;padding:8px 14px;text-align:center;" class="no-print">
+  <strong>Formulaire pilote.</strong> Écrit directement dans Supabase. PDF/mail (Apps Script) activés.
+</div>
+
+<div class="buttons">
+    <button class="btn btn-save" onclick="saveForm()">💾 Sauvegarder</button>
+    <button class="btn btn-print btn-print-disabled" onclick="printForm()" disabled>🖨️ Imprimer</button>
+</div>
+
+<div class="page-container">
+<div class="content">
+
+    <div id="entete"></div>
+
+    <div class="title" style="text-align:center; margin-top:5px;">Décharge — Adoption avant le 2<sup>ème</sup> vaccin</div>
+
+    <div class="section">
+        <p class="red bold" style="text-align:center;">
+            ⚠️ Ce document est obligatoire pour toute adoption réalisée avant l'injection du deuxième vaccin.
+        </p>
+    </div>
+
+    <!-- Identification -->
+    <div class="section">
+        <p><span class="blue">Je soussigné(e) M/Mme</span></p>
+        <p>
+            <span class="blue">Nom :</span>
+            <input type="text" class="editable editable-long" id="nomAdoptant"
+                data-required="true" data-label="Nom" oninput="this.value=this.value.toUpperCase()">
+        </p>
+        <p>
+            <span class="blue">Prénom :</span>
+            <input type="text" class="editable editable-long" id="prenomAdoptant"
+                data-label="Prénom" oninput="this.value=this.value.toUpperCase()">
+        </p>
+        <p>
+            <span class="blue">Adresse :</span>
+            <input type="text" class="editable editable-long" id="adresseAdoptant" data-required="true" data-label="Adresse">
+        </p>
+        <p>
+            <span class="blue">Code postal :</span>
+            <input type="text" class="editable editable-short" id="codePostalAdoptant" data-label="Code postal" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+            &nbsp;&nbsp;
+            <span class="blue">Ville :</span>
+            <input type="text" class="editable editable-medium" id="villeAdoptant" data-label="Ville" oninput="this.value=this.value.toUpperCase()">
+        </p>
+        <p>
+            <span class="blue">Téléphone :</span>
+            <input type="tel" class="editable editable-tel" id="telephone" data-required="true" data-label="Téléphone" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        </p>
+        <p>
+            <span class="blue">E-mail :</span>
+            <input type="email" class="editable editable-email" id="email" data-required="true" data-label="E-mail">
+        </p>
+        <p>
+            déclare adopter ce jour le chat nommé
+            <strong><input type="text" class="editable editable-medium" id="nomChat" data-required="true" data-label="Nom du chat"></strong>,
+            né(e) le <input type="date" class="editable editable-date" id="dateNaissanceChat">
+            et avoir reçu le 1<sup>er</sup> vaccin Coryza-Typhus (Primo) le
+            <input type="date" class="editable editable-date" id="datePrimoVaccin" data-required="true" data-label="Date Primo vaccin">.
+        </p>
+    </div>
+
+    <!-- Décharge de l'association -->
+    <div class="section">
+        <p class="bold underline">Décharge de responsabilité de l'association L'Arche de Mallo :</p>
+        <p>
+            L'association <strong>L'Arche de Mallo</strong> informe expressément l'adoptant(e) que l'animal
+            cédé ce jour n'a reçu que la <strong>première injection vaccinale (Primo)</strong> du protocole
+            vaccinal Coryza-Typhus. Le protocole vaccinal complet nécessite <strong>deux injections</strong>.
+        </p>
+        <p>
+            À ce stade, l'immunité de l'animal <span class="red bold">n'est pas pleinement établie</span>.
+            L'association décline toute responsabilité quant aux risques sanitaires liés à une protection
+            vaccinale incomplète, notamment en cas de contact avec d'autres animaux ou d'exposition
+            à des environnements extérieurs avant l'administration du rappel.
+        </p>
+        <p>
+            L'association certifie avoir informé l'adoptant(e) de cette situation avant la cession.
+        </p>
+    </div>
+
+    <!-- Engagement de l'adoptant -->
+    <div class="section">
+        <p class="bold underline">Engagement de l'adoptant(e) :</p>
+        <p>
+            <span class="clickable-row" onclick="toggleCheck(this)" id="check_engagement1">
+                <span class="checkbox" data-required="true" data-label="Engagement rappel vaccin"></span>
+            </span>
+            Je reconnais avoir été informé(e) que l'animal adopté ce jour n'a reçu que la première injection vaccinale.
+            Je m'engage à faire réaliser le <strong>rappel vaccinal (Secundo)</strong> par un vétérinaire,
+            dans un délai maximum de <strong>4 semaines</strong> à compter de la date de cession,
+            soit au plus tard le <input type="date" class="editable editable-date" id="dateLimiteRappel" data-required="true" data-label="Date limite rappel vaccin">.
+        </p>
+        <p>
+            <span class="clickable-row" onclick="toggleCheck(this)" id="check_engagement2">
+                <span class="checkbox"></span>
+            </span>
+            Je m'engage à <strong>confiner l'animal à l'intérieur</strong> et à éviter tout contact avec des
+            animaux extérieurs jusqu'à réalisation complète du protocole vaccinal.
+        </p>
+        <p>
+            <span class="clickable-row" onclick="toggleCheck(this)" id="check_engagement3">
+                <span class="checkbox"></span>
+            </span>
+            Je m'engage à <strong>transmettre à l'association une preuve du rappel vaccinal</strong>
+            (copie du carnet de santé ou attestation vétérinaire) dans les 8 semaines suivant la cession.
+        </p>
+        <p>
+            <span class="clickable-row" onclick="toggleCheck(this)" id="check_engagement4">
+                <span class="checkbox"></span>
+            </span>
+            Je reconnais que l'association <strong>L'Arche de Mallo ne pourra être tenue responsable</strong>
+            d'aucune maladie, complication sanitaire ou décès de l'animal liés à la protection vaccinale
+            incomplète au moment de la cession, dès lors que j'ai été dûment informé(e) de cette situation.
+        </p>
+        <p>
+            <span class="clickable-row" onclick="toggleCheck(this)" id="check_engagement5">
+                <span class="checkbox"></span>
+            </span>
+            En cas de non-respect de cet engagement, j'autorise l'association <strong>L'Arche de Mallo</strong>
+            à reprendre possession de l'animal sans indemnité, conformément aux clauses du contrat de cession.
+        </p>
+    </div>
+
+    <!-- Signatures -->
+    <div class="section">
+        <p class="bold">Fait à Autrechêne, le <input type="date" class="editable editable-date" id="dateFait">
+        </p>
+    <p class="bold no-print">Saisi par <select id="saisiPar" class="editable"></select></p>
+        <table class="signature-table">
+            <tr>
+                <td style="width:50%; vertical-align:top;">
+                    <p>Pour l'association L'Arche de Mallo :</p>
+                    <p class="mt-20">
+                        <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve1_dec">
+                            <span class="checkbox"></span>
+                            <span class="bold"> Lu et approuvé</span>
+                        </span>
+                    </p>
+                    <div id="sig1"></div>
+                    <div id="sig1-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+                </td>
+                <td style="width:50%; vertical-align:top;">
+                    <p>L'adoptant(e) :</p>
+                    <p class="mt-20">
+                        <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve2_dec">
+                            <span class="checkbox"></span>
+                            <span class="bold"> Lu et approuvé</span>
+                        </span>
+                    </p>
+                    <div id="sig2"></div>
+                    <div id="sig2-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script>
+    creerEntete({ dateId: 'dateDecharge', dateLabel: 'Date :' });
+    creerSignature('sig1');
+    creerSignature('sig2');
+    appliquerPrefill();
+
+    var today = new Date().toISOString().split('T')[0];
+    var el = document.getElementById('dateFait');
+    if (el && !el.value) el.value = today;
+    document.addEventListener('DOMContentLoaded', function() {
+        ['dateNaissanceChat','datePrimoVaccin','dateLimiteRappel'].forEach(function(id) {
+            var e = document.getElementById(id); if (e) e.value = '';
+        });
+    });
+
+    // Auto-calculer la date limite rappel (+4 semaines) quand la date primo est saisie
+    document.getElementById('datePrimoVaccin').addEventListener('change', function() {
+        if (this.value) {
+            var d = new Date(this.value);
+            d.setDate(d.getDate() + 28);
+            var el = document.getElementById('dateLimiteRappel');
+            if (el) el.value = d.toISOString().split('T')[0];
+        }
+    });
+
+    validateRequiredFields = function() {
+        var missing = [];
+
+        // Champs texte obligatoires
+        document.querySelectorAll('[data-required="true"]').forEach(function(el) {
+            var label = el.getAttribute('data-label') || el.id;
+            if (el.tagName === 'INPUT') {
+                if (!el.value || el.value.trim() === '') {
+                    missing.push(label);
+                    el.style.borderBottom = '2px solid red';
+                } else {
+                    el.style.borderBottom = '';
+                }
+            }
+        });
+
+        // Email format
+        var elEmail = document.getElementById('email');
+        if (elEmail && elEmail.value.trim()) {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(elEmail.value.trim())) {
+                missing.push('E-mail invalide');
+                elEmail.style.borderBottom = '2px solid red';
+            }
+        }
+
+        // Toutes les cases d'engagement obligatoires
+        ['check_engagement1','check_engagement2','check_engagement3','check_engagement4','check_engagement5'].forEach(function(id, i) {
+            var el = document.getElementById(id);
+            if (el) {
+                var box = el.querySelector('.checkbox');
+                if (box && !box.classList.contains('checked')) {
+                    missing.push('Engagement ' + (i + 1) + ' (à cocher)');
+                    box.style.outline = '2px solid red';
+                    box.style.outlineOffset = '1px';
+                } else if (box) {
+                    box.style.outline = '';
+                }
+            }
+        });
+
+        // Lu et approuvé
+        ['luApprouve1_dec','luApprouve2_dec'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) {
+                var box = el.querySelector('.checkbox');
+                if (box && !box.classList.contains('checked')) {
+                    missing.push('Lu et approuvé (' + (id === 'luApprouve1_dec' ? 'Arche de Mallo' : 'Adoptant(e)') + ')');
+                    box.style.outline = '2px solid red';
+                } else if (box) { box.style.outline = ''; }
+            }
+        });
+
+        // Signatures
+        ['sig1','sig2'].forEach(function(sigId) {
+            var container = document.getElementById(sigId);
+            if (container && !container._signed) {
+                missing.push('Signature ' + (sigId === 'sig1' ? 'Arche de Mallo' : 'Adoptant(e)'));
+            }
+        });
+
+        return missing;
+    };
+
+    collectFormData = function() {
+        var data = {};
+        data.onglet   = 'Decharge_Vaccin';
+        var nomEl   = document.getElementById('nomAdoptant');
+        var prenomEl = document.getElementById('prenomAdoptant');
+        var nomStr  = ((prenomEl ? prenomEl.value : '') + '_' + (nomEl ? nomEl.value : '')).replace(/\s+/g,'_').replace(/^_|_$/g,'');
+        data.filename  = 'Decharge_Vaccin_' + nomStr + '_' + today;
+
+        var ids = ['nomAdoptant','prenomAdoptant','adresseAdoptant','codePostalAdoptant','villeAdoptant','telephone','email',
+                   'nomChat','dateNaissanceChat','datePrimoVaccin','dateLimiteRappel',
+                   'lieuFait','dateFait'];
+        ids.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) data[id] = el.value || '';
+        });
+
+        var cases = ['check_engagement1','check_engagement2','check_engagement3','check_engagement4','check_engagement5'];
+        cases.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) {
+                var box = el.querySelector('.checkbox');
+                data[id] = box && box.classList.contains('checked') ? 'OUI' : 'NON';
+            }
+        });
+
+        data.htmlContent = btoa(unescape(encodeURIComponent(document.querySelector('.page-container').outerHTML)));
+        return data;
+    };
+
+    // ============================================================
+    // SUPABASE
+    // ============================================================
+    const ENVOYER_PDF_MAIL = true;
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+chargerListeSaisisseurs();
+
+    async function saveForm() {
+        var missing = validateRequiredFields();
+        if (missing.length > 0) {
+            afficherMessage('⚠️ Veuillez remplir les champs obligatoires :<br><br>• ' + missing.join('<br>• '), 'erreur');
+            return;
+        }
+        var data = collectFormData();
+        data.signatureImage = getSignatureImage();
+
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:bold;font-family:Arial;';
+        overlay.innerHTML = '<div style="text-align:center">En cours...<br><br><small>Veuillez patienter</small></div>';
+        document.body.appendChild(overlay);
+
+        try {
+            const { data: decId, error } = await supabaseClient.rpc('creer_decharge_vaccin', {
+                p_nom: data.nomAdoptant,
+                p_prenom: data.prenomAdoptant,
+                p_adresse: data.adresseAdoptant,
+                p_code_postal: data.codePostalAdoptant,
+                p_ville: data.villeAdoptant,
+                p_telephone: data.telephone,
+                p_email: data.email,
+                p_nom_chat: data.nomChat,
+                p_date_naissance_animal: data.dateNaissanceChat || null,
+                p_date_primo_vaccin: data.datePrimoVaccin || null,
+                p_date_limite_rappel: data.dateLimiteRappel || null,
+                p_date_fait: data.dateFait || null,
+                p_saisi_par_id: (document.getElementById('saisiPar') || {}).value || null
+            });
+
+            document.body.removeChild(overlay);
+            if (error) throw error;
+
+            if (ENVOYER_PDF_MAIL) {
+                await sendToGoogle(data);
+            }
+
+            formSaved = true;
+            var btnSave = document.querySelector('.btn-save');
+            var btnPrint = document.querySelector('.btn-print');
+            if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
+            if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
+            afficherMessage('✅ Décharge enregistrée (id ' + decId + ').');
+        } catch (err) {
+            document.body.removeChild(overlay);
+            console.error(err);
+            alert('Erreur lors de la sauvegarde : ' + (err.message || err));
+        }
+    }
+</script>
+</body>
+</html>

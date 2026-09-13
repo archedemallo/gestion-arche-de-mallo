@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factures — Compta Arche de Mallo</title>
+<link rel="stylesheet" href="compta-style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  .split-layout{display:grid;grid-template-columns:1fr 380px;gap:14px;align-items:start;}
+  .form-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:18px 20px;position:sticky;top:14px;max-height:calc(100vh - 30px);overflow-y:auto;}
+  .form-card.editing{border-color:var(--orange);}
+  .form-card-title{font-size:13px;font-weight:600;margin-bottom:14px;padding-bottom:10px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .form-group{margin-bottom:10px;}
+  .form-label{display:block;font-size:10px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;}
+  .form-label.req::after{content:' *';color:var(--red);}
+  .form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .edit-banner{background:rgba(201,107,42,0.08);border:0.5px solid var(--orange);border-radius:var(--radius-sm);padding:7px 10px;font-size:11px;color:var(--orange);margin-bottom:12px;}
+  .list-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+  .list-head{padding:10px 14px;border-bottom:0.5px solid var(--border);}
+  .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+  .kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px 14px;}
+  .kpi-label{font-size:9px;color:var(--text-3);text-transform:uppercase;margin-bottom:3px;}
+  .kpi-value{font-size:18px;font-weight:600;}
+  .filters-bar{display:flex;gap:4px;flex-wrap:wrap;align-items:center;}
+  .f-select{font-size:10px;padding:3px 6px;border-radius:var(--radius-sm);border:0.5px solid var(--border-mid);background:var(--surface);}
+  .f-input{font-size:10px;padding:3px 8px;border-radius:var(--radius-sm);border:0.5px solid var(--border-mid);background:var(--surface);}
+  table{width:100%;border-collapse:collapse;font-size:11px;}
+  thead th{text-align:left;font-size:9px;font-weight:600;color:var(--text-3);text-transform:uppercase;padding:6px 8px;border-bottom:0.5px solid var(--border);background:var(--surface-2);white-space:nowrap;position:sticky;top:0;z-index:1;}
+  tbody td{padding:6px 8px;border-bottom:0.5px solid var(--border);vertical-align:middle;}
+  tbody tr:hover{background:var(--cream);}
+  tbody tr.editing-row{background:rgba(201,107,42,0.06);outline:1px solid var(--orange);}
+  .r{text-align:right;font-variant-numeric:tabular-nums;}
+  .pdf-btn,.edit-btn{color:var(--blue);background:none;border:none;cursor:pointer;font-size:12px;padding:0 2px;}
+  .del-btn{color:var(--red);background:none;border:none;cursor:pointer;font-size:12px;padding:0 2px;}
+  .chip{font-size:9px;padding:2px 7px;border-radius:10px;border:0.5px solid;}
+  .statut-payee{color:var(--green);cursor:pointer;} .statut-attente{color:var(--amber);cursor:pointer;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(61,43,31,0.35);z-index:200;display:flex;align-items:center;justify-content:center;}
+  .modal{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);width:420px;max-width:95vw;}
+  .modal-header{padding:12px 16px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+  .modal-close{background:none;border:none;font-size:18px;color:var(--text-3);cursor:pointer;}
+  .modal-body{padding:16px;} .modal-footer{padding:10px 16px;border-top:0.5px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+  .confirm-detail{margin-top:8px;padding:8px;background:var(--red-bg);border-radius:var(--radius-sm);font-size:11px;color:var(--red);}
+  .success-toast{position:fixed;bottom:20px;right:20px;background:var(--green);color:white;padding:9px 16px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;z-index:999;}
+  .hidden{display:none!important;}
+  #login-screen{max-width:340px;margin:80px auto;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:28px;}
+  #login-screen input{width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-size:13px;}
+  #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <h1 style="font-size:16px;">Compta — L'Arche de Mallo</h1>
+  <p style="font-size:12px;color:var(--text-3);margin-bottom:16px;">Connexion requise.</p>
+  <input type="email" id="login-email" placeholder="Email">
+  <input type="password" id="login-password" placeholder="Mot de passe">
+  <div id="login-err"></div>
+  <button class="btn btn-primary" style="width:100%;" onclick="seConnecter()">Se connecter</button>
+</div>
+
+<div id="app" class="hidden">
+<div class="main" style="margin:0;">
+  <div class="topbar">
+    <div class="topbar-title"><i class="ti ti-file-invoice" style="color:var(--orange)"></i> Factures</div>
+    <div class="topbar-right" style="display:flex;align-items:center;gap:14px;">
+      <span style="font-size:11px;color:var(--text-3);" id="topbar-user"></span>
+      <button class="btn btn-secondary btn-sm" onclick="seDeconnecter()">Déconnexion</button>
+    </div>
+  </div>
+  <div class="page-content">
+    <div class="kpi-row" id="kpi-row"></div>
+    <div class="list-card">
+      <div class="list-head">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+          <span style="font-size:13px;font-weight:600;">Liste des factures</span>
+          <button class="btn btn-primary btn-sm" id="btn-new" onclick="openNewFacture()"><i class="ti ti-plus"></i> Nouvelle facture</button>
+        </div>
+        <div class="filters-bar">
+          <select class="f-select" id="fl-per" onchange="renderTable()"></select>
+          <input class="f-input" type="text" id="fl-search" placeholder="Rechercher…" oninput="renderTable()">
+          <select class="f-select" id="fl-cat" onchange="renderTable()"><option value="">Toutes catégories</option></select>
+          <select class="f-select" id="fl-desc" onchange="renderTable()"><option value="">Tous mouvements</option></select>
+          <select class="f-select" id="fl-fourn" onchange="renderTable()"><option value="">Tous fournisseurs</option></select>
+          <select class="f-select" id="fl-statut" onchange="renderTable()">
+            <option value="">Tous statuts</option><option value="payee">Payées</option><option value="attente">En attente</option>
+          </select>
+          <input class="f-input" type="date" id="fl-date-from" onchange="renderTable()" title="Du">
+          <input class="f-input" type="date" id="fl-date-to" onchange="renderTable()" title="Au">
+          <input class="f-input" type="number" step="0.01" id="fl-montant-min" placeholder="Montant min" style="width:90px;" oninput="renderTable()">
+          <input class="f-input" type="number" step="0.01" id="fl-montant-max" placeholder="Montant max" style="width:90px;" oninput="renderTable()">
+          <button class="btn btn-secondary btn-sm" onclick="clearFilters()"><i class="ti ti-x"></i> Effacer</button>
+        </div>
+      </div>
+      <div id="table-wrap" style="overflow-x:auto;max-height:600px;overflow-y:auto;"><div style="padding:24px;text-align:center;color:var(--text-3);">Chargement…</div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- MODAL NOUVELLE FACTURE / MODIFIER -->
+<div class="modal-overlay hidden" id="modal-newfacture">
+  <div class="modal" style="width:460px;">
+    <div class="modal-header">
+      <span class="modal-title" id="form-mode-lbl">Nouvelle facture</span>
+      <button class="modal-close" onclick="closeNewFacture()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label req">Fournisseur</label><select id="f-fourn"></select></div>
+      <div class="form-row-2">
+        <div class="form-group"><label class="form-label">N° facture</label><input type="text" id="f-num" placeholder="FAC-2026-001"></div>
+        <div class="form-group"><label class="form-label req">Montant TTC (€)</label><input type="number" id="f-montant" step="0.01" min="0"></div>
+      </div>
+      <div class="form-group"><label class="form-label req">Date facture</label><input type="date" id="f-date"></div>
+      <div class="form-group"><label class="form-label req">Catégorie</label><select id="f-cat" onchange="onCatChange()"></select></div>
+      <div class="form-group"><label class="form-label">Description</label><select id="f-desc"><option value="">— Choisir une catégorie d'abord —</option></select></div>
+      <div class="form-row-2">
+        <div class="form-group"><label class="form-label">Date règlement</label><input type="date" id="f-date-reg"></div>
+        <div class="form-group"><label class="form-label">Mode règlement</label><input type="text" id="f-mode-reg" placeholder="Virement, CB…"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Lien PDF de la facture</label><input type="text" id="f-lien-pdf" placeholder="Lien vers le PDF (Drive, etc.)"></div>
+      <div class="form-group"><label class="form-label">Commentaire</label><input type="text" id="f-comment"></div>
+      <div class="form-group"><label class="form-label">Nom du chat</label><input type="text" id="f-nom-chat"></div>
+      <div class="form-group"><label class="form-label">Période</label><select id="f-per"></select></div>
+
+      <div id="form-err" class="hidden" style="color:var(--red);font-size:11px;padding:6px 0;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="reset()"><i class="ti ti-refresh"></i> Vider</button>
+      <button class="btn btn-primary" style="flex:1;" id="btn-submit" onclick="submitFacture()"><i class="ti ti-device-floppy"></i> Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SUPPRIMER -->
+<div class="modal-overlay hidden" id="modal-del">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Supprimer la facture</span><button class="modal-close" onclick="closeDel()">×</button></div>
+    <div class="modal-body"><div style="font-size:12px;">Êtes-vous sûr de vouloir supprimer cette facture ?</div><div class="confirm-detail" id="del-detail"></div></div>
+    <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="closeDel()">Annuler</button><button class="btn btn-danger btn-sm" onclick="confirmDel()">Supprimer</button></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script>
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let allRows = [], editId = null, delId = null, roleActuel = null, typesEtDescriptions = [];
+
+async function seConnecter() {
+  document.getElementById('login-err').textContent = '';
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) { document.getElementById('login-err').textContent = 'Connexion refusée : ' + error.message; return; }
+  await demarrerApp(data.user);
+}
+async function seDeconnecter() { await supabaseClient.auth.signOut(); location.reload(); }
+async function demarrerApp(user) {
+  const { data: profil, error } = await supabaseClient.from('profils_compta').select('role, email').eq('user_id', user.id).maybeSingle();
+  if (error || !profil) { document.getElementById('login-err').textContent = "Ce compte n'est pas autorisé sur la Compta."; await supabaseClient.auth.signOut(); return; }
+  roleActuel = profil.role;
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('topbar-user').textContent = profil.email + (roleActuel==='lecteur' ? ' (lecture seule)' : '');
+  if (roleActuel === 'lecteur') document.getElementById('btn-new').style.display = 'none';
+  await chargerPeriodes(); await chargerTypesEtDescriptions(); await chargerFournisseurs();
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  await loadData();
+}
+(async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(data.session.user); })();
+
+async function chargerPeriodes() {
+  let periodes = null;
+  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'periodes').maybeSingle();
+  if (data && Array.isArray(data.valeur) && data.valeur.length) periodes = data.valeur;
+  if (!periodes) { const y=new Date().getFullYear(), m=new Date().getMonth()+1, start=m>=11?y:y-1; periodes=[]; for(let i=2024;i<=start;i++) periodes.push(`${i} - ${i+1}`); }
+  const actuelle = periodes[periodes.length-1];
+  ['f-per','fl-per'].forEach(id => { const s=document.getElementById(id); s.innerHTML=''; periodes.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;if(p===actuelle)o.selected=true;s.appendChild(o);}); });
+}
+async function chargerTypesEtDescriptions() {
+  const { data: types } = await supabaseClient.from('types_mouvement').select('id, valeur, ordre').order('ordre');
+  const { data: descs } = await supabaseClient.from('descriptions_mouvement').select('id, type_mouvement_id, valeur, ordre').order('ordre');
+  typesEtDescriptions = (types||[]).map(t => ({...t, descriptions:(descs||[]).filter(d=>d.type_mouvement_id===t.id)}));
+  const sc = document.getElementById('f-cat');
+  sc.innerHTML = '<option value="">— Choisir —</option>' + typesEtDescriptions.map(t=>`<option>${escH(t.valeur)}</option>`).join('');
+  document.getElementById('fl-cat').innerHTML = '<option value="">Toutes catégories</option>' + typesEtDescriptions.map(t=>`<option>${escH(t.valeur)}</option>`).join('');
+  const toutesDesc = [...new Set((descs||[]).map(d=>d.valeur))].sort((a,b)=>a.localeCompare(b,'fr'));
+  document.getElementById('fl-desc').innerHTML = '<option value="">Tous mouvements</option>' + toutesDesc.map(d=>`<option>${escH(d)}</option>`).join('');
+}
+function onCatChange() {
+  const t = typesEtDescriptions.find(x => x.valeur === document.getElementById('f-cat').value);
+  document.getElementById('f-desc').innerHTML = '<option value="">—</option>' + (t?.descriptions||[]).map(d=>`<option>${escH(d.valeur)}</option>`).join('');
+}
+async function chargerFournisseurs() {
+  const { data } = await supabaseClient.from('fournisseurs').select('nom').eq('actif', true).order('nom');
+  document.getElementById('f-fourn').innerHTML = '<option value="">— Choisir —</option>' + (data||[]).map(f=>`<option>${escH(f.nom)}</option>`).join('');
+  document.getElementById('fl-fourn').innerHTML = '<option value="">Tous fournisseurs</option>' + (data||[]).map(f=>`<option>${escH(f.nom)}</option>`).join('');
+}
+
+async function loadData() {
+  const { data, error } = await supabaseClient.from('factures').select('*').order('date_facture', { ascending: false });
+  if (error) { showToast('Erreur : ' + error.message); return; }
+  allRows = data || [];
+  renderKPIs(); renderTable();
+}
+
+function renderKPIs() {
+  const per = document.getElementById('fl-per')?.value;
+  const rows = allRows.filter(r => r.periode === per);
+  const payees = rows.filter(r => r.statut === 'payee');
+  const attente = rows.filter(r => r.statut !== 'payee');
+  document.getElementById('kpi-row').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Total période</div><div class="kpi-value">${fmt(rows.reduce((s,r)=>s+parseFloat(r.montant_ttc||0),0))}</div><div style="font-size:10px;color:var(--text-3);">${rows.length} facture(s)</div></div>
+    <div class="kpi"><div class="kpi-label">Payées</div><div class="kpi-value" style="color:var(--green)">${fmt(payees.reduce((s,r)=>s+parseFloat(r.montant_ttc||0),0))}</div><div style="font-size:10px;color:var(--text-3);">${payees.length} facture(s)</div></div>
+    <div class="kpi"><div class="kpi-label">En attente</div><div class="kpi-value" style="color:var(--amber)">${fmt(attente.reduce((s,r)=>s+parseFloat(r.montant_ttc||0),0))}</div><div style="font-size:10px;color:var(--text-3);">${attente.length} facture(s)</div></div>`;
+}
+
+function renderTable() {
+  const per = document.getElementById('fl-per')?.value;
+  const search = (document.getElementById('fl-search')?.value||'').toLowerCase();
+  const catF = document.getElementById('fl-cat')?.value||'';
+  const descF = document.getElementById('fl-desc')?.value||'';
+  const fournF = document.getElementById('fl-fourn')?.value||'';
+  const statutF = document.getElementById('fl-statut')?.value||'';
+  const dFrom = document.getElementById('fl-date-from')?.value||'';
+  const dTo = document.getElementById('fl-date-to')?.value||'';
+  const mMin = document.getElementById('fl-montant-min')?.value;
+  const mMax = document.getElementById('fl-montant-max')?.value;
+  let rows = allRows.filter(r => r.periode === per);
+  if (catF) rows = rows.filter(r => r.categorie === catF);
+  if (descF) rows = rows.filter(r => r.description === descF);
+  if (fournF) rows = rows.filter(r => r.fournisseur === fournF);
+  if (statutF==='payee') rows = rows.filter(r => r.statut === 'payee');
+  if (statutF==='attente') rows = rows.filter(r => r.statut !== 'payee');
+  if (dFrom) rows = rows.filter(r => r.date_facture >= dFrom);
+  if (dTo)   rows = rows.filter(r => r.date_facture <= dTo);
+  if (mMin)  rows = rows.filter(r => (parseFloat(r.montant_ttc)||0) >= parseFloat(mMin));
+  if (mMax)  rows = rows.filter(r => (parseFloat(r.montant_ttc)||0) <= parseFloat(mMax));
+  if (search) rows = rows.filter(r => [r.numero_facture, r.fournisseur, r.categorie, r.description, r.commentaire, r.nom_chat].join(' ').toLowerCase().includes(search));
+
+  if (!rows.length) { document.getElementById('table-wrap').innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-3);font-size:12px;">Aucune facture</div>'; return; }
+
+  const trs = rows.map(r => {
+    const payee = r.statut === 'payee';
+    return `<tr class="${editId===r.id?'editing-row':''}">
+      <td>${formatDateFR(r.date_facture)}</td>
+      <td style="font-weight:500;">${r.fournisseur||'—'}</td>
+      <td style="font-size:10px;color:var(--text-3);">${r.numero_facture||'—'}</td>
+      <td><span class="chip">${r.categorie||'—'}</span></td>
+      <td style="font-size:10px;color:var(--text-3);">${r.description||'—'}</td>
+      <td class="r" style="font-weight:500;">${fmt(r.montant_ttc)}</td>
+      <td class="${payee?'statut-payee':'statut-attente'}" onclick="${roleActuel==='admin'?`togglePayee('${r.id}')`:''}" title="${roleActuel==='admin'?'Cliquer pour basculer':''}">${payee?'Payée':'En attente'}</td>
+      <td style="font-size:10px;color:var(--text-3);">${formatDateFR(r.date_reglement)}</td>
+      <td>${r.lien_pdf?`<a class="pdf-btn" href="${escH(r.lien_pdf)}" target="_blank"><i class="ti ti-file-type-pdf"></i></a>`:''}</td>
+      <td style="font-size:10px;color:var(--text-3);">${r.nom_chat||''}</td>
+      <td class="r" style="white-space:nowrap;">
+        ${roleActuel==='admin' ? `<button class="edit-btn" onclick="openEdit('${r.id}')"><i class="ti ti-pencil"></i></button><button class="del-btn" onclick="openDel('${r.id}')"><i class="ti ti-trash"></i></button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('table-wrap').innerHTML = `<table><thead><tr>
+    <th>Date</th><th>Fournisseur</th><th>N° facture</th><th>Catégorie</th><th>Description</th><th class="r">Montant TTC</th>
+    <th>Statut</th><th>Réglée le</th><th>PDF</th><th>Chat</th><th class="r">Actions</th>
+  </tr></thead><tbody>${trs}</tbody></table>`;
+}
+function clearFilters() {
+  document.getElementById('fl-search').value = '';
+  ['fl-date-from','fl-date-to','fl-montant-min','fl-montant-max'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
+  ['fl-cat','fl-desc','fl-fourn','fl-statut'].forEach(id => document.getElementById(id).selectedIndex = 0);
+  renderTable();
+}
+
+async function togglePayee(id) {
+  try { const { error } = await supabaseClient.rpc('basculer_facture_payee', { p_id: id }); if (error) throw error; await loadData(); showToast('Statut mis à jour'); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+
+function openNewFacture() { reset(); document.getElementById('modal-newfacture').classList.remove('hidden'); }
+function closeNewFacture() { document.getElementById('modal-newfacture').classList.add('hidden'); }
+function reset() {
+  ['f-num','f-montant','f-date-reg','f-lien-pdf','f-comment','f-nom-chat'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-fourn').selectedIndex = 0;
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('f-cat').selectedIndex = 0;
+  document.getElementById('f-desc').innerHTML = '<option value="">— Choisir une catégorie d\'abord —</option>';
+  document.getElementById('f-mode-reg').value = '';
+  document.getElementById('form-err').classList.add('hidden');
+  document.getElementById('form-mode-lbl').textContent = 'Nouvelle facture';
+  editId = null;
+}
+
+async function submitFacture() {
+  document.getElementById('form-err').classList.add('hidden');
+  const fourn = document.getElementById('f-fourn').value;
+  const montant = parseFloat(document.getElementById('f-montant').value);
+  const date = document.getElementById('f-date').value;
+  if (!fourn) { showErr('Le fournisseur est obligatoire.'); return; }
+  if (!montant || montant<=0) { showErr('Le montant est obligatoire.'); return; }
+  if (!date) { showErr('La date est obligatoire.'); return; }
+  const cat = document.getElementById('f-cat').value;
+  if (!cat) { showErr('La catégorie est obligatoire.'); return; }
+
+  const params = {
+    p_numero_facture: document.getElementById('f-num').value.trim() || null,
+    p_fournisseur: fourn, p_date_facture: date, p_montant_ttc: montant, p_categorie: cat,
+    p_description: document.getElementById('f-desc').value || null,
+    p_date_reglement: document.getElementById('f-date-reg').value || null,
+    p_mode_reglement: document.getElementById('f-mode-reg').value.trim() || null,
+    p_lien_pdf: document.getElementById('f-lien-pdf').value.trim() || null,
+    p_commentaire: document.getElementById('f-comment').value.trim() || null,
+    p_nom_chat: document.getElementById('f-nom-chat').value.trim() || null,
+    p_periode: document.getElementById('f-per').value,
+  };
+  const btn = document.getElementById('btn-submit'); btn.disabled = true;
+  try {
+    if (editId) { const { error } = await supabaseClient.rpc('modifier_facture', { p_id: editId, ...params }); if (error) throw error; showToast('Facture modifiée !'); }
+    else { const { error } = await supabaseClient.rpc('creer_facture', params); if (error) throw error; showToast('Facture enregistrée !'); }
+    closeNewFacture(); await loadData();
+  } catch(e) { showErr('Erreur : ' + (e.message||'?')); }
+  finally { btn.disabled = false; }
+}
+
+function openEdit(id) {
+  const r = allRows.find(x => x.id === id); if (!r) return;
+  editId = id;
+  document.getElementById('f-fourn').value = r.fournisseur || '';
+  document.getElementById('f-num').value = r.numero_facture || '';
+  document.getElementById('f-montant').value = r.montant_ttc || '';
+  document.getElementById('f-date').value = r.date_facture || '';
+  document.getElementById('f-cat').value = r.categorie || '';
+  onCatChange();
+  document.getElementById('f-desc').value = r.description || '';
+  document.getElementById('f-date-reg').value = r.date_reglement || '';
+  document.getElementById('f-mode-reg').value = r.mode_reglement || '';
+  document.getElementById('f-lien-pdf').value = r.lien_pdf || '';
+  document.getElementById('f-comment').value = r.commentaire || '';
+  document.getElementById('f-nom-chat').value = r.nom_chat || '';
+  document.getElementById('f-per').value = r.periode || '';
+  document.getElementById('form-mode-lbl').textContent = 'Modifier la facture';
+  document.getElementById('modal-newfacture').classList.remove('hidden');
+}
+
+function openDel(id) {
+  const r = allRows.find(x => x.id === id); if (!r) return;
+  delId = id;
+  document.getElementById('del-detail').innerHTML = `<strong>${r.fournisseur||'?'}</strong> — ${r.numero_facture||''}<br>${formatDateFR(r.date_facture)} — ${fmt(r.montant_ttc)}`;
+  document.getElementById('modal-del').classList.remove('hidden');
+}
+function closeDel() { document.getElementById('modal-del').classList.add('hidden'); delId = null; }
+async function confirmDel() {
+  if (!delId) return;
+  try { const { error } = await supabaseClient.rpc('supprimer_facture', { p_id: delId }); if (error) throw error; closeDel(); showToast('Facture supprimée'); await loadData(); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+
+function fmt(v) { if (v===null||v===undefined||v==='') return '—'; return parseFloat(v).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+function showErr(m) { const e=document.getElementById('form-err'); e.textContent=m; e.classList.remove('hidden'); }
+function showToast(m) { const t=document.createElement('div'); t.className='success-toast'; t.textContent=m; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
+function formatDateFR(d) { if (!d) return '—'; const s=String(d).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const p=s.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; } return s; }
+</script>
+</body>
+</html>

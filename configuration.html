@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configuration — Compta Arche de Mallo</title>
+<style>
+  :root { --blue: #0563c1; --red: #c00000; --ink: #2a2a2a; --border: #d8d8d8; --bg: #fafafa; }
+  * { box-sizing: border-box; }
+  body { font-family: Calibri, Arial, sans-serif; background: var(--bg); color: var(--ink); margin: 0; padding: 20px 16px 60px; }
+  .page { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 20px; color: #3d2b1f; margin: 0 0 4px; }
+  .sous-titre { font-size: 13px; color: #888; margin-bottom: 16px; }
+  .bandeau-info { background: #e8f4fd; border: 1px solid #b8dff5; color: #1a5a80; font-size: 12.5px; padding: 8px 14px; border-radius: 6px; margin-bottom: 16px; }
+  .carte { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 18px; }
+  .carte h2 { font-size: 15px; color: var(--blue); margin: 0 0 12px; }
+  .deux-colonnes { display: flex; gap: 20px; flex-wrap: wrap; }
+  .colonne { flex: 1; min-width: 220px; }
+  .colonne h3 { font-size: 13px; color: #666; margin: 0 0 8px; }
+  .liste-item { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; font-size: 13.5px; cursor: pointer; }
+  .liste-item.selectionne { background: #eaf3fb; border-color: var(--blue); }
+  .liste-item .btn-suppr { color: var(--red); cursor: pointer; font-size: 13px; padding: 2px 6px; }
+  .liste-item.inactif { opacity: 0.5; }
+  .ligne-ajout { display: flex; gap: 6px; margin-top: 8px; }
+  .ligne-ajout input, .ligne-ajout select { flex: 1; padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+  .ligne-ajout button { padding: 7px 12px; border: none; border-radius: 6px; background: var(--blue); color: white; font-size: 13px; cursor: pointer; }
+  .champ-solde { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .champ-solde label { flex: 0 0 90px; font-size: 13px; color: #555; }
+  .champ-solde input { flex: 1; padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px; }
+  select { padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+  .btn-principal { padding: 8px 16px; border: none; border-radius: 6px; background: var(--blue); color: white; font-weight: bold; font-size: 13.5px; cursor: pointer; margin-top: 8px; }
+  .btn-secondaire { padding: 8px 16px; border: 1px solid var(--blue); border-radius: 6px; background: white; color: var(--blue); font-size: 13.5px; cursor: pointer; margin-top: 8px; margin-left: 8px; }
+  #message { margin-top: 10px; padding: 8px 12px; border-radius: 6px; font-size: 13px; display: none; }
+  #message.ok { display: block; background: #dcfce7; color: #166534; }
+  #message.err { display: block; background: #fee2e2; color: #991b1b; }
+  .vide { color: #aaa; font-size: 13px; font-style: italic; padding: 6px 0; }
+  .hidden { display: none !important; }
+  #login-screen { max-width: 340px; margin: 80px auto; background: white; border: 1px solid var(--border); border-radius: 10px; padding: 28px; }
+  #login-screen input { width: 100%; box-sizing: border-box; margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+  #login-err { color: var(--red); font-size: 12px; margin-bottom: 10px; min-height: 16px; }
+  .topbar-user { font-size: 12px; color: #888; float: right; }
+  .role-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #eee; }
+  .role-badge.admin { background: #dcfce7; color: #166534; }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <h1 style="font-size:16px;">Compta — L'Arche de Mallo</h1>
+  <p style="font-size:12px;color:#888;margin-bottom:16px;">Connexion requise.</p>
+  <input type="email" id="login-email" placeholder="Email">
+  <input type="password" id="login-password" placeholder="Mot de passe">
+  <div id="login-err"></div>
+  <button class="btn-principal" style="width:100%;" onclick="seConnecter()">Se connecter</button>
+</div>
+
+<div id="app" class="page hidden">
+  <span class="topbar-user"><span id="topbar-user"></span> — <a href="#" onclick="seDeconnecter();return false;">Déconnexion</a></span>
+  <h1>Configuration</h1>
+  <div class="sous-titre">L'Arche de Mallo — Comptabilité</div>
+
+  <div class="bandeau-info" id="lecteur-notice" style="display:none;">
+    Vous êtes connecté en lecture seule — les ajouts/suppressions sont réservés aux comptes admin.
+  </div>
+
+  <!-- Types de mouvement + Descriptions -->
+  <div class="carte">
+    <h2>Types de mouvement &amp; Descriptions</h2>
+    <p style="font-size:12.5px;color:#888;margin-top:-6px;">Les descriptions proposées dépendent du type choisi (ex : Adoption → Adoption / Clôture adoption / Réservation). Partagé par Banque, Caisse, Chèques, Remises et Factures.</p>
+    <div class="deux-colonnes">
+      <div class="colonne">
+        <h3>Types de mouvement</h3>
+        <div id="liste-types"></div>
+        <div class="ligne-ajout admin-only">
+          <input type="text" id="nouveau-type" placeholder="Nouveau type...">
+          <button onclick="ajouterType()">Ajouter</button>
+        </div>
+      </div>
+      <div class="colonne">
+        <h3 id="titre-descriptions">Descriptions</h3>
+        <div id="liste-descriptions"></div>
+        <div class="ligne-ajout admin-only">
+          <input type="text" id="nouvelle-description" placeholder="Nouvelle description..." disabled>
+          <button onclick="ajouterDescription()" id="btn-ajouter-description" disabled>Ajouter</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Libellés complémentaires -->
+  <div class="carte">
+    <h2>Libellés complémentaires (suggestions)</h2>
+    <p style="font-size:12.5px;color:#888;margin-top:-6px;">Suggestions pour le champ "Libellé complémentaire" de Caisse/Banque/Chèques — texte toujours libre, ceci n'est qu'une aide à la saisie.</p>
+    <div id="liste-libcomp"></div>
+    <div class="ligne-ajout admin-only">
+      <input type="text" id="nouveau-libcomp" placeholder="Ex: Stérilisation, Urgence vétérinaire...">
+      <button onclick="ajouterListe('libelles_complementaires', 'nouveau-libcomp', chargerLibcomp)">Ajouter</button>
+    </div>
+  </div>
+
+  <!-- Fournisseurs -->
+  <div class="carte">
+    <h2>Fournisseurs</h2>
+    <div id="liste-fournisseurs"></div>
+    <div class="ligne-ajout admin-only">
+      <input type="text" id="nouveau-fournisseur" placeholder="Nouveau fournisseur...">
+      <button onclick="ajouterFournisseur()">Ajouter</button>
+    </div>
+  </div>
+
+  <!-- Périodes -->
+  <div class="carte">
+    <h2>Périodes</h2>
+    <div id="liste-periodes"></div>
+    <div class="ligne-ajout admin-only">
+      <input type="text" id="nouvelle-periode" placeholder="Ex: 2026 - 2027">
+      <button onclick="ajouterPeriode()">Ajouter</button>
+    </div>
+    <p style="font-size:12.5px;color:#666;margin-top:12px;">Période courante :
+      <select id="select-periode-courante" onchange="definirPeriodeCourante()"></select>
+    </p>
+  </div>
+
+  <!-- Soldes initiaux -->
+  <div class="carte">
+    <h2>Soldes initiaux</h2>
+    <p style="font-size:12.5px;color:#888;margin-top:-6px;">Un solde initial par compte et par période. Le solde final se calcule automatiquement à partir des mouvements saisis — jamais besoin de le ressaisir.</p>
+    <p>Période : <select id="select-periode-soldes" onchange="chargerSoldes()"></select></p>
+    <div class="champ-solde"><label>Banque</label><input type="number" step="0.01" id="solde-banque"></div>
+    <div class="champ-solde"><label>Caisse 1</label><input type="number" step="0.01" id="solde-caisse1"></div>
+    <div class="champ-solde"><label>Caisse 2</label><input type="number" step="0.01" id="solde-caisse2"></div>
+    <button class="btn-principal admin-only" onclick="enregistrerSoldes()">Enregistrer</button>
+    <button class="btn-secondaire admin-only" onclick="reporterSoldePrecedent()">Reporter le solde final de la période précédente</button>
+  </div>
+
+  <!-- Comptes Compta -->
+  <div class="carte">
+    <h2>Comptes Compta (admin / lecteur)</h2>
+    <p style="font-size:12.5px;color:#888;margin-top:-6px;">Pour ajouter quelqu'un, créez d'abord son compte dans Supabase (Authentication &gt; Users &gt; Add user), puis indiquez son email ici pour lui donner un rôle. Cette page ne peut pas créer le compte de connexion lui-même.</p>
+    <div id="liste-utilisateurs"></div>
+    <div class="ligne-ajout admin-only">
+      <input type="email" id="nouvel-email" placeholder="email@exemple.fr">
+      <select id="nouveau-role"><option value="lecteur">Lecteur</option><option value="admin">Admin</option></select>
+      <button onclick="ajouterUtilisateur()">Ajouter</button>
+    </div>
+  </div>
+
+  <!-- Comptes Suivi -->
+  <div class="carte">
+    <h2>Comptes Suivi (connexion aux formulaires)</h2>
+    <p style="font-size:12.5px;color:#888;margin-top:-6px;">Un seul niveau d'accès côté Suivi (pas de distinction admin/lecteur) : tout compte listé ici peut se connecter et saisir n'importe quel formulaire. Comme pour Compta, créez d'abord le compte dans Supabase (Authentication &gt; Users &gt; Add user), puis indiquez son email ici. Géré uniquement depuis cette page Compta, pour que ça ne soit pas ouvert à tout le monde.</p>
+    <div id="liste-comptes-suivi"></div>
+    <div class="ligne-ajout admin-only">
+      <input type="email" id="nouvel-email-suivi" placeholder="email@exemple.fr">
+      <input type="text" id="nouveau-nom-suivi" placeholder="Nom (optionnel)">
+      <button onclick="ajouterCompteSuivi()">Ajouter</button>
+    </div>
+  </div>
+
+  <!-- Liste "Saisi par" (Suivi) -->
+  <div class="carte">
+    <h2>Personnes autorisées à saisir (menu "Saisi par" des formulaires Suivi)</h2>
+    <p style="font-size:12.5px;color:#888;margin-top:-6px;">Liste fermée proposée dans le menu déroulant "Saisi par" de chaque formulaire Suivi — distincte des comptes de connexion ci-dessus (une personne peut apparaître ici sans avoir son propre compte, si elle saisit occasionnellement sur le poste d'un collègue déjà connecté).</p>
+    <div id="liste-saisisseurs"></div>
+    <div class="ligne-ajout admin-only">
+      <input type="text" id="nouveau-saisisseur" placeholder="Nom">
+      <button onclick="ajouterSaisisseur()">Ajouter</button>
+    </div>
+  </div>
+
+  <div id="message"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script>
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+var typeSelectionne = null;
+var roleActuel = null;
+
+function afficherMessage(texte, type) {
+    var el = document.getElementById('message');
+    el.textContent = texte;
+    el.className = type || 'ok';
+    setTimeout(function() { el.className = ''; }, 3000);
+}
+
+// ============================================================
+// CONNEXION
+// ============================================================
+async function seConnecter() {
+    document.getElementById('login-err').textContent = '';
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) { document.getElementById('login-err').textContent = 'Connexion refusée : ' + error.message; return; }
+    await demarrerApp(data.user);
+}
+async function seDeconnecter() { await supabaseClient.auth.signOut(); location.reload(); }
+
+async function demarrerApp(user) {
+    const { data: profil, error } = await supabaseClient.from('profils_compta').select('role, email').eq('user_id', user.id).maybeSingle();
+    if (error || !profil) {
+        document.getElementById('login-err').textContent = "Ce compte n'est pas autorisé sur la Compta.";
+        await supabaseClient.auth.signOut();
+        return;
+    }
+    roleActuel = profil.role;
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('topbar-user').textContent = profil.email + ' (' + (roleActuel === 'admin' ? 'admin' : 'lecture seule') + ')';
+    if (roleActuel !== 'admin') {
+        document.getElementById('lecteur-notice').style.display = 'block';
+        document.querySelectorAll('.admin-only').forEach(function(el) { el.style.display = 'none'; });
+    }
+
+    chargerTypes();
+    chargerDescriptions();
+    chargerLibcomp();
+    chargerFournisseurs();
+    chargerPeriodes();
+    chargerUtilisateurs();
+    chargerComptesSuivi();
+    chargerSaisisseurs();
+}
+(async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(data.session.user); })();
+
+async function appelerRpc(fn, params) {
+    const { data, error } = await supabaseClient.rpc(fn, params || {});
+    if (error) { afficherMessage('Erreur : ' + error.message, 'err'); throw error; }
+    return data;
+}
+
+// ---------------- Types de mouvement ----------------
+async function chargerTypes() {
+    const { data, error } = await supabaseClient.from('types_mouvement').select('*').order('ordre');
+    if (error) { afficherMessage('Erreur : ' + error.message, 'err'); return; }
+    var conteneur = document.getElementById('liste-types');
+    conteneur.innerHTML = '';
+    if (!data.length) { conteneur.innerHTML = '<div class="vide">Aucun type défini</div>'; }
+    data.forEach(function(t) {
+        var ligne = document.createElement('div');
+        ligne.className = 'liste-item' + (typeSelectionne === t.id ? ' selectionne' : '');
+        ligne.innerHTML = '<span>' + t.valeur + '</span>' + (roleActuel==='admin' ? '<span class="btn-suppr" onclick="event.stopPropagation(); supprimerType(\'' + t.id + '\')">✕</span>' : '');
+        ligne.addEventListener('click', function() { selectionnerType(t.id, t.valeur); });
+        conteneur.appendChild(ligne);
+    });
+}
+
+function selectionnerType(id, valeur) {
+    typeSelectionne = id;
+    document.getElementById('titre-descriptions').textContent = 'Descriptions — ' + valeur;
+    document.getElementById('nouvelle-description').disabled = false;
+    document.getElementById('btn-ajouter-description').disabled = false;
+    chargerTypes();
+    chargerDescriptions();
+}
+
+async function chargerDescriptions() {
+    var conteneur = document.getElementById('liste-descriptions');
+    if (!typeSelectionne) { conteneur.innerHTML = '<div class="vide">Choisissez un type à gauche</div>'; return; }
+    const { data, error } = await supabaseClient.from('descriptions_mouvement').select('*').eq('type_mouvement_id', typeSelectionne).order('ordre');
+    if (error) { afficherMessage('Erreur : ' + error.message, 'err'); return; }
+    conteneur.innerHTML = '';
+    if (!data.length) { conteneur.innerHTML = '<div class="vide">Aucune description pour ce type</div>'; }
+    data.forEach(function(d) {
+        var ligne = document.createElement('div');
+        ligne.className = 'liste-item';
+        ligne.innerHTML = '<span>' + d.valeur + '</span>' + (roleActuel==='admin' ? '<span class="btn-suppr" onclick="supprimerDescription(\'' + d.id + '\')">✕</span>' : '');
+        conteneur.appendChild(ligne);
+    });
+}
+
+async function ajouterType() {
+    var input = document.getElementById('nouveau-type');
+    if (!input.value.trim()) return;
+    await appelerRpc('ajouter_type_mouvement', { p_valeur: input.value.trim() });
+    input.value = '';
+    afficherMessage('Type ajouté.');
+    chargerTypes();
+}
+
+async function supprimerType(id) {
+    await appelerRpc('supprimer_type_mouvement', { p_id: id });
+    if (typeSelectionne === id) { typeSelectionne = null; document.getElementById('nouvelle-description').disabled = true; document.getElementById('btn-ajouter-description').disabled = true; document.getElementById('titre-descriptions').textContent = 'Descriptions'; }
+    afficherMessage('Type supprimé.');
+    chargerTypes();
+    chargerDescriptions();
+}
+
+async function ajouterDescription() {
+    var input = document.getElementById('nouvelle-description');
+    if (!input.value.trim() || !typeSelectionne) return;
+    await appelerRpc('ajouter_description', { p_type_mouvement_id: typeSelectionne, p_valeur: input.value.trim() });
+    input.value = '';
+    afficherMessage('Description ajoutée.');
+    chargerDescriptions();
+}
+
+async function supprimerDescription(id) {
+    await appelerRpc('supprimer_description', { p_id: id });
+    afficherMessage('Description supprimée.');
+    chargerDescriptions();
+}
+
+// ---------------- Listes simples (modes de règlement, libellés complémentaires) ----------------
+async function chargerListeSimple(categorie, conteneurId) {
+    const { data, error } = await supabaseClient.from('config_listes').select('*').eq('categorie', categorie).order('ordre');
+    if (error) { afficherMessage('Erreur : ' + error.message, 'err'); return []; }
+    var conteneur = document.getElementById(conteneurId);
+    conteneur.innerHTML = '';
+    if (!data.length) { conteneur.innerHTML = '<div class="vide">Aucune valeur</div>'; }
+    data.forEach(function(item) {
+        var ligne = document.createElement('div');
+        ligne.className = 'liste-item';
+        ligne.innerHTML = '<span>' + item.valeur + '</span>' + (roleActuel==='admin' ? '<span class="btn-suppr" onclick="supprimerListe(\'' + item.id + '\', \'' + categorie + '\')">✕</span>' : '');
+        conteneur.appendChild(ligne);
+    });
+    return data;
+}
+
+async function ajouterListe(categorie, inputId, rafraichir) {
+    var input = document.getElementById(inputId);
+    if (!input.value.trim()) return;
+    await appelerRpc('ajouter_config_liste', { p_categorie: categorie, p_valeur: input.value.trim() });
+    input.value = '';
+    afficherMessage('Ajouté.');
+    rafraichir();
+}
+
+async function supprimerListe(id, categorie) {
+    await appelerRpc('supprimer_config_liste', { p_id: id });
+    afficherMessage('Supprimé.');
+    chargerLibcomp();
+}
+
+function chargerLibcomp() { chargerListeSimple('libelles_complementaires', 'liste-libcomp'); }
+
+// ---------------- Périodes (config_compta, pas config_listes — lu par toutes les pages Compta) ----------------
+async function chargerPeriodes() {
+    const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'periodes').maybeSingle();
+    const periodes = (data && Array.isArray(data.valeur)) ? data.valeur : [];
+    var conteneur = document.getElementById('liste-periodes');
+    conteneur.innerHTML = '';
+    if (!periodes.length) { conteneur.innerHTML = '<div class="vide">Aucune période — la première page Compta ouverte en créera par défaut.</div>'; }
+    periodes.forEach(function(p) {
+        var ligne = document.createElement('div');
+        ligne.className = 'liste-item';
+        ligne.innerHTML = '<span>' + p + '</span>' + (roleActuel==='admin' ? '<span class="btn-suppr" onclick="supprimerPeriode(\'' + p + '\')">✕</span>' : '');
+        conteneur.appendChild(ligne);
+    });
+    remplirSelectPeriodes(periodes);
+}
+
+async function ajouterPeriode() {
+    var input = document.getElementById('nouvelle-periode');
+    var val = input.value.trim().replace(/\s*[-–]\s*/, ' - ');
+    if (!val) return;
+    await appelerRpc('ajouter_periode', { p_periode: val });
+    input.value = '';
+    afficherMessage('Période ajoutée.');
+    chargerPeriodes();
+}
+async function supprimerPeriode(p) {
+    await appelerRpc('supprimer_periode', { p_periode: p });
+    afficherMessage('Période supprimée.');
+    chargerPeriodes();
+}
+
+function remplirSelectPeriodes(periodes) {
+    [document.getElementById('select-periode-courante'), document.getElementById('select-periode-soldes')].forEach(function(sel) {
+        var valeurActuelle = sel.value;
+        sel.innerHTML = '';
+        (periodes || []).forEach(function(p) {
+            var opt = document.createElement('option');
+            opt.value = p; opt.textContent = p;
+            sel.appendChild(opt);
+        });
+        if (valeurActuelle) sel.value = valeurActuelle;
+        else sel.selectedIndex = sel.options.length - 1;
+    });
+    chargerSoldes();
+}
+
+async function definirPeriodeCourante() {
+    var valeur = document.getElementById('select-periode-courante').value;
+    await appelerRpc('definir_parametre', { p_cle: 'periode_courante', p_valeur: valeur });
+    afficherMessage('Période courante mise à jour : ' + valeur);
+}
+
+// ---------------- Fournisseurs ----------------
+async function chargerFournisseurs() {
+    const { data, error } = await supabaseClient.from('fournisseurs').select('*').order('nom');
+    if (error) { afficherMessage('Erreur : ' + error.message, 'err'); return; }
+    var conteneur = document.getElementById('liste-fournisseurs');
+    conteneur.innerHTML = '';
+    if (!data.length) { conteneur.innerHTML = '<div class="vide">Aucun fournisseur</div>'; }
+    data.forEach(function(f) {
+        var ligne = document.createElement('div');
+        ligne.className = 'liste-item' + (f.actif ? '' : ' inactif');
+        var clic = roleActuel==='admin' ? ' onclick="toggleFournisseur(\'' + f.id + '\', ' + (!f.actif) + ')" style="cursor:pointer;flex:1;"' : ' style="flex:1;"';
+        ligne.innerHTML = '<span' + clic + '>' + f.nom + (f.actif ? '' : ' (inactif)') + '</span>';
+        conteneur.appendChild(ligne);
+    });
+}
+
+async function ajouterFournisseur() {
+    var input = document.getElementById('nouveau-fournisseur');
+    if (!input.value.trim()) return;
+    await appelerRpc('ajouter_fournisseur', { p_nom: input.value.trim() });
+    input.value = '';
+    afficherMessage('Fournisseur ajouté.');
+    chargerFournisseurs();
+}
+
+async function toggleFournisseur(id, nouvelEtat) {
+    await appelerRpc('definir_actif_fournisseur', { p_id: id, p_actif: nouvelEtat });
+    chargerFournisseurs();
+}
+
+// ---------------- Soldes initiaux ----------------
+async function chargerSoldes() {
+    var periode = document.getElementById('select-periode-soldes').value;
+    if (!periode) return;
+    const { data } = await supabaseClient.from('soldes').select('*').eq('periode', periode).eq('type_solde', 'initial');
+    var parCompte = {};
+    (data || []).forEach(function(s) { parCompte[s.compte] = s.montant; });
+    document.getElementById('solde-banque').value = parCompte['banque'] || '';
+    document.getElementById('solde-caisse1').value = parCompte['caisse1'] || '';
+    document.getElementById('solde-caisse2').value = parCompte['caisse2'] || '';
+}
+
+async function enregistrerSoldes() {
+    var periode = document.getElementById('select-periode-soldes').value;
+    if (!periode) { afficherMessage('Choisissez une période.', 'err'); return; }
+    await appelerRpc('enregistrer_soldes_initiaux', {
+        p_periode: periode,
+        p_solde_banque: parseFloat(document.getElementById('solde-banque').value) || 0,
+        p_solde_caisse1: parseFloat(document.getElementById('solde-caisse1').value) || 0,
+        p_solde_caisse2: parseFloat(document.getElementById('solde-caisse2').value) || 0
+    });
+    afficherMessage('Soldes initiaux enregistrés pour ' + periode + '.');
+}
+
+async function reporterSoldePrecedent() {
+    var select = document.getElementById('select-periode-soldes');
+    var index = select.selectedIndex;
+    if (index <= 0) { afficherMessage('Pas de période précédente dans la liste.', 'err'); return; }
+    var periodePrecedente = select.options[index - 1].value;
+    const [banque, caisse1, caisse2] = await Promise.all([
+        appelerRpc('obtenir_solde_final', { p_periode: periodePrecedente, p_compte: 'banque' }),
+        appelerRpc('obtenir_solde_final', { p_periode: periodePrecedente, p_compte: 'caisse1' }),
+        appelerRpc('obtenir_solde_final', { p_periode: periodePrecedente, p_compte: 'caisse2' })
+    ]);
+    document.getElementById('solde-banque').value = banque;
+    document.getElementById('solde-caisse1').value = caisse1;
+    document.getElementById('solde-caisse2').value = caisse2;
+    afficherMessage('Soldes de ' + periodePrecedente + ' repris — vérifiez puis enregistrez.');
+}
+
+// ---------------- Comptes Compta ----------------
+async function chargerUtilisateurs() {
+    const { data, error } = await supabaseClient.from('profils_compta').select('*').order('email');
+    var conteneur = document.getElementById('liste-utilisateurs');
+    if (error) { conteneur.innerHTML = '<div class="vide">Accès restreint (admin uniquement).</div>'; return; }
+    conteneur.innerHTML = '';
+    if (!data.length) { conteneur.innerHTML = '<div class="vide">Aucun compte</div>'; }
+    data.forEach(function(u) {
+        var ligne = document.createElement('div');
+        ligne.className = 'liste-item';
+        var badge = '<span class="role-badge' + (u.role==='admin'?' admin':'') + '">' + u.role + '</span>';
+        var actions = roleActuel==='admin' ? (
+            '<span style="display:flex;gap:8px;align-items:center;">' + badge +
+            '<a href="#" onclick="basculerRole(\'' + u.email + '\',\'' + (u.role==='admin'?'lecteur':'admin') + '\');return false;" style="font-size:11px;">changer</a>' +
+            '<span class="btn-suppr" onclick="retirerUtilisateur(\'' + u.email + '\')">✕</span></span>'
+        ) : badge;
+        ligne.innerHTML = '<span>' + u.email + '</span>' + actions;
+        conteneur.appendChild(ligne);
+    });
+}
+async function ajouterUtilisateur() {
+    var email = document.getElementById('nouvel-email').value.trim();
+    var role = document.getElementById('nouveau-role').value;
+    if (!email) return;
+    await appelerRpc('ajouter_utilisateur_compta', { p_email: email, p_role: role });
+    document.getElementById('nouvel-email').value = '';
+    afficherMessage('Accès ajouté pour ' + email + '.');
+    chargerUtilisateurs();
+}
+async function basculerRole(email, nouveauRole) {
+    await appelerRpc('modifier_role_utilisateur_compta', { p_email: email, p_role: nouveauRole });
+    afficherMessage('Rôle mis à jour.');
+    chargerUtilisateurs();
+}
+async function retirerUtilisateur(email) {
+    if (!confirm('Retirer l\'accès Compta de ' + email + ' ?')) return;
+    await appelerRpc('retirer_utilisateur_compta', { p_email: email });
+    afficherMessage('Accès retiré.');
+    chargerUtilisateurs();
+}
+
+// ---------------- Comptes Suivi (connexion) ----------------
+async function chargerComptesSuivi() {
+    const { data, error } = await supabaseClient.from('profils_suivi').select('*').order('email');
+    var conteneur = document.getElementById('liste-comptes-suivi');
+    if (error) { conteneur.innerHTML = '<div class="vide">Accès restreint (admin Compta uniquement).</div>'; return; }
+    conteneur.innerHTML = '';
+    if (!data.length) { conteneur.innerHTML = '<div class="vide">Aucun compte</div>'; }
+    data.forEach(function(u) {
+        var ligne = document.createElement('div');
+        ligne.className = 'liste-item';
+        var actions = roleActuel==='admin' ? '<span class="btn-suppr" onclick="retirerCompteSuivi(\'' + u.email + '\')">✕</span>' : '';
+        ligne.innerHTML = '<span>' + u.email + (u.nom ? ' — ' + u.nom : '') + '</span>' + actions;
+        conteneur.appendChild(ligne);
+    });
+}
+async function ajouterCompteSuivi() {
+    var email = document.getElementById('nouvel-email-suivi').value.trim();
+    var nom = document.getElementById('nouveau-nom-suivi').value.trim();
+    if (!email) return;
+    await appelerRpc('ajouter_utilisateur_suivi', { p_email: email, p_nom: nom || null });
+    document.getElementById('nouvel-email-suivi').value = '';
+    document.getElementById('nouveau-nom-suivi').value = '';
+    afficherMessage('Compte Suivi ajouté pour ' + email + '.');
+    chargerComptesSuivi();
+}
+async function retirerCompteSuivi(email) {
+    if (!confirm('Retirer l\'accès Suivi de ' + email + ' ?')) return;
+    await appelerRpc('retirer_utilisateur_suivi', { p_email: email });
+    afficherMessage('Accès retiré.');
+    chargerComptesSuivi();
+}
+
+// ---------------- Liste "Saisi par" (Suivi) ----------------
+async function chargerSaisisseurs() {
+    const { data, error } = await supabaseClient.from('utilisateurs').select('*').order('nom');
+    var conteneur = document.getElementById('liste-saisisseurs');
+    if (error) { conteneur.innerHTML = '<div class="vide">Erreur : ' + error.message + '</div>'; return; }
+    conteneur.innerHTML = '';
+    if (!data.length) { conteneur.innerHTML = '<div class="vide">Aucune personne</div>'; }
+    data.forEach(function(u) {
+        var ligne = document.createElement('div');
+        ligne.className = 'liste-item' + (u.actif ? '' : ' inactif');
+        var clic = roleActuel==='admin' ? ' onclick="toggleSaisisseur(\'' + u.id + '\', ' + (!u.actif) + ')" style="cursor:pointer;flex:1;"' : ' style="flex:1;"';
+        ligne.innerHTML = '<span' + clic + '>' + u.nom + (u.actif ? '' : ' (inactif)') + '</span>';
+        conteneur.appendChild(ligne);
+    });
+}
+async function ajouterSaisisseur() {
+    var input = document.getElementById('nouveau-saisisseur');
+    if (!input.value.trim()) return;
+    await appelerRpc('ajouter_saisisseur', { p_nom: input.value.trim() });
+    input.value = '';
+    afficherMessage('Personne ajoutée.');
+    chargerSaisisseurs();
+}
+async function toggleSaisisseur(id, nouvelEtat) {
+    await appelerRpc('definir_actif_saisisseur', { p_id: id, p_actif: nouvelEtat });
+    chargerSaisisseurs();
+}
+</script>
+</body>
+</html>

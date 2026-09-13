@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notes — Compta Arche de Mallo</title>
+<link rel="stylesheet" href="compta-style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  .notes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+  .note-card{background:#fffbea;border:0.5px solid #f0e0a0;border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;min-height:180px;box-shadow:0 1px 3px rgba(0,0,0,0.06);}
+  .note-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px;}
+  .note-title-input{flex:1;border:none;background:none;font-size:13px;font-weight:600;color:#5c3d28;padding:2px 0;}
+  .note-title-input:focus{outline:none;border-bottom:1px solid #d8c58a;}
+  .note-actions{display:flex;gap:4px;}
+  .note-action-btn{background:none;border:none;cursor:pointer;color:#a08a50;font-size:12px;padding:2px 4px;}
+  .note-action-btn.delete{color:var(--red);}
+  .note-textarea{flex:1;border:none;background:none;resize:none;font-size:12px;color:#4a3a20;font-family:'DM Sans',sans-serif;min-height:100px;}
+  .note-textarea:focus{outline:none;}
+  .note-footer{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:9px;color:#a08a50;}
+  .note-save-indicator{opacity:0;transition:opacity 0.3s;color:var(--green);}
+  .note-save-indicator.show{opacity:1;}
+  .note-add-card{border:2px dashed #e0d4a0;border-radius:var(--radius);min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#c0a860;cursor:pointer;font-size:12px;}
+  .note-add-card:hover{border-color:#c0a860;background:rgba(240,224,160,0.15);}
+  .hidden{display:none!important;}
+  #login-screen{max-width:340px;margin:80px auto;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:28px;}
+  #login-screen input{width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-size:13px;}
+  #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <h1 style="font-size:16px;">Compta — L'Arche de Mallo</h1>
+  <p style="font-size:12px;color:var(--text-3);margin-bottom:16px;">Connexion requise.</p>
+  <input type="email" id="login-email" placeholder="Email">
+  <input type="password" id="login-password" placeholder="Mot de passe">
+  <div id="login-err"></div>
+  <button class="btn btn-primary" style="width:100%;" onclick="seConnecter()">Se connecter</button>
+</div>
+
+<div id="app" class="hidden">
+<div class="main" style="margin:0;">
+  <div class="topbar">
+    <div class="topbar-title"><i class="ti ti-notes" style="color:var(--orange)"></i> Notes partagées</div>
+    <div class="topbar-right" style="display:flex;align-items:center;gap:14px;">
+      <span style="font-size:11px;color:var(--text-3);" id="notes-count"></span>
+      <span style="font-size:11px;color:var(--text-3);" id="topbar-user"></span>
+      <button class="btn btn-secondary btn-sm" onclick="seDeconnecter()">Déconnexion</button>
+    </div>
+  </div>
+  <div class="page-content">
+    <div style="font-size:11px;color:var(--text-3);margin-bottom:12px;"><i class="ti ti-info-circle"></i> Notes visibles et modifiables par tous les comptes Compta (admin et lecteur) — pense-bêtes partagés, pas de données comptables ici.</div>
+    <div id="loading-wrap" style="padding:24px;text-align:center;color:var(--text-3);">Chargement…</div>
+    <div id="notes-grid" class="notes-grid" style="display:none;"></div>
+  </div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script>
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let notes = [];
+let saveTimers = {};
+
+async function seConnecter() {
+  document.getElementById('login-err').textContent = '';
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) { document.getElementById('login-err').textContent = 'Connexion refusée : ' + error.message; return; }
+  await demarrerApp();
+}
+async function seDeconnecter() { await supabaseClient.auth.signOut(); location.reload(); }
+async function demarrerApp() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  const { data: profil, error } = await supabaseClient.from('profils_compta').select('role, email').eq('user_id', user.id).maybeSingle();
+  if (error || !profil) { document.getElementById('login-err').textContent = "Ce compte n'est pas autorisé sur la Compta."; await supabaseClient.auth.signOut(); return; }
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('topbar-user').textContent = profil.email;
+  await loadNotes();
+}
+(async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(); })();
+
+async function loadNotes() {
+  document.getElementById('loading-wrap').style.display = 'block';
+  document.getElementById('notes-grid').style.display = 'none';
+  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle','notes_partagees').maybeSingle();
+  notes = (data && Array.isArray(data.valeur)) ? data.valeur : [];
+  document.getElementById('loading-wrap').style.display = 'none';
+  document.getElementById('notes-grid').style.display = 'grid';
+  renderGrid();
+}
+
+function renderGrid() {
+  const grid = document.getElementById('notes-grid');
+  document.getElementById('notes-count').textContent = notes.length===0 ? 'Aucune note' : notes.length===1 ? '1 note' : notes.length+' notes';
+  grid.innerHTML = notes.map(note => `
+    <div class="note-card" id="card-${note.id}">
+      <div class="note-header">
+        <input class="note-title-input" placeholder="Titre de la note…" value="${escH(note.titre)}" oninput="onTitleChange('${note.id}', this.value)">
+        <div class="note-actions">
+          <button class="note-action-btn" title="Copier" onclick="copyNote('${note.id}')"><i class="ti ti-copy"></i></button>
+          <button class="note-action-btn delete" title="Supprimer" onclick="deleteNote('${note.id}')"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+      <textarea class="note-textarea" placeholder="Écris ici…" oninput="onTextChange('${note.id}', this)">${escH(note.texte)}</textarea>
+      <div class="note-footer">
+        <span>${formatMeta(note)}</span>
+        <span class="note-save-indicator" id="saved-${note.id}"><i class="ti ti-check"></i> Sauvegardé</span>
+      </div>
+    </div>`).join('') + `<div class="note-add-card" onclick="addNote()"><i class="ti ti-plus" style="font-size:20px;"></i>Nouvelle note</div>`;
+}
+
+function onTitleChange(id, value) { const n=notes.find(x=>x.id===id); if(!n)return; n.titre=value; scheduleSave(id); }
+function onTextChange(id, el) { const n=notes.find(x=>x.id===id); if(!n)return; n.texte=el.value; scheduleSave(id); }
+function scheduleSave(id) {
+  clearTimeout(saveTimers[id]);
+  saveTimers[id] = setTimeout(async () => {
+    const n = notes.find(x=>x.id===id); if (n) n.maj_le = new Date().toISOString();
+    await persistNotes();
+    const ind = document.getElementById('saved-'+id);
+    if (ind) { ind.classList.add('show'); setTimeout(()=>ind.classList.remove('show'), 1500); }
+  }, 700);
+}
+function addNote() {
+  notes.unshift({ id: 'n'+Date.now()+Math.random().toString(36).slice(2,7), titre:'', texte:'', maj_le: new Date().toISOString() });
+  renderGrid();
+  persistNotes();
+  const firstInput = document.querySelector('.note-title-input');
+  if (firstInput) firstInput.focus();
+}
+async function deleteNote(id) {
+  if (!confirm('Supprimer cette note ?')) return;
+  notes = notes.filter(n => n.id !== id);
+  renderGrid();
+  await persistNotes();
+}
+function copyNote(id) {
+  const n = notes.find(x=>x.id===id); if (!n) return;
+  navigator.clipboard.writeText((n.titre?n.titre+'\n\n':'')+n.texte).then(()=>showToast('Copié !'));
+}
+async function persistNotes() {
+  try { const { error } = await supabaseClient.rpc('enregistrer_notes_partagees', { p_notes: notes }); if (error) throw error; }
+  catch(e) { showToast('Erreur de sauvegarde : '+e.message, true); }
+}
+function formatMeta(note) { if (!note.maj_le) return ''; const d=new Date(note.maj_le); return 'Modifié le '+d.toLocaleDateString('fr-FR')+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+function showToast(m, isError) { const t=document.createElement('div'); t.style.cssText='position:fixed;bottom:20px;right:20px;background:'+(isError?'var(--red)':'var(--green)')+';color:white;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:500;z-index:999;'; t.textContent=m; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
+</script>
+</body>
+</html>

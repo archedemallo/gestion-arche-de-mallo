@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caisse physique — Compta Arche de Mallo</title>
+<link rel="stylesheet" href="compta-style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  .split-layout{display:grid;grid-template-columns:1fr 320px;gap:14px;align-items:start;}
+  .form-card{background:var(--surface);border:0.5px solid var(--orange);border-radius:var(--radius);padding:18px 20px;position:sticky;top:60px;max-height:calc(100vh - 80px);overflow-y:auto;}
+  .form-title{font-size:13px;font-weight:600;margin-bottom:14px;padding-bottom:10px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:8px;}
+  .form-title i{color:var(--orange);}
+  .form-group{margin-bottom:10px;}
+  .form-label{display:block;font-size:10px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;}
+  .form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .list-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:14px;}
+  .list-head{padding:12px 16px;border-bottom:0.5px solid var(--border);}
+  .list-title{font-size:13px;font-weight:600;margin-bottom:8px;}
+  .filters-bar{display:flex;gap:6px;flex-wrap:nowrap;align-items:center;}
+  .f-select{font-size:11px;padding:4px 8px;border-radius:var(--radius-sm);border:0.5px solid var(--border-mid);background:var(--surface);color:var(--text-2);font-family:'DM Sans',sans-serif;}
+  .kpi-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+  .kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px 14px;}
+  .kpi-label{font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;}
+  .kpi-value{font-size:18px;font-weight:600;}
+  .kpi-sub{font-size:10px;color:var(--text-3);margin-top:2px;}
+  table{width:100%;border-collapse:collapse;font-size:11px;}
+  thead th{text-align:left;font-size:9px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.6px;padding:7px 10px;border-bottom:0.5px solid var(--border);background:var(--surface-2);white-space:nowrap;}
+  tbody td{padding:7px 10px;border-bottom:0.5px solid var(--border);vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--cream);}
+  .r{text-align:right;font-variant-numeric:tabular-nums;}
+  .del-btn{background:none;border:none;cursor:pointer;font-size:13px;padding:0 2px;color:var(--red);}
+  .expand-btn{background:none;border:0.5px solid var(--border-mid);border-radius:4px;cursor:pointer;font-size:11px;padding:2px 6px;color:var(--text-2);font-family:'DM Sans',sans-serif;transition:all 0.15s;}
+  .expand-btn:hover{background:var(--cream);}
+  .expand-btn.open{background:var(--orange);color:white;border-color:var(--orange);}
+  .detail-row td{padding:0!important;border-bottom:0.5px solid var(--border);}
+  .detail-inner{background:var(--surface-2);padding:10px 16px;}
+
+  .denom-section{margin-bottom:12px;}
+  .denom-section-title{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:6px;padding-bottom:4px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:4px;}
+  .denom-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
+
+  .billet-item{border-radius:var(--radius-sm);border:0.5px solid;padding:5px 4px;text-align:center;}
+  .billet-note{font-size:11px;font-weight:600;margin-bottom:3px;}
+  .billet-input{width:100%;border:0.5px solid rgba(0,0,0,0.15);border-radius:3px;font-size:10px;padding:2px 4px;text-align:center;font-family:'DM Sans',sans-serif;background:rgba(255,255,255,0.7);}
+  .billet-total{font-size:9px;margin-top:3px;font-weight:500;}
+
+  .b500{background:#EAF3DE;border-color:#3B6D11;color:#27500A;}
+  .b500 .billet-input{color:#27500A;} .b500 .billet-total{color:#27500A;}
+  .b200{background:#E6F1FB;border-color:#185FA5;color:#0C447C;}
+  .b200 .billet-input{color:#0C447C;} .b200 .billet-total{color:#0C447C;}
+  .b100{background:#FAEEDA;border-color:#854F0B;color:#633806;}
+  .b100 .billet-input{color:#633806;} .b100 .billet-total{color:#633806;}
+  .b50{background:#FAECE7;border-color:#993C1D;color:#712B13;}
+  .b50 .billet-input{color:#712B13;} .b50 .billet-total{color:#712B13;}
+  .b20{background:#EEEDFE;border-color:#534AB7;color:#3C3489;}
+  .b20 .billet-input{color:#3C3489;} .b20 .billet-total{color:#3C3489;}
+  .b10{background:#F1EFE8;border-color:#5F5E5A;color:#444441;}
+  .b10 .billet-input{color:#444441;} .b10 .billet-total{color:#444441;}
+  .b5{background:#F5F0EA;border-color:#888780;color:#5F5E5A;}
+  .b5 .billet-input{color:#5F5E5A;} .b5 .billet-total{color:#5F5E5A;}
+
+  .piece-item{display:flex;flex-direction:column;align-items:center;gap:3px;}
+  .piece-circle{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1.5px solid;}
+  .piece-label{font-size:9px;font-weight:600;}
+  .piece-input{width:36px;border:0.5px solid var(--border-mid);border-radius:3px;font-size:10px;padding:2px 3px;text-align:center;font-family:'DM Sans',sans-serif;background:var(--surface);}
+  .piece-total{font-size:8px;font-weight:500;}
+  .p-gold{background:#FAEEDA;border-color:#EF9F27;color:#633806;}
+  .p-gold .piece-label{color:#633806;} .p-gold .piece-total{color:#854F0B;}
+  .p-silver{background:#D3D1C7;border-color:#B4B2A9;color:#444441;}
+  .p-silver .piece-label{color:#444441;} .p-silver .piece-total{color:#5F5E5A;}
+
+  .total-bar{background:var(--warm);border-radius:var(--radius-sm);padding:10px 12px;margin-top:10px;}
+  .total-bar-top{display:flex;justify-content:space-between;align-items:center;}
+  .total-bar-label{font-size:10px;color:var(--text-2);}
+  .total-bar-val{font-size:18px;font-weight:600;color:var(--green);}
+  .total-bar-detail{display:flex;gap:12px;margin-top:4px;font-size:9px;color:var(--text-3);}
+  .total-bar-detail span strong{color:var(--text-2);}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(61,43,31,0.35);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
+  .modal{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);width:440px;max-width:95vw;}
+  .modal-header{padding:14px 18px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+  .modal-title{font-size:13px;font-weight:600;}
+  .modal-close{background:none;border:none;font-size:18px;color:var(--text-3);cursor:pointer;}
+  .modal-body{padding:18px;}
+  .modal-footer{padding:12px 18px;border-top:0.5px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+  .confirm-detail{margin-top:10px;padding:10px;background:var(--red-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--red);}
+  .success-toast{position:fixed;bottom:20px;right:20px;background:var(--green);color:white;padding:10px 18px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;z-index:999;display:flex;align-items:center;gap:8px;box-shadow:var(--shadow-md);animation:slideIn 0.25s ease;}
+  @keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .spinner{display:inline-block;animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* Connexion */
+  #login-screen{max-width:340px;margin:80px auto;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:28px;}
+  #login-screen h1{font-size:16px;margin-bottom:4px;}
+  #login-screen p{font-size:12px;color:var(--text-3);margin-bottom:16px;}
+  #login-screen input{width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;}
+  #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+  .hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     CONNEXION — Compta n'est pas en accès public (contrairement aux
+     formulaires Suivi). Comptes créés dans Supabase Auth + table
+     profils_compta (voir 015_auth_rls_compta.sql).
+     ============================================================ -->
+<div id="login-screen">
+  <h1>Compta — L'Arche de Mallo</h1>
+  <p>Connexion requise.</p>
+  <input type="email" id="login-email" placeholder="Email">
+  <input type="password" id="login-password" placeholder="Mot de passe">
+  <div id="login-err"></div>
+  <button class="btn btn-primary" style="width:100%;" onclick="seConnecter()">Se connecter</button>
+</div>
+
+<div id="app" class="hidden">
+<div class="main" style="margin:0;">
+  <div class="topbar">
+    <div class="topbar-title"><i class="ti ti-safe" style="color:var(--orange)"></i> Caisse physique — Comptage</div>
+    <div class="topbar-right" style="display:flex;align-items:center;gap:14px;">
+      <span style="font-size:11px;color:var(--text-3);" id="topbar-user"></span>
+      <button class="btn btn-secondary btn-sm" onclick="seDeconnecter()">Déconnexion</button>
+    </div>
+  </div>
+  <div class="page-content">
+
+    <div class="form-row-2" style="max-width:320px;margin-bottom:14px;">
+      <div class="form-group">
+        <label class="form-label">Caisse</label>
+        <select id="f-caisse" onchange="onCaisseChange()">
+          <option value="caisse1">Caisse 1</option>
+          <option value="caisse2">Caisse 2</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="kpi-bar" id="kpi-bar"></div>
+
+    <div class="split-layout">
+
+      <!-- GAUCHE : historique -->
+      <div>
+        <div class="list-card">
+          <div class="list-head">
+            <div class="list-title" id="list-title">Historique des comptages</div>
+            <div class="filters-bar">
+              <select class="f-select" id="fl-per" onchange="renderKPIs();renderTable()"></select>
+              <button class="btn btn-secondary btn-sm" onclick="clearFilters()"><i class="ti ti-x"></i> Effacer</button>
+            </div>
+          </div>
+          <div id="table-wrap" style="overflow-x:auto;max-height:600px;overflow-y:auto;">
+            <div style="padding:32px;text-align:center;color:var(--text-3);"><i class="ti ti-loader-2 spinner"></i> Chargement…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DROITE : formulaire sticky -->
+      <div>
+        <div class="form-card">
+          <div class="form-title"><i class="ti ti-plus"></i> Nouveau comptage</div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label">Période</label>
+              <select id="f-per"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date du comptage</label>
+              <input type="date" id="f-date">
+            </div>
+          </div>
+
+          <div class="denom-section">
+            <div class="denom-section-title"><i class="ti ti-notes"></i> Billets</div>
+            <div class="denom-grid" id="billets-grid"></div>
+          </div>
+
+          <div class="denom-section">
+            <div class="denom-section-title"><i class="ti ti-circle"></i> Pièces</div>
+            <div class="denom-grid" id="pieces-grid"></div>
+          </div>
+
+          <div class="total-bar">
+            <div class="total-bar-top">
+              <span class="total-bar-label">Total calculé</span>
+              <span class="total-bar-val" id="total-global">0,00 €</span>
+            </div>
+            <div class="total-bar-detail">
+              <span>Billets : <strong id="total-billets">0,00 €</strong></span>
+              <span>Pièces : <strong id="total-pieces">0,00 €</strong></span>
+            </div>
+          </div>
+
+          <div id="form-err" class="hidden" style="color:var(--red);font-size:11px;padding:6px 0;margin-top:4px;"></div>
+          <div style="display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:0.5px solid var(--border);">
+            <button class="btn btn-primary" style="flex:1;" id="btn-submit" onclick="submitComptage()"><i class="ti ti-device-floppy"></i> Enregistrer</button>
+            <button class="btn btn-secondary" onclick="resetForm()"><i class="ti ti-refresh"></i> Vider</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- MODAL SUPPRIMER -->
+<div class="modal-overlay hidden" id="modal-del">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title"><i class="ti ti-trash" style="color:var(--red)"></i> Supprimer le comptage</span><button class="modal-close" onclick="closeDel()">×</button></div>
+    <div class="modal-body"><div style="font-size:12px;">Êtes-vous sûr de vouloir supprimer ce comptage ?</div><div class="confirm-detail" id="del-detail"></div></div>
+    <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="closeDel()">Annuler</button><button class="btn btn-danger btn-sm" onclick="confirmDel()">Supprimer</button></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script>
+// SUPABASE
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Définition des coupures
+const BILLETS = [
+  { val:500, label:'500 €', cls:'b500', key:'b500' },
+  { val:200, label:'200 €', cls:'b200', key:'b200' },
+  { val:100, label:'100 €', cls:'b100', key:'b100' },
+  { val:50,  label:'50 €',  cls:'b50',  key:'b50'  },
+  { val:20,  label:'20 €',  cls:'b20',  key:'b20'  },
+  { val:10,  label:'10 €',  cls:'b10',  key:'b10'  },
+  { val:5,   label:'5 €',   cls:'b5',   key:'b5'   },
+];
+const PIECES = [
+  { val:2,    label:'2 €',   cls:'p-gold',   key:'p200' },
+  { val:1,    label:'1 €',   cls:'p-gold',   key:'p100' },
+  { val:0.5,  label:'0,50 €',cls:'p-gold',   key:'p050' },
+  { val:0.2,  label:'0,20 €',cls:'p-silver', key:'p020' },
+  { val:0.1,  label:'0,10 €',cls:'p-silver', key:'p010' },
+  { val:0.05, label:'0,05 €',cls:'p-silver', key:'p005' },
+  { val:0.02, label:'0,02 €',cls:'p-silver', key:'p002' },
+  { val:0.01, label:'0,01 €',cls:'p-silver', key:'p001' },
+];
+
+let allRows = [], delIdx = null, delId = null;
+const openRows = new Set();
+
+// ============================================================
+// CONNEXION
+// ============================================================
+async function seConnecter() {
+  document.getElementById('login-err').textContent = '';
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) {
+    document.getElementById('login-err').textContent = 'Connexion refusée : ' + error.message;
+    return;
+  }
+  await demarrerApp(data.user);
+}
+
+async function seDeconnecter() {
+  await supabaseClient.auth.signOut();
+  location.reload();
+}
+
+async function demarrerApp(user) {
+  // Rôle : lu dans profils_compta (voir 015_auth_rls_compta.sql). Si la
+  // personne n'y figure pas, elle n'a accès à rien (RLS bloque tout) —
+  // on l'avertit clairement plutôt que de laisser une page vide.
+  const { data: profil, error } = await supabaseClient
+    .from('profils_compta')
+    .select('role, email')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (error || !profil) {
+    document.getElementById('login-err').textContent = "Ce compte n'est pas autorisé sur la Compta (contactez l'administrateur).";
+    await supabaseClient.auth.signOut();
+    return;
+  }
+
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('topbar-user').textContent = profil.email + (profil.role === 'lecteur' ? ' (lecture seule)' : '');
+
+  if (profil.role === 'lecteur') {
+    document.querySelectorAll('#btn-submit, .del-btn').forEach(el => el.style.display = 'none');
+  }
+
+  await chargerPeriodes();
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  buildDenomGrids();
+  await loadData();
+}
+
+// Reprend la session si déjà connecté (rafraîchissement de page)
+(async function initSession() {
+  const { data } = await supabaseClient.auth.getSession();
+  if (data.session) await demarrerApp(data.session.user);
+})();
+
+// ============================================================
+// PÉRIODES — stockées dans config_compta (clé 'periodes'), comme dans
+// l'ancien système (Config sheet). Même règle de calcul par défaut.
+// ============================================================
+async function chargerPeriodes() {
+  let periodes = null;
+  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'periodes').maybeSingle();
+  if (data && Array.isArray(data.valeur) && data.valeur.length) periodes = data.valeur;
+  if (!periodes) {
+    const y = new Date().getFullYear(), m = new Date().getMonth() + 1;
+    const start = m >= 11 ? y : y - 1;
+    periodes = [];
+    for (let i = 2024; i <= start; i++) periodes.push(`${i} - ${i+1}`);
+  }
+  const actuelle = periodes[periodes.length - 1];
+  ['f-per','fl-per'].forEach(id => {
+    const s = document.getElementById(id);
+    s.innerHTML = '';
+    periodes.forEach(p => { const o = document.createElement('option'); o.value=p; o.textContent=p; if(p===actuelle)o.selected=true; s.appendChild(o); });
+  });
+}
+
+function onCaisseChange() {
+  const caisse = document.getElementById('f-caisse').value;
+  document.getElementById('list-title').textContent = 'Historique des comptages — ' + (caisse === 'caisse1' ? 'Caisse 1' : 'Caisse 2');
+  loadData();
+}
+
+// ============================================================
+// CONSTRUCTION DES GRILLES
+// ============================================================
+function buildDenomGrids() {
+  const bg = document.getElementById('billets-grid');
+  BILLETS.forEach(b => {
+    const div = document.createElement('div');
+    div.className = 'billet-item ' + b.cls;
+    div.innerHTML = `
+      <div class="billet-note">${b.label}</div>
+      <input class="billet-input denom-input" data-val="${b.val}" data-key="${b.key}" value="0" type="number" min="0" step="1" oninput="updateTotal()">
+      <div class="billet-total" id="sub-${b.key}">= 0,00 €</div>`;
+    bg.appendChild(div);
+  });
+  const pg = document.getElementById('pieces-grid');
+  PIECES.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'piece-item';
+    div.innerHTML = `
+      <div class="piece-circle ${p.cls}"><span class="piece-label">${p.label.replace(' €','').replace(',','.')}</span></div>
+      <input class="piece-input denom-input" data-val="${p.val}" data-key="${p.key}" value="0" type="number" min="0" step="1" oninput="updateTotal()">
+      <div class="piece-total ${p.cls}" id="sub-${p.key}">0,00 €</div>`;
+    pg.appendChild(div);
+  });
+}
+
+// ============================================================
+// TOTAL EN TEMPS RÉEL (affichage seulement — le vrai total est
+// recalculé côté serveur par creer_comptage_caisse_physique)
+// ============================================================
+function updateTotal() {
+  let totalBillets = 0, totalPieces = 0;
+  document.querySelectorAll('.denom-input').forEach(inp => {
+    const val = parseFloat(inp.dataset.val) || 0;
+    const qty = parseInt(inp.value) || 0;
+    const sous = Math.round(val * qty * 100) / 100;
+    const key = inp.dataset.key;
+    const subEl = document.getElementById('sub-' + key);
+    if (subEl) subEl.textContent = (key.startsWith('b') ? '= ' : '') + fmt(sous);
+    if (BILLETS.find(b => b.key === key)) totalBillets += sous;
+    else totalPieces += sous;
+  });
+  totalBillets = Math.round(totalBillets * 100) / 100;
+  totalPieces  = Math.round(totalPieces  * 100) / 100;
+  const total  = Math.round((totalBillets + totalPieces) * 100) / 100;
+  document.getElementById('total-billets').textContent = fmt(totalBillets);
+  document.getElementById('total-pieces').textContent  = fmt(totalPieces);
+  document.getElementById('total-global').textContent  = fmt(total);
+}
+
+// ============================================================
+// CHARGEMENT
+// ============================================================
+async function loadData() {
+  const caisse = document.getElementById('f-caisse').value;
+  const { data, error } = await supabaseClient
+    .from('caisse_physique_comptages')
+    .select('*')
+    .eq('caisse', caisse)
+    .order('date_comptage', { ascending: true });
+  if (error) { showErr('Erreur de chargement : ' + error.message); return; }
+  allRows = data || [];
+  renderKPIs(); renderTable();
+}
+
+// ============================================================
+// KPIs
+// ============================================================
+function renderKPIs() {
+  const per = document.getElementById('fl-per')?.value;
+  const rows = allRows;
+  const last = rows.length > 0 ? rows[rows.length - 1] : null;
+  const soldActuel = last ? parseFloat(last.total) || 0 : 0;
+  const dateActuel = last ? formatDateFR(last.date_comptage) : '—';
+  const prev = rows.length > 1 ? rows[rows.length - 2] : null;
+  const soldPrev = prev ? parseFloat(prev.total) || 0 : null;
+  const diff = soldPrev !== null ? Math.round((soldActuel - soldPrev) * 100) / 100 : null;
+  const nbPeriode = rows.filter(r => r.periode === per).length;
+
+  document.getElementById('kpi-bar').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Dernier solde constaté</div><div class="kpi-value" style="color:var(--green)">${fmt(soldActuel)}</div><div class="kpi-sub">Le ${dateActuel}</div></div>
+    <div class="kpi"><div class="kpi-label">Évolution</div>
+      <div class="kpi-value" style="color:${diff===null?'var(--text)':diff>=0?'var(--green)':'var(--red)'}">${diff!==null?(diff>=0?'+':'')+fmt(diff):'—'}</div>
+      <div class="kpi-sub">${diff!==null?'vs comptage précédent':'Premier comptage'}</div></div>
+    <div class="kpi"><div class="kpi-label">Comptages période</div><div class="kpi-value" style="color:var(--blue)">${nbPeriode}</div><div class="kpi-sub">Période ${per||''}</div></div>`;
+}
+
+// ============================================================
+// TABLEAU HISTORIQUE
+// ============================================================
+function renderTable() {
+  const per = document.getElementById('fl-per')?.value;
+  const rows = [...allRows.filter(r => per ? r.periode === per : true)].reverse();
+
+  if (!rows.length) {
+    document.getElementById('table-wrap').innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-3);font-size:12px;">Aucun comptage pour cette période</div>';
+    return;
+  }
+
+  const trs = rows.map(r => {
+    const id = 'cp-' + r.id;
+    const isOpen = openRows.has(id);
+    const totalBillets = Math.round(BILLETS.reduce((s, b) => s + b.val * (parseInt(r[b.key]) || 0), 0) * 100) / 100;
+    const totalPieces  = Math.round(PIECES.reduce( (s, p) => s + p.val * (parseInt(r[p.key]) || 0), 0) * 100) / 100;
+
+    const detailBillets = BILLETS.filter(b => (parseInt(r[b.key]) || 0) > 0).map(b => {
+      const qty = parseInt(r[b.key]);
+      const sous = Math.round(b.val * qty * 100) / 100;
+      return `<span style="font-size:10px;padding:2px 7px;border-radius:3px;margin:2px;display:inline-block;border:0.5px solid;" class="${b.cls}">${b.label} × ${qty} = ${fmt(sous)}</span>`;
+    }).join('');
+    const detailPieces = PIECES.filter(p => (parseInt(r[p.key]) || 0) > 0).map(p => {
+      const qty = parseInt(r[p.key]);
+      const sous = Math.round(p.val * qty * 100) / 100;
+      return `<span style="font-size:10px;padding:2px 7px;border-radius:3px;margin:2px;display:inline-block;border:0.5px solid;" class="${p.cls}">${p.label} × ${qty} = ${fmt(sous)}</span>`;
+    }).join('');
+
+    const detailHtml = `
+      <div style="background:var(--surface-2);padding:10px 16px;">
+        <div style="margin-bottom:6px;">
+          <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px;">Billets — ${fmt(totalBillets)}</div>
+          <div>${detailBillets || '<span style="font-size:10px;color:var(--text-3)">Aucun billet</span>'}</div>
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px;">Pièces — ${fmt(totalPieces)}</div>
+          <div>${detailPieces || '<span style="font-size:10px;color:var(--text-3)">Aucune pièce</span>'}</div>
+        </div>
+      </div>`;
+
+    return `
+      <tr>
+        <td><button class="expand-btn ${isOpen?'open':''}" onclick="toggleRow('${id}')">${isOpen?'−':'+'}</button></td>
+        <td style="color:var(--text-3);white-space:nowrap;">${formatDateFR(r.date_comptage)}</td>
+        <td class="r" style="color:var(--green);font-weight:500;">${fmt(totalBillets)}</td>
+        <td class="r" style="color:var(--blue);font-weight:500;">${fmt(totalPieces)}</td>
+        <td class="r" style="font-weight:600;font-size:12px;">${fmt(parseFloat(r.total)||0)}</td>
+        <td class="r"><button class="del-btn" onclick="openDel('${r.id}','${escH(formatDateFR(r.date_comptage))} — ${escH(fmt(parseFloat(r.total)||0))}')" title="Supprimer"><i class="ti ti-trash"></i></button></td>
+      </tr>
+      <tr class="detail-row" id="detail-${id}" style="${isOpen?'':'display:none;'}">
+        <td colspan="6">${detailHtml}</td>
+      </tr>`;
+  }).join('');
+
+  document.getElementById('table-wrap').innerHTML = `
+    <table>
+      <thead><tr>
+        <th style="width:36px;"></th><th>Date</th><th class="r">Billets</th><th class="r">Pièces</th><th class="r">Total</th><th class="r">Actions</th>
+      </tr></thead>
+      <tbody>${trs}</tbody>
+    </table>`;
+}
+
+function toggleRow(id) { if (openRows.has(id)) openRows.delete(id); else openRows.add(id); renderTable(); }
+function clearFilters() { document.getElementById('fl-per').selectedIndex = document.getElementById('fl-per').options.length - 1; renderKPIs(); renderTable(); }
+
+// ============================================================
+// ENREGISTREMENT — le total est recalculé côté serveur (voir
+// creer_comptage_caisse_physique dans 016_caisse_physique.sql), jamais
+// pris tel quel depuis le formulaire.
+// ============================================================
+async function submitComptage() {
+  document.getElementById('form-err').classList.add('hidden');
+  const date = document.getElementById('f-date').value;
+  const per  = document.getElementById('f-per').value;
+  const caisse = document.getElementById('f-caisse').value;
+  if (!date) { showErr('La date est obligatoire.'); return; }
+
+  const qtys = {};
+  document.querySelectorAll('.denom-input').forEach(inp => { qtys[inp.dataset.key] = parseInt(inp.value) || 0; });
+
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2 spinner"></i>';
+  try {
+    const { error } = await supabaseClient.rpc('creer_comptage_caisse_physique', {
+      p_caisse: caisse, p_date: date, p_periode: document.getElementById('f-per').value, p_mois: date,
+      p_b500: qtys.b500, p_b200: qtys.b200, p_b100: qtys.b100, p_b50: qtys.b50, p_b20: qtys.b20, p_b10: qtys.b10, p_b5: qtys.b5,
+      p_p200: qtys.p200, p_p100: qtys.p100, p_p050: qtys.p050, p_p020: qtys.p020, p_p010: qtys.p010, p_p005: qtys.p005, p_p002: qtys.p002, p_p001: qtys.p001,
+    });
+    if (error) throw error;
+    showToast('Comptage enregistré !');
+    resetForm();
+    await loadData();
+  } catch(e) {
+    showErr('Erreur : ' + (e.message || '?'));
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-device-floppy"></i> Enregistrer';
+  }
+}
+
+function resetForm() {
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  document.querySelectorAll('.denom-input').forEach(inp => inp.value = '0');
+  updateTotal();
+  document.getElementById('form-err').classList.add('hidden');
+}
+
+// ============================================================
+// SUPPRESSION
+// ============================================================
+function openDel(id, detail) {
+  delId = id;
+  document.getElementById('del-detail').textContent = detail;
+  document.getElementById('modal-del').classList.remove('hidden');
+}
+function closeDel() { document.getElementById('modal-del').classList.add('hidden'); delId = null; }
+async function confirmDel() {
+  if (!delId) return;
+  try {
+    const { error } = await supabaseClient.rpc('supprimer_comptage_caisse_physique', { p_id: delId });
+    if (error) throw error;
+    closeDel(); showToast('Comptage supprimé'); await loadData();
+  } catch(e) { alert('Erreur : ' + e.message); }
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function fmt(v) {
+  if (v === null || v === undefined || v === '') return '—';
+  return parseFloat(v).toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' €';
+}
+function showErr(m) { const e = document.getElementById('form-err'); e.textContent = m; e.classList.remove('hidden'); }
+function showToast(m) { const t = document.createElement('div'); t.className='success-toast'; t.innerHTML=`<i class="ti ti-check"></i> ${m}`; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+function formatDateFR(d) {
+  if (!d) return '—';
+  const s = String(d).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const p = s.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+  return s;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Réservation — L'Arche de Mallo</title>
+<link rel="stylesheet" href="formulaires-arche-mallo.css">
+</head>
+<body data-form-id="reservation">
+<div id="login-screen" style="position:fixed;inset:0;background:#faf7f2;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid #ddd;border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;color:#3d2b1f;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:#888;margin-bottom:16px;">Connexion requise pour accéder à ce formulaire.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err" style="color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:#c96b2a;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+<div style="background:#fff4e5;border:1px solid #ffd699;color:#7a4a00;font-size:12.5px;padding:8px 14px;text-align:center;" class="no-print">
+  <strong>Formulaire pilote.</strong> Écrit directement dans Supabase. PDF/mail (Apps Script) activés.
+</div>
+
+
+<!-- Boutons flottants -->
+<div class="buttons">
+    <button class="btn btn-save"  onclick="saveForm()">💾 Sauvegarder</button>
+    <button class="btn btn-print btn-print-disabled" onclick="printForm()" disabled>🖨️ Imprimer</button>
+</div>
+
+<div class="page-container">
+<div class="content">
+
+    <div id="entete"></div>
+
+<div class="title" style="text-align:center; margin-top:5px;">Contrat de réservation</div>
+
+<p style="text-align:center;">
+    <span class="blue bold">Type de réservation :</span>
+    <span class="clickable-row" onclick="toggleCheck(this, 'typeResa'); majTypeReservation()"><span class="checkbox" data-group="typeResa" id="type_chat"></span> Chat</span>
+    <span class="clickable-row" onclick="toggleCheck(this, 'typeResa'); majTypeReservation()"><span class="checkbox" data-group="typeResa" id="type_chaton"></span> Chaton</span>
+    <span class="clickable-row" onclick="toggleCheck(this, 'typeResa'); majTypeReservation()"><span class="checkbox" data-group="typeResa" id="type_autre_animal"></span> Autre animal</span>
+</p>
+
+<p style="text-align:center;">N° du BOX : <input type="text" class="editable" style="width:150px;" id="numeroBox"></p>
+
+<!-- Bloc Autre animal : uniquement si ce type est choisi -->
+<div class="section" id="bloc_espece_autre" style="display:none;">
+    <p>
+        <span class="blue">Espèce de l'animal :</span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'espece')"><span class="checkbox" data-group="espece" id="espece_lapin"></span> Lapin</span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'espece')"><span class="checkbox" data-group="espece" id="espece_chien"></span> Chien</span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'espece')"><span class="checkbox" data-group="espece" id="espece_autre"></span> Autre :
+            <input type="text" class="editable editable-medium" id="espece_autre_texte" style="width:150px;" onclick="event.stopPropagation()">
+        </span>
+    </p>
+</div>
+
+    <!-- Informations du chat -->
+<div class="section">
+    <p>
+        <span class="blue">Nom provisoire du chat :</span>
+        <input type="text" class="editable editable-long" id="nomChat" data-required="true" data-label="Nom du chat">
+    </p>
+    <p>
+        <span class="blue">Né(e) le :</span>
+        <input type="date" class="editable editable-date" id="dateNaissance">
+        
+        <span class="blue">Sexe :</span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'sexe_chat')" id="bloc_sexe_chat">
+            <span class="checkbox" data-group="sexe_chat"></span> Mâle
+        </span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'sexe_chat')">
+            <span class="checkbox" data-group="sexe_chat"></span> Femelle
+        </span>
+    </p>
+    <p>
+        <span class="blue">N° d'identification (puce électronique) :</span>
+        <input type="text" class="editable editable-medium" id="identification" data-required="true" data-label="N° identification">
+        <br><span class="blue">Robe, couleur :</span>
+        <input type="text" class="editable editable-medium" id="couleur" data-required="true" data-label="Couleur du chat">
+    </p>
+    <p>
+        <span class="blue">Signes particuliers :</span>
+        <input type="text" class="editable editable-long" id="signesParticuliers">
+    </p>
+</div>
+
+<!-- Bloc Chaton : uniquement si ce type est choisi -->
+<div class="section" id="bloc_chaton" style="display:none;">
+    <p><span class="blue">Nom de la Maman :</span>
+        <input type="text" class="editable editable-medium" id="nomMaman">
+    </p>
+    <p><span class="blue">Nombre de m² du logement :</span>
+        <input type="number" class="editable editable-num" id="superficie"> m²
+    </p>
+</div>
+
+<!-- Identité de l'adoptant -->
+<div class="section">
+    <p><span class="blue">Je soussigné(e) M/Mme</span></p>
+    <p>
+        <span class="blue">Nom :</span>
+        <input type="text" class="editable editable-long" id="nom" data-required="true" data-label="Nom" oninput="this.value=this.value.toUpperCase()">
+    </p>
+    <p>
+        <span class="blue">Prénom :</span>
+        <input type="text" class="editable editable-long" id="prenom" data-required="true" data-label="Prénom" oninput="this.value=this.value.toUpperCase()">
+    </p>
+    <p>
+        <span class="blue">né(e) le</span>
+        <input type="date" class="editable editable-date" id="dateNaissancePersonne" data-required="true" data-label="Date de naissance">
+    </p>
+    <p><span class="blue">Adresse :</span>
+        <input type="text" class="editable editable-long" id="adresseAdoptant" data-required="true" data-label="Adresse">
+    </p>
+    <p>
+        <span class="blue">Code postal :</span>
+        <input type="text" class="editable editable-short" id="codePostal" data-required="true" data-label="Code postal" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        &nbsp;&nbsp;
+        <span class="blue">Ville :</span>
+        <input type="text" class="editable editable-medium" id="ville" data-required="true" data-label="Ville" oninput="this.value=this.value.toUpperCase()">
+    </p>
+    <p><span class="blue">Téléphone :</span>
+        <input type="tel" class="editable editable-tel" id="telephone" data-required="true" data-label="Téléphone" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+    </p>
+    <p><span class="blue">E-mail :</span>
+        <input type="email" class="editable editable-email" id="email" data-required="true" data-label="Email">
+    </p>
+    <p>
+        m'engage à adopter à l'association « l'Arche de Mallo » le chat décrit ci-dessus
+        à compter du <input type="date" class="editable editable-date" id="dateAdoption">
+    </p>
+</div>
+
+    <!-- Logement -->
+    <div class="section">
+        <p>
+    <span class="blue">Type d'habitation :</span>
+    <span id="bloc_habitation">
+        <span class="clickable-row" onclick="toggleCheck(this, 'habitation')">
+            <span class="checkbox" data-group="habitation"></span> Maison
+        </span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'habitation')">
+            <span class="checkbox" data-group="habitation"></span> Appartement
+        </span>
+    </span>
+</p>
+<p>
+            <span class="blue">Espace extérieur :</span>
+            <span id="bloc_exterieur">
+                <span class="clickable-row" onclick="toggleCheck(this, 'exterieur')">
+                    <span class="checkbox" data-group="exterieur"></span> OUI
+                </span>
+                <span class="clickable-row" onclick="toggleCheck(this, 'exterieur')">
+                    <span class="checkbox" data-group="exterieur"></span> NON
+                </span>
+            </span>
+        </p>
+        <p>
+    <span class="blue">Autres animaux :</span>
+    <span class="clickable-row" onclick="toggleCheckMulti(this, event)">
+        <span class="checkbox" id="animal_chat"></span> Chat
+    </span>
+    <span class="clickable-row" onclick="toggleCheckMulti(this, event)">
+        <span class="checkbox" id="animal_chien"></span> Chien
+    </span>
+    <span class="clickable-row" onclick="toggleCheckMulti(this, event)">
+        <span class="checkbox" id="animal_lapin"></span> Lapin
+    </span>
+    <span class="clickable-row" onclick="toggleCheckMulti(this, event)">
+        <span class="checkbox" id="animal_autre"></span> Autre :
+        <input type="text" class="editable editable-medium" id="animal_autre_texte">
+    </span>
+</p>
+        <p>
+            <span class="blue">Enfants :</span>
+            <span id="bloc_enfants">
+                <span class="clickable-row" onclick="toggleCheck(this, 'enfants')">
+                    <span class="checkbox" data-group="enfants"></span> OUI
+                </span>
+                <span class="clickable-row" onclick="toggleCheck(this, 'enfants')">
+                    <span class="checkbox" data-group="enfants"></span> NON
+                </span>
+            </span>
+        </p>
+    </div>
+
+    <!-- Engagement & Acompte -->
+    <div class="section">
+        <p>
+            Cette transaction fera l'objet d'un contrat d'engagement signé le jour de la réservation,
+            au sein des locaux de l'Arche de Mallo.
+        </p>
+
+        <!-- Paiement acompte : MULTI-SÉLECTION dynamique avec montant -->
+        <p class="bold underline">Afin de garantir ma réservation, je verse ce jour un acompte de 50€ par :</p>
+        <div id="paiement-section">
+            <div class="paiement-ligne">
+                <span class="clickable-row" onclick="togglePaiement(this, 'cb', event)">
+                    <span class="checkbox" id="pay_cb"></span> CB
+                </span>
+                <span id="detail_cb" style="display:none;">
+                    &nbsp; Montant : <input type="number" class="editable editable-num" id="montant_cb" min="0" step="0.01"> €
+                </span>
+            </div>
+            <div class="paiement-ligne">
+                <span class="clickable-row" onclick="togglePaiement(this, 'espece', event)">
+                    <span class="checkbox" id="pay_espece"></span> Espèces
+                </span>
+                <span id="detail_espece" style="display:none;">
+                    &nbsp; Montant : <input type="number" class="editable editable-num" id="montant_espece" min="0" step="0.01"> €
+                </span>
+            </div>
+            <div class="paiement-ligne">
+                <span class="clickable-row" onclick="togglePaiement(this, 'virement', event)">
+                    <span class="checkbox" id="pay_virement"></span> Virement
+                </span>
+                <span id="detail_virement" style="display:none;">
+                    &nbsp; Montant : <input type="number" class="editable editable-num" id="montant_virement" min="0" step="0.01"> €
+                </span>
+            </div>
+            <div class="paiement-ligne">
+                <span class="clickable-row" onclick="togglePaiement(this, 'cheque', event)">
+                    <span class="checkbox" id="pay_cheque"></span> Chèque
+                </span>
+                <span id="detail_cheque" style="display:none;">
+                    &nbsp; Montant : <input type="number" class="editable editable-num" id="montant_cheque" min="0" step="0.01"> €
+                    &nbsp; N° <input type="text" class="editable editable-medium" id="numeroPaiement" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                </span>
+            </div>
+            <div class="paiement-ligne">
+                <span class="clickable-row" onclick="togglePaiement(this, 'plusieurs_cheques', event)">
+                    <span class="checkbox" id="pay_plusieurs_cheques"></span> Plusieurs chèques
+                </span>
+                <span id="detail_plusieurs_cheques" style="display:none;">
+                    <br>&nbsp;&nbsp;
+                    N°1 <input type="text" class="editable editable-short" id="cheque1" oninput="this.value=this.value.replace(/[^0-9]/g,'')"> montant : <input type="number" class="editable editable-num" id="montant_cheque1" min="0" step="0.01"> €
+                    <br>&nbsp;&nbsp;
+                    N°2 <input type="text" class="editable editable-short" id="cheque2" oninput="this.value=this.value.replace(/[^0-9]/g,'')"> montant : <input type="number" class="editable editable-num" id="montant_cheque2" min="0" step="0.01"> €
+                    <br>&nbsp;&nbsp;
+                    N°3 <input type="text" class="editable editable-short" id="cheque3" oninput="this.value=this.value.replace(/[^0-9]/g,'')"> montant : <input type="number" class="editable editable-num" id="montant_cheque3" min="0" step="0.01"> €
+                    <br>&nbsp;&nbsp;
+                    N°4 <input type="text" class="editable editable-short" id="cheque4" oninput="this.value=this.value.replace(/[^0-9]/g,'')"> montant : <input type="number" class="editable editable-num" id="montant_cheque4" min="0" step="0.01"> €
+                </span>
+            </div>
+        </div>
+
+        <p class="red">
+            Si le chat choisi décède avant l'adoption finale, la somme versée à titre d'acompte me sera
+            restituée ou sera reportée sur un autre chat, au choix.
+        </p>
+        <p class="red">
+            En revanche, si je me désiste pour quelque motif que ce soit, ladite somme restera acquise
+            pour l'association L'Arche de Mallo.
+        </p>
+    </div>
+
+    <!-- Certifications -->
+    <div class="section">
+        <p class="bold underline">Je certifie :</p>
+        <ul>
+            <li>Avoir les moyens financiers nécessaires pour subvenir à l'intégralité des frais généraux
+                (vétérinaire, alimentaire, litière…) pour le besoin de mon animal</li>
+            <li>Avoir l'espace et la superficie d'accueil nécessaire pour le bien-être de mon animal.</li>
+        </ul>
+    </div>
+
+    
+<!-- Photo de l'animal -->
+<div class="section">
+    <p class="bold blue no-print">📷 Photo de l'animal <span class="red">*</span> (obligatoire)</p>
+    <div class="no-print" style="margin:8px 0;">
+        <label style="display:inline-block; padding:8px 14px; background:#0563c1; color:white; border-radius:5px; cursor:pointer; font-size:13px;">
+            📷 Prendre en photo
+            <input type="file" accept="image/*" capture="environment" id="photoAnimal" style="display:none;"
+                onchange="aperçuPhoto(this, 'preview_Animal')">
+        </label>
+    </div>
+    <!-- Aperçu visible dans le PDF — HORS no-print intentionnellement -->
+    <div id="preview_Animal" style="margin-top:6px;"></div>
+    <div class="no-print" style="margin-top:4px;">
+        <button type="button" class="btn-voir-photo" onclick="ouvrirPhoto('preview_Animal')" id="btn_voir_animal" style="display:none;">Voir la photo de l'animal</button>
+    </div>
+</div>
+
+<!-- Signatures -->
+    <div class="section">
+        <p class="bold">Fait à Autrechêne, le
+            <input type="date" class="editable editable-date" id="dateFait">
+        </p>
+    <p class="bold no-print">Saisi par <select id="saisiPar" class="editable"></select></p>
+
+        <table class="signature-table">
+            <tr>
+                <td>
+    <p>L'Arche de Mallo :</p>
+    <p class="mt-20">
+        <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve1_resa">
+            <span class="checkbox"></span>
+            <span class="bold"> Lu et approuvé</span>
+        </span>
+    </p>
+    <div id="sig1"></div>
+    <div id="sig1-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+</td>
+<td>
+    <p>L'adoptant(e) :</p>
+    <p class="mt-20">
+        <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve2_resa">
+            <span class="checkbox"></span>
+            <span class="bold"> Lu et approuvé</span>
+        </span>
+    </p>
+    <div id="sig2"></div>
+    <div id="sig2-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+</td>
+            </tr>
+        </table>
+    </div>
+
+</div><!-- /content -->
+</div><!-- /page-container -->
+
+
+
+	
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="selecteur-animal.js"></script>
+<script src="config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script>
+    creerEntete({ dateId: 'dateReservation', dateLabel: 'Date réservation :' });
+    creerSignature('sig1');
+    creerSignature('sig2');
+    appliquerPrefill();
+
+    const ENVOYER_PDF_MAIL = true;
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+chargerListeSaisisseurs();
+
+    // Type de réservation choisi en haut de page : montre/cache les blocs
+    // propres à chaque type, et réinitialise le sélecteur d'animal avec les
+    // bons statuts (on réserve toujours un animal encore 'adoptable').
+    var typeReservationActuel = null;
+    var selecteurAnimal = null;
+
+    function typeReservationChoisi() {
+        if (document.getElementById('type_chat').classList.contains('checked')) return 'chat';
+        if (document.getElementById('type_chaton').classList.contains('checked')) return 'chaton';
+        if (document.getElementById('type_autre_animal').classList.contains('checked')) return 'autre_animal';
+        return null;
+    }
+
+    function majTypeReservation() {
+        typeReservationActuel = typeReservationChoisi();
+        document.getElementById('bloc_chaton').style.display = (typeReservationActuel === 'chaton') ? '' : 'none';
+        document.getElementById('bloc_espece_autre').style.display = (typeReservationActuel === 'autre_animal') ? '' : 'none';
+
+        if (!selecteurAnimal) {
+            selecteurAnimal = initSelecteurAnimal({
+                inputId: 'nomChat',
+                contexte: 'reservation',
+                champsVerrouilles: { identification: 'puce', dateNaissance: 'date_naissance' },
+                champsModifiables: { couleur: 'couleur', signesParticuliers: 'signes_particuliers' }
+            });
+        }
+    }
+
+// Aperçu miniature après prise de photo (avec bouton "Voir la photo" / zoom)
+    function aperçuPhoto(input, previewId) {
+        var preview = document.getElementById(previewId);
+        if (!preview) return;
+        if (!input.files || !input.files[0]) return;
+        var file = input.files[0];
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var src = e.target.result;
+            preview._photoBase64 = src;
+            if (previewId === 'preview_Animal') {
+                preview.innerHTML =
+                    '<img src="' + src + '" style="max-width:200px;max-height:150px;margin-top:4px;border:1px solid #ccc;border-radius:4px;display:block;" alt="Photo animal">' +
+                    '<span class="no-print" style="font-size:10px;color:green;display:block;margin-top:2px;">✔ ' + file.name + '</span>';
+                var btnVoir = document.getElementById('btn_voir_animal');
+                if (btnVoir) btnVoir.style.display = 'inline-block';
+            } else {
+                preview.innerHTML =
+                    `<span style="font-size:11px;color:green;display:block;">✔ ${file.name}</span>` +
+                    `<button type="button" class="btn-voir-photo no-print" onclick="ouvrirPhoto('${previewId}')" style="margin-top:4px;">Voir la photo</button>`;
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ouvrirPhoto() est désormais dans formulaires-arche-mallo.js (partagé) —
+    // retirée d'ici pour éviter la duplication.
+	
+    var today = new Date().toISOString().split('T')[0];
+    ['dateReservation', 'dateFait'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el && !el.value) el.value = today;
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        ['dateAdoption', 'dateNaissance', 'dateNaissancePersonne'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+    });
+
+    function toggleCheckMulti(element) {
+        var box = element.querySelector('.checkbox');
+        if (box) box.classList.toggle('checked');
+    }
+
+    validateRequiredFields = function() {
+        var missing = [];
+
+        // Champs data-required
+        document.querySelectorAll('[data-required="true"]').forEach(function(el) {
+            var label = el.getAttribute('data-label') || el.id;
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                if (!el.value || el.value.trim() === '') {
+                    missing.push(label);
+                    el.style.borderBottom = '2px solid red';
+                } else {
+                    el.style.borderBottom = '';
+                }
+            }
+        });
+
+        // Email
+        var elEmail = document.getElementById('email');
+        if (elEmail && elEmail.value.trim()) {
+            var valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(elEmail.value.trim());
+            if (!valid) {
+                missing.push('Email invalide');
+                elEmail.style.borderBottom = '2px solid red';
+            }
+        }
+
+        // Groupes radio obligatoires
+        var groupesObligatoires = [
+            { group: 'sexe_chat',  label: 'Sexe du chat' },
+            { group: 'habitation', label: 'Type d\'habitation' },
+            { group: 'exterieur',  label: 'Espace extérieur' },
+            { group: 'enfants',    label: 'Enfants' }
+        ];
+        groupesObligatoires.forEach(function(item) {
+            var checked = document.querySelector('.checkbox[data-group="' + item.group + '"].checked');
+            if (!checked) {
+                missing.push(item.label);
+                document.querySelectorAll('.checkbox[data-group="' + item.group + '"]').forEach(function(cb) {
+                    cb.style.outline = '2px solid red';
+                    cb.style.outlineOffset = '1px';
+                });
+            } else {
+                document.querySelectorAll('.checkbox[data-group="' + item.group + '"]').forEach(function(cb) {
+                    cb.style.outline = '';
+                });
+            }
+        });
+
+        // Paiement : au moins un mode
+        var allPayIds = ['pay_cb','pay_espece','pay_virement','pay_cheque','pay_plusieurs_cheques'];
+        var paiementCoche = allPayIds.some(function(id) {
+            var el = document.getElementById(id);
+            return el && el.classList.contains('checked');
+        });
+        if (!paiementCoche) {
+            missing.push('Mode de règlement (au moins un)');
+            allPayIds.forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) { el.style.outline = '2px solid red'; el.style.outlineOffset = '1px'; }
+            });
+        } else {
+            allPayIds.forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) el.style.outline = '';
+            });
+        }
+
+        // Lu et approuvé
+        ['luApprouve1_resa', 'luApprouve2_resa'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) {
+                var cb = el.querySelector('.checkbox');
+                if (cb && !cb.classList.contains('checked')) {
+                    var labels = { luApprouve1_resa: 'Lu et approuvé (Arche de Mallo)', luApprouve2_resa: 'Lu et approuvé (Adoptant)' };
+                    missing.push(labels[id]);
+                    cb.style.outline = '2px solid red';
+                } else if (cb) {
+                    cb.style.outline = '';
+                }
+            }
+        });
+
+        // Signatures
+        ['sig1', 'sig2'].forEach(function(sigId) {
+            var container = document.getElementById(sigId);
+            if (container && !container._signed) {
+                var labels = { sig1: 'Signature Arche de Mallo', sig2: "Signature de l'adoptant" };
+                missing.push(labels[sigId]);
+            }
+        });
+
+        // Photo de l'animal obligatoire
+        var photoAnimal = document.getElementById('photoAnimal');
+        if (!photoAnimal || !photoAnimal.files || !photoAnimal.files[0]) {
+            missing.push("Photo de l'animal (obligatoire)");
+            var lblAnimal = photoAnimal ? photoAnimal.parentElement : null;
+            if (lblAnimal) lblAnimal.style.outline = '2px solid red';
+        } else {
+            var lblAnimal2 = photoAnimal.parentElement;
+            if (lblAnimal2) lblAnimal2.style.outline = '';
+        }
+
+        if (!typeReservationChoisi()) {
+            missing.push('Type de réservation (Chat / Chaton / Autre animal)');
+        }
+
+        return missing;
+    };
+
+    // ============================================================
+    // SUPABASE — remplace l'envoi (sheet) vers Apps Script pour la partie
+    // structurée. PDF + Drive (photos) + mail restent sur Apps Script.
+    // ============================================================
+    function chequesDepuisFormData(data) {
+        var cheques = [];
+        ['1', '2', '3', '4'].forEach(function(n) {
+            var num = data['cheque' + n];
+            var montant = data['montant_cheque' + n];
+            if (num || montant) {
+                cheques.push({ numero_cheque: num || null, montant: montant ? parseFloat(montant) : null });
+            }
+        });
+        if (cheques.length === 0 && (data.numeroPaiement || data.montant_cheque)) {
+            cheques.push({
+                numero_cheque: data.numeroPaiement || null,
+                montant: data.montant_cheque ? parseFloat(data.montant_cheque) : null
+            });
+        }
+        return cheques;
+    }
+
+    async function saveForm() {
+        var missing = validateRequiredFields();
+        if (missing.length > 0) {
+            afficherMessage('⚠️ Veuillez remplir les champs obligatoires :<br><br>• ' + missing.join('<br>• '), 'erreur');
+            return;
+        }
+
+        var data = collectFormData();
+        data.onglet = 'reservation_' + typeReservationActuel;
+        data.signatureImage = getSignatureImage();
+        data.htmlContent = encodeBase64Unicode(buildHtmlWithData());
+
+        var especeAutreTexte = null;
+        if (typeReservationActuel === 'autre_animal') {
+            if (document.getElementById('espece_chien').classList.contains('checked')) especeAutreTexte = 'Chien';
+            else if (document.getElementById('espece_lapin').classList.contains('checked')) especeAutreTexte = 'Lapin';
+            else especeAutreTexte = document.getElementById('espece_autre_texte').value || 'Autre';
+        }
+
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:bold;font-family:Arial;';
+        overlay.innerHTML = '<div style="text-align:center">En cours...<br><br><small>Veuillez patienter</small></div>';
+        document.body.appendChild(overlay);
+
+        try {
+            const { data: reservationId, error } = await supabaseClient.rpc('creer_reservation', {
+                p_type_reservation: typeReservationActuel,
+                p_nom: data.nom,
+                p_prenom: data.prenom,
+                p_date_naissance_personne: data.dateNaissancePersonne || null,
+                p_adresse: data.adresseAdoptant,
+                p_code_postal: data.codePostal,
+                p_ville: data.ville,
+                p_telephone: data.telephone,
+                p_email: data.email,
+                p_nom_chat: data.nomChat,
+                p_date_naissance_animal: data.dateNaissance || null,
+                p_couleur: data.couleur,
+                p_identification: data.identification,
+                p_signes_particuliers: data.signesParticuliers,
+                p_nom_maman: typeReservationActuel === 'chaton' ? data.nomMaman : null,
+                p_superficie: (typeReservationActuel === 'chaton' && data.superficie) ? parseFloat(data.superficie) : null,
+                p_espece_autre: especeAutreTexte,
+                p_numero_box: data.numeroBox,
+                p_date_reservation: data.dateReservation || null,
+                p_montant_virement: data.montant_virement ? parseFloat(data.montant_virement) : null,
+                p_montant_espece: data.montant_espece ? parseFloat(data.montant_espece) : null,
+                p_montant_cb: data.montant_cb ? parseFloat(data.montant_cb) : null,
+                p_saisi_par_id: data.saisiPar || null,
+                p_cheques: chequesDepuisFormData(data),
+                p_animal_id: selecteurAnimal ? selecteurAnimal.getAnimalId() : null
+            });
+
+            document.body.removeChild(overlay);
+            if (error) throw error;
+
+            if (ENVOYER_PDF_MAIL) {
+                data.filename = buildFilename(data);
+                await sendToGoogle(data);
+                if (typeof postSavePhotos === 'function') {
+                    await postSavePhotos(data, data.filename);
+                }
+            }
+
+            formSaved = true;
+            var btnSave = document.querySelector('.btn-save');
+            var btnPrint = document.querySelector('.btn-print');
+            if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
+            if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
+            afficherMessage('✅ Réservation enregistrée (id ' + reservationId + ').');
+        } catch (err) {
+            document.body.removeChild(overlay);
+            console.error(err);
+            alert('Erreur lors de la sauvegarde : ' + (err.message || err));
+        }
+    }
+
+    // Envoi photo après sauvegarde réussie
+    async function postSavePhotos(data, filename) {
+        var prenomEl = document.getElementById('prenom');
+        var nomEl2   = document.getElementById('nom');
+        var animalEl = document.getElementById('nomChat');
+        var dateEl   = document.getElementById('dateFait');
+        await envoyerPhotoAnimal('Contrat_reservation_chat',
+            prenomEl ? prenomEl.value : '',
+            nomEl2   ? nomEl2.value   : '',
+            animalEl ? animalEl.value : '',
+            dateEl   ? dateEl.value   : '');
+    }
+</script>
+	
+</body>
+</html>

@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analyse — Compta Arche de Mallo</title>
+<link rel="stylesheet" href="compta-style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  .tabs-bar{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:16px;border-bottom:0.5px solid var(--border);padding-bottom:8px;}
+  .tab-btn{font-size:11px;padding:6px 12px;border-radius:var(--radius-sm);border:0.5px solid var(--border-mid);background:var(--surface);cursor:pointer;color:var(--text-2);}
+  .tab-btn.active{background:var(--orange);color:white;border-color:var(--orange);}
+  .tab-pane{display:none;}
+  .tab-pane.active{display:block;}
+  .kpi-top{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+  .kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px 14px;}
+  .kpi-label{font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;}
+  .kpi-value{font-size:18px;font-weight:600;}
+  .kpi-sub{font-size:10px;color:var(--text-3);margin-top:2px;}
+  .v-green{color:var(--green);} .v-red{color:var(--red);} .v-orange{color:var(--orange);} .v-blue{color:var(--blue);}
+  .card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;}
+  .card-head{padding:10px 14px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+  .card-title{font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px;}
+  .card-cfg-btn{background:none;border:0.5px solid var(--border-mid);border-radius:6px;cursor:pointer;padding:3px 6px;color:var(--text-2);}
+  .card-body{padding:14px;}
+  table{width:100%;border-collapse:collapse;font-size:11px;}
+  thead th{text-align:left;font-size:9px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;padding:6px 10px;border-bottom:0.5px solid var(--border);background:var(--surface-2);}
+  tbody td{padding:6px 10px;border-bottom:0.5px solid var(--border);}
+  .r{text-align:right;font-variant-numeric:tabular-nums;}
+  .amount-c{color:var(--green);} .amount-d{color:var(--red);}
+  .badge{font-size:9px;padding:2px 7px;border-radius:10px;background:var(--surface-2);color:var(--text-2);}
+  .badge-green{background:var(--green-bg);color:var(--green);} .badge-red{background:var(--red-bg);color:var(--red);}
+  .badge-orange{background:rgba(201,107,42,0.12);color:var(--orange);} .badge-grey{background:var(--surface-2);color:var(--text-3);}
+  .empty-state{padding:24px;text-align:center;color:var(--text-3);font-size:12px;}
+  .per-check{font-size:11px;display:inline-flex;align-items:center;gap:4px;margin-right:10px;padding:3px 8px;border:0.5px solid var(--border-mid);border-radius:10px;cursor:pointer;}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;}
+  .bar-label{width:150px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-2);}
+  .bar-track{flex:1;height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden;}
+  .bar-fill{height:8px;border-radius:4px;}
+  .bar-red{background:var(--red);} .bar-green{background:var(--green);}
+  .bar-value{width:80px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums;}
+  .accordion-row{cursor:pointer;}
+  .accordion-row:hover{background:var(--cream);}
+  .accordion-detail{background:var(--surface-2);padding:10px 16px;}
+  .ag-cb-item{display:block;font-size:11px;padding:3px 0;cursor:pointer;}
+  .cb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;max-height:200px;overflow-y:auto;}
+  .cb-item{font-size:11px;display:block;padding:2px 0;}
+  .warn-box{background:#fff4e5;border:0.5px solid #ffd699;color:#7a4a00;font-size:11px;padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:10px;}
+  .config-panel{background:var(--surface-2);border:0.5px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px;}
+  .evt-tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;}
+  .evt-tab{font-size:11px;padding:5px 10px;border-radius:10px;border:0.5px solid var(--border-mid);background:var(--surface);cursor:pointer;}
+  .evt-tab.active{background:var(--orange);color:white;border-color:var(--orange);}
+  .hidden{display:none!important;}
+  #login-screen{max-width:340px;margin:80px auto;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:28px;}
+  #login-screen input{width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-size:13px;}
+  #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <h1 style="font-size:16px;">Compta — L'Arche de Mallo</h1>
+  <p style="font-size:12px;color:var(--text-3);margin-bottom:16px;">Connexion requise.</p>
+  <input type="email" id="login-email" placeholder="Email">
+  <input type="password" id="login-password" placeholder="Mot de passe">
+  <div id="login-err"></div>
+  <button class="btn btn-primary" style="width:100%;" onclick="seConnecter()">Se connecter</button>
+</div>
+
+<div id="app" class="hidden">
+<div class="main" style="margin:0;">
+  <div class="topbar">
+    <div class="topbar-title"><i class="ti ti-chart-infographic" style="color:var(--orange)"></i> Analyse</div>
+    <div class="topbar-right" style="display:flex;align-items:center;gap:14px;">
+      <span style="font-size:11px;color:var(--text-3);" id="topbar-period-display"></span>
+      <select id="periode-select" class="f-select" onchange="onPeriodeChange(this.value)"></select>
+      <span style="font-size:11px;color:var(--text-3);" id="topbar-user"></span>
+      <button class="btn btn-secondary btn-sm" onclick="seDeconnecter()">Déconnexion</button>
+    </div>
+  </div>
+  <div class="page-content">
+    <div id="global-loading" style="padding:40px;text-align:center;color:var(--text-3);">Chargement…</div>
+
+    <div class="tabs-bar" id="tabs-bar" style="display:none;">
+      <button class="tab-btn active" id="tab-btn-ag" onclick="switchTab('ag')">Synthèse</button>
+      <button class="tab-btn" id="tab-btn-repartition" onclick="switchTab('repartition')">Répartition</button>
+      <button class="tab-btn" id="tab-btn-chat" onclick="switchTab('chat')">Par chat</button>
+      <button class="tab-btn" id="tab-btn-moyennes" onclick="switchTab('moyennes')">Moyennes</button>
+      <button class="tab-btn" id="tab-btn-fournisseurs" onclick="switchTab('fournisseurs')">Fournisseurs</button>
+      <button class="tab-btn" id="tab-btn-dons" onclick="switchTab('dons')">Dons</button>
+      <button class="tab-btn" id="tab-btn-subventions" onclick="switchTab('subventions')">Subventions</button>
+      <button class="tab-btn" id="tab-btn-adhesions" onclick="switchTab('adhesions')">Adhésions</button>
+      <button class="tab-btn" id="tab-btn-adoptions" onclick="switchTab('adoptions')">Adoptions</button>
+      <button class="tab-btn" id="tab-btn-evenements" onclick="switchTab('evenements')">Événements</button>
+      <button class="tab-btn" id="tab-btn-parametres" onclick="switchTab('parametres')" style="margin-left:auto;"><i class="ti ti-settings"></i> Paramètres</button>
+    </div>
+
+    <!-- ============ SYNTHÈSE (AG) ============ -->
+    <div id="tab-ag" class="tab-pane active">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-size:13px;color:var(--text-3);" id="ag-periode-label"></div>
+      </div>
+      <div class="kpi-top">
+        <div class="kpi"><div class="kpi-label">Recettes</div><div class="kpi-value v-green" id="ag-kpi-recettes">—</div></div>
+        <div class="kpi"><div class="kpi-label">Dépenses</div><div class="kpi-value v-red" id="ag-kpi-depenses">—</div></div>
+        <div class="kpi"><div class="kpi-label">Résultat</div><div class="kpi-value" id="ag-kpi-resultat">—</div></div>
+      </div>
+      <div class="card"><div class="card-head"><div class="card-title"><i class="ti ti-list-details"></i> Détail par catégorie</div></div>
+        <div class="card-body" id="ag-table-wrap"></div>
+      </div>
+    </div>
+
+    <!-- ============ RÉPARTITION ============ -->
+    <div id="tab-repartition" class="tab-pane"><div id="repartition-inner"></div></div>
+
+    <!-- ============ CHAT ============ -->
+    <div id="tab-chat" class="tab-pane">
+      <div style="margin-bottom:10px;">
+        <span style="font-size:11px;color:var(--text-3);margin-right:8px;">Périodes :</span>
+        <span id="chat-periode-checks"></span>
+        <a href="#" onclick="selectAllChatPeriodes(true);return false;" style="font-size:10px;margin-left:8px;">Tout</a> ·
+        <a href="#" onclick="selectAllChatPeriodes(false);return false;" style="font-size:10px;">Aucun</a>
+      </div>
+      <div class="kpi-row" id="chat-global-kpis"></div>
+      <div class="card"><div class="card-head"><div class="card-title"><i class="ti ti-chart-bar"></i> Dépenses par type — <span id="chat-global-badge"></span></div></div>
+        <div class="card-body" id="chat-global-bars"></div>
+      </div>
+      <div class="card"><div class="card-head"><div class="card-title"><i class="ti ti-cat"></i> Récapitulatif par chat</div></div>
+        <div class="card-body" id="chat-recap-wrap"></div>
+      </div>
+      <div class="card"><div class="card-head">
+        <div class="card-title"><i class="ti ti-search"></i> Détail d'un chat</div>
+        <select id="chat-select" class="f-select" onchange="renderChatDetail()"><option value="">— Choisir —</option></select>
+      </div><div class="card-body" id="chat-detail-wrap"></div></div>
+    </div>
+
+    <!-- ============ MOYENNES ============ -->
+    <div id="tab-moyennes" class="tab-pane">
+      <div style="margin-bottom:10px;">
+        <span style="font-size:11px;color:var(--text-3);margin-right:8px;">Périodes :</span>
+        <span id="moy-periode-checks"></span>
+        <a href="#" onclick="selectAllMoyPeriodes(true);return false;" style="font-size:10px;margin-left:8px;">Tout</a> ·
+        <a href="#" onclick="selectAllMoyPeriodes(false);return false;" style="font-size:10px;">Aucun</a>
+      </div>
+      <div class="card"><div class="card-head">
+        <div class="card-title"><i class="ti ti-coin"></i> Coût moyen par chat</div>
+      </div>
+      <div class="card-body" id="moy-cout-wrap"></div></div>
+
+      <div class="card"><div class="card-head">
+        <div class="card-title"><i class="ti ti-home-heart"></i> Frais de cession moyen (adoption)</div>
+      </div>
+      <div class="card-body" id="moy-cession-wrap"></div></div>
+    </div>
+
+    <!-- ============ FOURNISSEURS ============ -->
+    <div id="tab-fournisseurs" class="tab-pane">
+      <div class="card"><div class="card-head"><div class="card-title"><i class="ti ti-list-numbers"></i> Classement — <span id="four-classement-badge"></span></div></div>
+        <div class="card-body" id="four-classement-wrap" style="overflow-x:auto;"></div></div>
+      <div class="card"><div class="card-head"><div class="card-title"><i class="ti ti-layout-grid"></i> Par catégorie</div></div>
+        <div class="card-body" id="four-categories-wrap"></div></div>
+      <div class="card"><div class="card-head">
+        <div class="card-title"><i class="ti ti-address-card"></i> Fiche fournisseur</div>
+        <select id="four-fiche-select" class="f-select" onchange="renderFourFiche()"></select>
+      </div><div class="card-body" id="four-fiche-wrap"></div></div>
+    </div>
+
+    <!-- ============ DONS / SUBVENTIONS / ADHÉSIONS / ADOPTIONS ============ -->
+    <div id="tab-dons" class="tab-pane"><div id="dons-inner"></div></div>
+    <div id="tab-subventions" class="tab-pane"><div id="subventions-inner"></div></div>
+    <div id="tab-adhesions" class="tab-pane"><div id="adhesions-inner"></div></div>
+    <div id="tab-adoptions" class="tab-pane"><div id="adoptions-inner"></div></div>
+
+    <!-- ============ ÉVÉNEMENTS ============ -->
+    <div id="tab-evenements" class="tab-pane"><div id="evenements-inner"></div></div>
+
+    <!-- ============ PARAMÈTRES ============ -->
+    <div id="tab-parametres" class="tab-pane">
+      <div class="evt-tabs">
+        <button class="evt-tab active" id="param-tab-btn-ag" onclick="switchParamTab('ag')">Synthèse</button>
+        <button class="evt-tab" id="param-tab-btn-moyennes" onclick="switchParamTab('moyennes')">Moyennes</button>
+        <button class="evt-tab" id="param-tab-btn-evenements" onclick="switchParamTab('evenements')">Événements</button>
+      </div>
+
+      <div id="param-ag" class="tab-pane active">
+        <div style="font-size:11px;color:var(--text-3);margin-bottom:10px;">Catégories utilisées par l'onglet Synthèse.</div>
+        <div id="ag-config-panel"></div>
+      </div>
+
+      <div id="param-moyennes" class="tab-pane">
+        <div class="card"><div class="card-head"><div class="card-title">Coût moyen par chat — descriptions comptées</div></div>
+          <div class="card-body" id="moy-cout-config-panel">
+            <div class="cb-grid" id="moy-cout-cb-list"></div>
+            <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="saveMoyCostConfig()">Enregistrer</button>
+          </div>
+        </div>
+        <div class="card"><div class="card-head"><div class="card-title">Frais de cession — statuts d'adoption comptés</div></div>
+          <div class="card-body" id="moy-adopt-config-panel">
+            <div id="moy-adopt-cb-list"></div>
+            <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="saveMoyAdoptionConfig()">Enregistrer</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="param-evenements" class="tab-pane">
+        <div id="evenements-config-panel"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let roleActuel = null;
+let allCaisse = [], allBanque = [], allFactures = [], allCheques = [], allRemiseDetails = [];
+let periodes = [], activePer = '';
+let charts = {};
+
+async function seConnecter() {
+  document.getElementById('login-err').textContent = '';
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) { document.getElementById('login-err').textContent = 'Connexion refusée : ' + error.message; return; }
+  await demarrerApp();
+}
+async function seDeconnecter() { await supabaseClient.auth.signOut(); location.reload(); }
+async function demarrerApp() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  const { data: profil, error } = await supabaseClient.from('profils_compta').select('role, email').eq('user_id', user.id).maybeSingle();
+  if (error || !profil) { document.getElementById('login-err').textContent = "Ce compte n'est pas autorisé sur la Compta."; await supabaseClient.auth.signOut(); return; }
+  roleActuel = profil.role;
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('topbar-user').textContent = profil.email + (roleActuel==='lecteur' ? ' (lecture seule)' : '');
+  await chargerPeriodes();
+  await loadData();
+}
+(async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(); })();
+
+async function chargerPeriodes() {
+  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'periodes').maybeSingle();
+  periodes = (data && Array.isArray(data.valeur) && data.valeur.length) ? data.valeur : [];
+  if (!periodes.length) { const y=new Date().getFullYear(), m=new Date().getMonth()+1, start=m>=11?y:y-1; periodes=[]; for(let i=2024;i<=start;i++) periodes.push(`${i} - ${i+1}`); }
+  activePer = periodes[periodes.length-1];
+  const sel = document.getElementById('periode-select');
+  sel.innerHTML = periodes.map(p => `<option value="${p}" ${p===activePer?'selected':''}>${p}</option>`).join('');
+}
+function onPeriodeChange(p) { activePer = p; renderAll(); }
+
+async function loadData() {
+  document.getElementById('global-loading').style.display = 'block';
+  document.getElementById('tabs-bar').style.display = 'none';
+  try {
+    const [c, b, f, ch, rd] = await Promise.all([
+      supabaseClient.from('caisse_mouvements').select('*'),
+      supabaseClient.from('banque_mouvements').select('*'),
+      supabaseClient.from('factures').select('*'),
+      supabaseClient.from('cheques').select('*'),
+      supabaseClient.from('remise_cheques_details').select('*, remises_cheques!inner(periode, date_remise)'),
+    ]);
+    allCaisse = c.data || [];
+    allBanque = b.data || [];
+    allFactures = f.data || [];
+    allCheques = ch.data || [];
+    allRemiseDetails = (rd.data || []).map(d => ({ ...d, periode: d.remises_cheques.periode, date_remise: d.remises_cheques.date_remise }));
+  } catch(e) { console.error('loadData', e); }
+
+  await loadAgConfig();
+  document.getElementById('global-loading').style.display = 'none';
+  document.getElementById('tabs-bar').style.display = 'flex';
+  renderAll();
+}
+
+function renderAll() {
+  document.getElementById('topbar-period-display').textContent = 'Période : ' + activePer;
+  renderAG();
+}
+
+const ALL_TABS = ['ag','repartition','chat','moyennes','fournisseurs','dons','subventions','adhesions','adoptions','evenements','parametres'];
+let tabsInit = new Set();
+function switchTab(tab) {
+  ALL_TABS.forEach(t => {
+    document.getElementById('tab-btn-'+t).classList.toggle('active', t===tab);
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+  });
+  if (tab === 'repartition') renderRepartition();
+  if (tab === 'chat' && !tabsInit.has('chat')) { tabsInit.add('chat'); renderChatInit(); } else if (tab==='chat') { renderChatGlobal(); renderChatDetail(); }
+  if (tab === 'moyennes' && !tabsInit.has('moyennes')) { tabsInit.add('moyennes'); renderMoyennesInit(); } else if (tab==='moyennes') renderMoyennes();
+  if (tab === 'fournisseurs') { renderFourClassement(); renderFourCategories(); buildFourSelect(); }
+  if (tab === 'dons') renderDons();
+  if (tab === 'subventions') renderSubventions();
+  if (tab === 'adhesions') renderAdhesions();
+  if (tab === 'adoptions') renderAdoptions();
+  if (tab === 'evenements') renderEvenements();
+  if (tab === 'parametres') switchParamTab(paramTabActif);
+}
+
+// ============================================================
+// PARAMÈTRES — regroupe toutes les configurations dispersées dans les
+// onglets analytiques (auparavant un bouton engrenage par carte).
+// ============================================================
+const PARAM_TABS = ['ag','moyennes','evenements'];
+let paramTabActif = 'ag';
+async function switchParamTab(tab) {
+  paramTabActif = tab;
+  PARAM_TABS.forEach(t => {
+    document.getElementById('param-tab-btn-'+t).classList.toggle('active', t===tab);
+    document.getElementById('param-'+t).classList.toggle('active', t===tab);
+  });
+  if (tab === 'ag') renderAgConfigPanel();
+  if (tab === 'moyennes') {
+    if (moyCostTypes === null || moyAdoptStatuts === null) { moyPeriodes = [activePer]; await Promise.all([loadMoyCostConfig(), loadMoyAdoptConfig()]); }
+    renderMoyCoutConfigPanel(); renderMoyAdoptConfigPanel();
+  }
+  if (tab === 'evenements') { if (evenementsConfig === null) await loadEvenementsConfig(); renderEvenementsConfigPanel(); }
+}
+
+const fmt = v => (parseFloat(v)||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+const fmtS = v => { if (v===null||v===undefined||v==='') return '—'; const n=parseFloat(v); return isNaN(n) ? '—' : fmt(n); };
+const fmtN = v => parseFloat(v) || 0;
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+function showToast(m) { const t=document.createElement('div'); t.style.cssText='position:fixed;bottom:20px;right:20px;background:var(--green);color:white;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:500;z-index:999;'; t.textContent=m; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
+async function saveConfigKey(cle, valeur) {
+  const { error } = await supabaseClient.rpc('definir_config_compta', { p_cle: cle, p_valeur: valeur });
+  if (error) throw error;
+}
+function normFold(s) { return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+function get12MoisPeriode(per) {
+  const parts = (per||'').split(' - ').map(Number);
+  if (parts.length !== 2 || !parts[0]) return [];
+  const [y1,y2] = parts;
+  const mois = [];
+  for (let i=0;i<12;i++) {
+    const mMonth=(10+i)%12, mYear = i<2?y1:y2;
+    const d = new Date(mYear, mMonth, 1);
+    mois.push({ label: d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}), full: d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}), date: d });
+  }
+  return mois;
+}
+function get12MoisGlissants() {
+  const mois=[], now=new Date();
+  for (let i=11;i>=0;i--) { const d=new Date(now.getFullYear(),now.getMonth()-i,1); mois.push({ label:d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}), full:d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}), date:d }); }
+  return mois;
+}
+function getPrevPeriode(per) {
+  const parts = (per||'').split(' - ').map(Number);
+  return (parts.length===2 && parts[0]) ? `${parts[0]-1} - ${parts[1]-1}` : '';
+}
+function rowInMonth(dateStr, moisLabel) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  if (isNaN(d)) return false;
+  return d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}).toLowerCase() === moisLabel.toLowerCase();
+}
+function renderBars(containerId, items, colorClass, total) {
+  const el = document.getElementById(containerId);
+  if (!items.length || total === 0) { el.innerHTML = '<div class="empty-state"><i class="ti ti-chart-bar"></i> Aucune donnée</div>'; return; }
+  const sorted = [...items].sort((a,b)=>b.val-a.val).filter(i=>i.val>0);
+  el.innerHTML = sorted.map(item => {
+    const pct = total > 0 ? Math.round(item.val/total*100) : 0;
+    return `<div class="bar-row"><div class="bar-label" title="${escH(item.label)}">${escH(item.label)}</div>
+      <div class="bar-track"><div class="bar-fill ${colorClass}" style="width:${pct}%"></div></div>
+      <div class="bar-value">${fmt(item.val)}</div></div>`;
+  }).join('');
+}
+
+const AG_CONFIG_DEFAUT = [
+  { cat: 'Dons', sens: 'recette', sources: ['banque','caisse'], types: ['Dons','Don libre','Don fléché'] },
+  { cat: 'Événements', sens: 'recette', sources: ['banque','caisse'], types: ['Evenement','Brocante','Vide-grenier','Loto','Marche de Noel','Soirée Paela'] },
+  { cat: 'Ventes', sens: 'recette', sources: ['banque','caisse'], types: ['Ventes diverses'] },
+  { cat: 'Subventions', sens: 'recette', sources: ['banque','caisse'], types: ['Subventions'] },
+  { cat: 'Adhésions', sens: 'recette', sources: ['banque','caisse'], types: ['Adhesion'] },
+  { cat: 'Adoptions', sens: 'recette', sources: ['banque','caisse'], types: ['Adoption'] },
+  { cat: 'Cautions prêt de matériel', sens: 'recette', sources: ['banque','caisse'], types: ['Pret materiel','Caution materiel'] },
+  { cat: 'Frais vétérinaires', sens: 'depense', sources: ['banque','caisse'], types: ['Vétérinaire','Soins','Pharmacie'] },
+  { cat: 'Frais de bureau', sens: 'depense', sources: ['banque','caisse'], types: ['Fourniture de bureau'] },
+  { cat: 'Frais bancaires', sens: 'depense', sources: ['banque'], types: ['Frais de compte'] },
+  { cat: 'Équipement', sens: 'depense', sources: ['banque','caisse'], types: ['Equipement'] },
+  { cat: "Produits d'entretien", sens: 'depense', sources: ['banque','caisse'], types: ["Produits d'entretien"] },
+  { cat: 'Litière', sens: 'depense', sources: ['banque','caisse'], types: ['Litiere'] },
+  { cat: 'Alimentation', sens: 'depense', sources: ['banque','caisse'], types: ['Nourriture'] },
+  { cat: 'Assurance', sens: 'depense', sources: ['banque'], types: ['Assurance','Protection juridique association'] },
+  { cat: 'Factures diverses', sens: 'depense', sources: ['factures'], types: [] },
+];
+let agConfig = null, agOpenCats = new Set();
+
+async function loadAgConfig() {
+  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'ag_categories').maybeSingle();
+  agConfig = (data && Array.isArray(data.valeur) && data.valeur.length) ? data.valeur : AG_CONFIG_DEFAUT;
+}
+async function saveAgConfig() {
+  await saveConfigKey('ag_categories', agConfig);
+  showToast('Catégories enregistrées !');
+  renderAG();
+}
+function typesDisponibles() {
+  const set = new Set();
+  allCaisse.forEach(r => r.type_mouvement && set.add(r.type_mouvement));
+  allBanque.forEach(r => r.type_mouvement && set.add(r.type_mouvement));
+  return [...set].sort((a,b)=>a.localeCompare(b,'fr'));
+}
+function renderAgConfigPanel() {
+  const types = typesDisponibles();
+  const el = document.getElementById('ag-config-panel');
+  el.innerHTML = `
+    <div style="font-size:11px;color:var(--text-3);margin-bottom:10px;">
+      Une catégorie additionne les lignes dont le <em>type de mouvement</em> correspond, sur les sources cochées.
+      <strong>Attention</strong> : cocher à la fois "Banque" et "Chèques"/"Remises" pour une même catégorie peut compter deux fois
+      la même somme (une fois à l'émission du chèque/de la remise, une fois à son encaissement en banque). Ne les cumulez que si
+      vous êtes sûr que les types/descriptions utilisés ne se recoupent jamais entre les deux.
+    </div>
+    ${agConfig.map((cat, i) => renderAgCategoryRow(cat, i, types)).join('')}
+    <button class="btn btn-secondary btn-sm" onclick="ajouterAgCategorie()"><i class="ti ti-plus"></i> Ajouter une catégorie</button>
+    <button class="btn btn-primary btn-sm" onclick="saveAgConfig()" style="margin-left:8px;"><i class="ti ti-device-floppy"></i> Enregistrer</button>
+  `;
+}
+function renderAgCategoryRow(cat, i, types) {
+  const srcs = cat.sources || ['banque','caisse'];
+  const doubleCountRisk = srcs.includes('banque') && (srcs.includes('cheques') || srcs.includes('remises'));
+  const srcOptions = [['caisse','Caisse'],['caisse2','Caisse 2'],['banque','Banque'],['cheques','Chèques'],['remises','Remises'],['factures','Factures']];
+  return `<div style="border:0.5px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+      <input type="text" value="${escH(cat.cat)}" onchange="agConfig[${i}].cat=this.value" style="flex:1;font-size:12px;font-weight:600;padding:4px 8px;border:0.5px solid var(--border-mid);border-radius:6px;">
+      <select onchange="agConfig[${i}].sens=this.value" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--border-mid);border-radius:6px;">
+        <option value="recette" ${cat.sens==='recette'?'selected':''}>Recette</option>
+        <option value="depense" ${cat.sens==='depense'?'selected':''}>Dépense</option>
+      </select>
+      <button onclick="agConfig.splice(${i},1);renderAgConfigPanel();" style="color:var(--red);background:none;border:none;cursor:pointer;"><i class="ti ti-trash"></i></button>
+    </div>
+    ${doubleCountRisk ? '<div class="warn-box"><i class="ti ti-alert-triangle"></i> Banque + Chèques/Remises cochés ensemble — risque de double comptage, voir note ci-dessus.</div>' : ''}
+    <div style="font-size:10px;color:var(--text-3);margin-bottom:4px;">Sources :</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+      ${srcOptions.map(([v,l]) => `<label style="font-size:11px;"><input type="checkbox" ${srcs.includes(v)?'checked':''} onchange="toggleAgSource(${i},'${v}',this.checked)"> ${l}</label>`).join('')}
+    </div>
+    <div style="font-size:10px;color:var(--text-3);margin-bottom:4px;">Types de mouvement inclus :</div>
+    <div class="cb-grid">${types.map(t => `<label class="cb-item"><input type="checkbox" ${(cat.types||[]).includes(t)?'checked':''} onchange="toggleAgType(${i},'${escH(t).replace(/'/g,"\\'")}',this.checked)"> ${escH(t)}</label>`).join('') || '<span style="color:var(--text-3);">Aucun type trouvé</span>'}</div>
+  </div>`;
+}
+function toggleAgSource(i, src, checked) {
+  const s = new Set(agConfig[i].sources || []);
+  checked ? s.add(src) : s.delete(src);
+  agConfig[i].sources = [...s];
+  renderAgConfigPanel();
+}
+function toggleAgType(i, type, checked) {
+  const s = new Set(agConfig[i].types || []);
+  checked ? s.add(type) : s.delete(type);
+  agConfig[i].types = [...s];
+}
+function ajouterAgCategorie() {
+  agConfig.push({ cat: 'Nouvelle catégorie', sens: 'depense', sources: ['banque','caisse'], types: [] });
+  renderAgConfigPanel();
+}
+
+function computeAgResults() {
+  const caisse1 = allCaisse.filter(r => r.caisse==='caisse1' && r.periode===activePer);
+  const caisse2 = allCaisse.filter(r => r.caisse==='caisse2' && r.periode===activePer);
+  const banque = allBanque.filter(r => r.periode===activePer);
+  const cheques = allCheques.filter(r => r.periode===activePer);
+  const remises = allRemiseDetails.filter(r => r.periode===activePer);
+  const factures = allFactures.filter(r => r.periode===activePer);
+
+  // Quand une ligne banque/caisse est rapprochée d'une facture ou d'un
+  // chèque, on classe avec les infos de la FACTURE/du CHÈQUE, pas de la
+  // ligne banque/caisse elle-même (demandé en revue — la ligne brute
+  // porte souvent un type moins précis que le document rapproché).
+  // Une ligne rapprochée d'une REMISE n'est jamais reclassée ici : elle
+  // est exclue du comptage banque/caisse et laissée aux lignes de détail
+  // de la remise (sources 'remises'), pour ne pas la compter en double.
+  const facturesParNumero = {}; allFactures.forEach(f => { if (f.numero_facture) facturesParNumero[f.numero_facture] = f; });
+  const chequesParId = {}; allCheques.forEach(c => { chequesParId[c.id] = c; });
+  function resoudre(r) {
+    if (r.ref_cheque && chequesParId[r.ref_cheque]) { const c = chequesParId[r.ref_cheque]; return { type: c.type_mouvement, ignorer: false }; }
+    if (r.lien_facture && facturesParNumero[r.lien_facture]) { const f = facturesParNumero[r.lien_facture]; return { type: f.categorie, ignorer: false }; }
+    return { type: r.type_mouvement, ignorer: false };
+  }
+
+  return agConfig.map(cat => {
+    const srcs = cat.sources || ['banque','caisse'];
+    const types = (cat.types||[]).map(t=>t.toLowerCase().trim());
+    function matchType(t) { return !types.length || types.includes((t||'').toLowerCase().trim()); }
+
+    let total = 0;
+    const ops = [];
+    if (srcs.includes('caisse')) caisse1.forEach(r => { if (r.ref_remise) return; const {type} = resoudre(r); if (matchType(type)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Caisse 1',date:r.date_mouvement,libelle:r.libelle,type,montant:v});} } });
+    if (srcs.includes('caisse2')) caisse2.forEach(r => { if (r.ref_remise) return; const {type} = resoudre(r); if (matchType(type)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Caisse 2',date:r.date_mouvement,libelle:r.libelle,type,montant:v});} } });
+    if (srcs.includes('banque')) banque.forEach(r => { if (r.ref_remise) return; const {type} = resoudre(r); if (matchType(type)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Banque',date:r.date_mouvement,libelle:r.libelle_complementaire||r.description||r.libelle,type,montant:v});} } });
+    if (srcs.includes('cheques')) cheques.forEach(r => { if (matchType(r.type_mouvement)) { const v=-fmtN(r.montant); if(v){total+=v;ops.push({src:'Chèque',date:r.date_emission,libelle:r.beneficiaire,type:r.type_mouvement,montant:v});} } });
+    if (srcs.includes('remises')) remises.forEach(r => { if (matchType(r.type_mouvement)) { const v=fmtN(r.montant); if(v){total+=v;ops.push({src:'Remise',date:r.date_remise,libelle:r.donateur||r.description,type:r.type_mouvement,montant:v});} } });
+    if (srcs.includes('factures')) factures.forEach(r => { if (matchType(r.categorie)) { const v=-fmtN(r.montant_ttc); if(v){total+=v;ops.push({src:'Facture',date:r.date_facture,libelle:r.description||r.fournisseur,type:r.categorie,montant:v});} } });
+
+    return { ...cat, total, ops };
+  });
+}
+
+function renderAG() {
+  document.getElementById('ag-periode-label').textContent = 'Période : ' + activePer;
+  const results = computeAgResults();
+  const recettes = results.filter(r=>r.sens==='recette').reduce((s,r)=>s+Math.max(0,r.total),0);
+  const depenses = results.filter(r=>r.sens==='depense').reduce((s,r)=>s+Math.abs(Math.min(0,r.total)),0);
+  const resultat = recettes - depenses;
+  document.getElementById('ag-kpi-recettes').textContent = fmt(recettes);
+  document.getElementById('ag-kpi-depenses').textContent = fmt(depenses);
+  const resEl = document.getElementById('ag-kpi-resultat');
+  resEl.textContent = fmt(resultat);
+  resEl.className = 'kpi-value ' + (resultat>=0?'v-green':'v-red');
+
+  const rows = results.map((r,i) => {
+    const isOpen = agOpenCats.has(r.cat);
+    const detailRows = r.ops.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(o => `<tr>
+      <td style="font-size:10px;color:var(--text-3);">${o.date||'—'}</td><td style="font-size:10px;">${escH(o.src)}</td>
+      <td style="font-size:11px;">${escH(o.libelle||'')}</td><td style="font-size:10px;color:var(--text-3);">${escH(o.type||'')}</td>
+      <td class="r ${o.montant>=0?'amount-c':'amount-d'}">${fmt(o.montant)}</td></tr>`).join('');
+    return `<tr class="accordion-row" onclick="toggleAgCat('${escH(r.cat).replace(/'/g,"\\'")}')">
+        <td>${escH(r.cat)}</td><td><span class="badge ${r.sens==='recette'?'badge-green':'badge-red'}">${r.sens==='recette'?'Recette':'Dépense'}</span></td>
+        <td class="r" style="font-weight:600;color:${r.total>=0?'var(--green)':'var(--red)'};">${fmt(r.total)}</td>
+        <td class="r" style="color:var(--text-3);">${r.ops.length}</td></tr>
+      <tr style="${isOpen?'':'display:none;'}"><td colspan="4" style="padding:0;"><div class="accordion-detail">
+        ${r.ops.length ? `<table><thead><tr><th>Date</th><th>Source</th><th>Libellé</th><th>Type</th><th class="r">Montant</th></tr></thead><tbody>${detailRows}</tbody></table>` : '<span style="color:var(--text-3);font-size:11px;">Aucune opération</span>'}
+      </div></td></tr>`;
+  }).join('');
+  document.getElementById('ag-table-wrap').innerHTML = `<table><thead><tr><th>Catégorie</th><th>Sens</th><th class="r">Total</th><th class="r">Opér.</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function toggleAgCat(cat) { agOpenCats.has(cat) ? agOpenCats.delete(cat) : agOpenCats.add(cat); renderAG(); }
+
+function renderRepartition() {
+  const results = computeAgResults();
+  const recettes = results.filter(r=>r.sens==='recette' && r.total!==0);
+  const depenses = results.filter(r=>r.sens==='depense' && r.total!==0);
+  document.getElementById('repartition-inner').innerHTML = `<div class="grid-2">
+    <div class="card"><div class="card-head"><div class="card-title"><i class="ti ti-chart-pie"></i> Répartition des entrées</div><button class="card-cfg-btn" onclick="switchTab('parametres')"><i class="ti ti-settings"></i></button></div><div class="card-body"><canvas id="chart-entrees"></canvas></div></div>
+    <div class="card"><div class="card-head"><div class="card-title"><i class="ti ti-chart-pie"></i> Répartition des sorties</div><button class="card-cfg-btn" onclick="switchTab('parametres')"><i class="ti ti-settings"></i></button></div><div class="card-body"><canvas id="chart-sorties"></canvas></div></div>
+  </div>`;
+  const palette = ['#c96b2a','#3b6d11','#185fa5','#854f0b','#993c1d','#534ab7','#5f5e5a','#e24b4a','#639922','#9a4b9a'];
+  const mkPie = (id, cats, vals) => {
+    if (charts[id]) charts[id].destroy();
+    const ctx = document.getElementById(id);
+    charts[id] = new Chart(ctx, { type:'pie', data:{ labels:cats, datasets:[{ data:vals, backgroundColor:palette }] },
+      options:{ plugins:{ legend:{ position:'right', labels:{ font:{size:10} } }, tooltip:{ callbacks:{ label: c => c.label+' : '+fmt(c.parsed) } } } } });
+  };
+  mkPie('chart-entrees', recettes.map(r=>r.cat), recettes.map(r=>Math.abs(r.total)));
+  mkPie('chart-sorties', depenses.map(r=>r.cat), depenses.map(r=>Math.abs(r.total)));
+}
+
+const TYPES_CHATS_DEFAUT = ['Vétérinaire','Soins','Pharmacie','Nourriture','Litiere',"Produits d'entretien",'Assurance','Protection juridique association'];
+function isTypeChat(t) { const nt = normFold(t); return TYPES_CHATS_DEFAUT.some(tc => normFold(tc)===nt); }
+function splitChatTokens(raw) {
+  return (raw||'').trim().split(/[\/,|]|\s+-\s+/).map(x=>x.replace(/\s*\([^)]*\)\s*$/,'')).map(x=>x.replace(/\s*-\s*$/,'')).map(x=>x.trim()).filter(Boolean);
+}
+function isMedicamentToken(n) { const t=(n||'').toLowerCase(); return t==='medicament'||t==='medicaments'; }
+function chatShareForName(nomChatCol, montant, chatName) {
+  const raw=(nomChatCol||'').trim(); if(!raw) return 0;
+  const noms=splitChatTokens(raw);
+  if (!noms.some(n=>n.toLowerCase()===chatName.toLowerCase())) return 0;
+  const vraiChats=noms.filter(n=>!isMedicamentToken(n));
+  return montant/Math.max(1,vraiChats.length);
+}
+let chatPeriodes = [];
+function getChatRows(source) {
+  if (source==='caisse') return allCaisse.filter(r => chatPeriodes.includes(r.periode));
+  if (source==='banque') return allBanque.filter(r => chatPeriodes.includes(r.periode));
+  if (source==='cheques') return allCheques.filter(r => chatPeriodes.includes(r.periode));
+  if (source==='remises') return allRemiseDetails.filter(r => chatPeriodes.includes(r.periode));
+  if (source==='factures') return allFactures.filter(r => chatPeriodes.includes(r.periode));
+  return [];
+}
+function canonicalChatNames() {
+  const counts = new Map();
+  const add = raw => { if(!raw||!raw.trim())return; splitChatTokens(raw).filter(x=>!isMedicamentToken(x)).forEach(x=>{ const key=x.toLowerCase(); if(!counts.has(key))counts.set(key,new Map()); const c=counts.get(key); c.set(x,(c.get(x)||0)+1); }); };
+  getChatRows('caisse').forEach(r=>add(r.nom_chat));
+  getChatRows('banque').forEach(r=>add(r.nom_chat));
+  getChatRows('cheques').forEach(r=>add(r.nom_chat));
+  getChatRows('remises').forEach(r=>add(r.nom_chat));
+  const map = new Map();
+  counts.forEach((casings,key) => { let best=null,bestN=-1; casings.forEach((n,c)=>{if(n>bestN){bestN=n;best=c;}}); map.set(key,best); });
+  return map;
+}
+function renderChatInit() {
+  document.getElementById('chat-periode-checks').innerHTML = periodes.map(p => `<label class="per-check"><input type="checkbox" value="${p}" ${p===activePer?'checked':''} onchange="onChatPeriodeChange()"> ${p}</label>`).join('');
+  chatPeriodes = [activePer];
+  buildChatSelect();
+  renderChatGlobal();
+}
+function onChatPeriodeChange() { chatPeriodes = [...document.querySelectorAll('#chat-periode-checks input:checked')].map(i=>i.value); buildChatSelect(); renderChatGlobal(); renderChatDetail(); }
+function selectAllChatPeriodes(all) { document.querySelectorAll('#chat-periode-checks input').forEach(i=>i.checked=all); onChatPeriodeChange(); }
+function buildChatSelect() {
+  const names = [...canonicalChatNames().values()].sort((a,b)=>a.localeCompare(b,'fr'));
+  const sel = document.getElementById('chat-select');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Choisir —</option>' + names.map(n=>`<option ${n===cur?'selected':''}>${escH(n)}</option>`).join('');
+}
+function renderChatGlobal() {
+  const caisse=getChatRows('caisse'), banque=getChatRows('banque'), factures=getChatRows('factures');
+  let depC=0, depB=0, depF=0; const byType={};
+  caisse.forEach(r => { if (isTypeChat(r.type_mouvement)) { const d=fmtN(r.debit); depC+=d; byType[r.type_mouvement]=(byType[r.type_mouvement]||0)+d; } });
+  banque.forEach(r => { if (isTypeChat(r.type_mouvement)) { const d=fmtN(r.debit); depB+=d; byType[r.type_mouvement]=(byType[r.type_mouvement]||0)+d; } });
+  factures.forEach(r => { if (isTypeChat(r.categorie)) { const m=fmtN(r.montant_ttc); depF+=m; byType[r.categorie]=(byType[r.categorie]||0)+m; } });
+  const total = depC+depB+depF;
+  const names = [...canonicalChatNames().values()];
+
+  const chatRecap = names.sort((a,b)=>a.localeCompare(b,'fr')).map(name => {
+    let dep=0, rec=0;
+    caisse.forEach(r => { dep+=chatShareForName(r.nom_chat, fmtN(r.debit), name); rec+=chatShareForName(r.nom_chat, fmtN(r.credit), name); });
+    banque.forEach(r => { dep+=chatShareForName(r.nom_chat, fmtN(r.debit), name); rec+=chatShareForName(r.nom_chat, fmtN(r.credit), name); });
+    getChatRows('cheques').forEach(r => { dep+=chatShareForName(r.nom_chat, fmtN(r.montant), name); });
+    getChatRows('remises').forEach(r => { dep+=chatShareForName(r.nom_chat, fmtN(r.montant), name); });
+    return { name, dep, rec, net: rec-dep };
+  }).filter(r => r.dep!==0 || r.rec!==0);
+  const totDep = chatRecap.reduce((s,r)=>s+r.dep,0), totRec = chatRecap.reduce((s,r)=>s+r.rec,0), totNet = totRec-totDep;
+
+  document.getElementById('chat-global-badge').textContent = chatPeriodes.length ? chatPeriodes.join(', ') : 'Aucune période';
+  document.getElementById('chat-global-kpis').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Coût total (type chat)</div><div class="kpi-value v-red">${fmt(total)}</div><div class="kpi-sub">Toutes sources</div></div>
+    <div class="kpi"><div class="kpi-label">Chats suivis</div><div class="kpi-value v-blue">${names.length}</div><div class="kpi-sub">Avec nom renseigné</div></div>
+    <div class="kpi"><div class="kpi-label">Recettes fléchées</div><div class="kpi-value v-green">${fmt(totRec)}</div><div class="kpi-sub">Dons/adoptions liés à un chat nommé</div></div>
+    <div class="kpi"><div class="kpi-label">Solde fléché</div><div class="kpi-value ${totNet>=0?'v-green':'v-red'}">${fmt(totNet)}</div><div class="kpi-sub">${totNet>=0?'Gain':'Perte'}</div></div>`;
+  renderBars('chat-global-bars', Object.entries(byType).map(([label,val])=>({label,val})), 'bar-red', total);
+
+  const wrap = document.getElementById('chat-recap-wrap');
+  if (!chatRecap.length) { wrap.innerHTML = '<div class="empty-state"><i class="ti ti-paw"></i> Aucun chat avec nom renseigné</div>'; return; }
+  const rowsHtml = chatRecap.map(r => `<tr style="cursor:pointer;" onclick="document.getElementById('chat-select').value='${escH(r.name)}';renderChatDetail();">
+    <td style="font-weight:500;">${escH(r.name)}</td><td class="r amount-d">${r.dep>0?fmt(r.dep):'—'}</td><td class="r amount-c">${r.rec>0?fmt(r.rec):'—'}</td>
+    <td class="r" style="font-weight:600;color:${r.net>=0?'var(--green)':'var(--red)'};">${fmt(r.net)}</td></tr>`).join('');
+  wrap.innerHTML = `<table><thead><tr><th>Chat</th><th class="r">Dépenses</th><th class="r">Recettes</th><th class="r">Net</th></tr></thead>
+    <tbody><tr style="background:var(--surface-2);font-weight:700;"><td>TOTAL — ${chatRecap.length} chat(s)</td><td class="r amount-d">${fmt(totDep)}</td><td class="r amount-c">${fmt(totRec)}</td><td class="r">${fmt(totNet)}</td></tr>${rowsHtml}</tbody></table>`;
+}
+function renderChatDetail() {
+  const name = document.getElementById('chat-select').value;
+  const wrap = document.getElementById('chat-detail-wrap');
+  if (!name) { wrap.innerHTML = '<div class="empty-state">Choisissez un chat</div>'; return; }
+  const ops = [];
+  getChatRows('caisse').forEach(r => { const d=chatShareForName(r.nom_chat,fmtN(r.debit),name), c=chatShareForName(r.nom_chat,fmtN(r.credit),name); if(d||c) ops.push({date:r.date_mouvement,src:'Caisse',libelle:r.libelle,dep:d,rec:c}); });
+  getChatRows('banque').forEach(r => { const d=chatShareForName(r.nom_chat,fmtN(r.debit),name), c=chatShareForName(r.nom_chat,fmtN(r.credit),name); if(d||c) ops.push({date:r.date_mouvement,src:'Banque',libelle:r.libelle,dep:d,rec:c}); });
+  getChatRows('cheques').forEach(r => { const d=chatShareForName(r.nom_chat,fmtN(r.montant),name); if(d) ops.push({date:r.date_emission,src:'Chèque',libelle:r.beneficiaire,dep:d,rec:0}); });
+  getChatRows('remises').forEach(r => { const d=chatShareForName(r.nom_chat,fmtN(r.montant),name); if(d) ops.push({date:r.date_remise,src:'Remise',libelle:r.donateur,dep:d,rec:0}); });
+  ops.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if (!ops.length) { wrap.innerHTML = '<div class="empty-state">Aucune opération pour ce chat sur les périodes cochées</div>'; return; }
+  const totDep = ops.reduce((s,o)=>s+o.dep,0), totRec = ops.reduce((s,o)=>s+o.rec,0);
+  wrap.innerHTML = `<div class="kpi-top" style="margin-bottom:10px;">
+      <div class="kpi"><div class="kpi-label">Dépenses</div><div class="kpi-value v-red">${fmt(totDep)}</div></div>
+      <div class="kpi"><div class="kpi-label">Recettes</div><div class="kpi-value v-green">${fmt(totRec)}</div></div>
+      <div class="kpi"><div class="kpi-label">Net</div><div class="kpi-value ${totRec-totDep>=0?'v-green':'v-red'}">${fmt(totRec-totDep)}</div></div>
+    </div>
+    <table><thead><tr><th>Date</th><th>Source</th><th>Libellé</th><th class="r">Dépense</th><th class="r">Recette</th></tr></thead><tbody>
+    ${ops.map(o=>`<tr><td style="font-size:10px;color:var(--text-3);">${o.date||'—'}</td><td>${o.src}</td><td>${escH(o.libelle||'')}</td><td class="r amount-d">${o.dep?fmt(o.dep):'—'}</td><td class="r amount-c">${o.rec?fmt(o.rec):'—'}</td></tr>`).join('')}
+    </tbody></table>`;
+}
+
+let moyPeriodes = [], moyCostTypes = null, moyAdoptStatuts = null;
+function getMoyRows(source) {
+  if (source==='caisse') return allCaisse.filter(r=>moyPeriodes.includes(r.periode));
+  if (source==='banque') return allBanque.filter(r=>moyPeriodes.includes(r.periode));
+  if (source==='factures') return allFactures.filter(r=>moyPeriodes.includes(r.periode));
+  if (source==='cheques') return allCheques.filter(r=>moyPeriodes.includes(r.periode));
+  if (source==='remises') return allRemiseDetails.filter(r=>moyPeriodes.includes(r.periode));
+  return [];
+}
+function _moyCanonicalChatNames() {
+  const counts = new Map();
+  const add = raw => { if(!raw||!raw.trim())return; splitChatTokens(raw).filter(x=>!isMedicamentToken(x)).forEach(x=>{ const key=x.toLowerCase(); if(!counts.has(key))counts.set(key,new Map()); const c=counts.get(key); c.set(x,(c.get(x)||0)+1); }); };
+  getMoyRows('caisse').forEach(r=>add(r.nom_chat));
+  getMoyRows('banque').forEach(r=>add(r.nom_chat));
+  getMoyRows('cheques').forEach(r=>add(r.nom_chat));
+  getMoyRows('remises').forEach(r=>add(r.nom_chat));
+  const map = new Map();
+  counts.forEach((casings,key) => { let best=null,bestN=-1; casings.forEach((n,c)=>{if(n>bestN){bestN=n;best=c;}}); map.set(key,best); });
+  return map;
+}
+const MOY_COST_MOTS_CLES = ['veterinaire','veto','soin','pharmacie','nourriture','alimentation','croquette','patee','litiere','pellet'];
+function _moyCostTypesDisponibles() {
+  const set = new Set();
+  getMoyRows('caisse').forEach(r=>{ const t=(r.description||'').trim(); if(t)set.add(t); });
+  getMoyRows('banque').forEach(r=>{ const t=(r.description||'').trim(); if(t)set.add(t); });
+  getMoyRows('factures').forEach(r=>{ const t=(r.description||'').trim(); if(t)set.add(t); });
+  return [...set].sort((a,b)=>a.localeCompare(b,'fr'));
+}
+async function loadMoyCostConfig() {
+  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle','moy_cout_types').maybeSingle();
+  if (data && Array.isArray(data.valeur)) { moyCostTypes = new Set(data.valeur); return; }
+  const n = s => normFold(s);
+  moyCostTypes = new Set(_moyCostTypesDisponibles().filter(d => MOY_COST_MOTS_CLES.some(k=>n(d).includes(k))));
+}
+async function saveMoyCostConfig() {
+  const checked = [...document.querySelectorAll('.moy-cout-cb:checked')].map(c=>c.value);
+  moyCostTypes = new Set(checked);
+  await saveConfigKey('moy_cout_types', checked);
+  showToast('Catégories enregistrées !');
+  renderMoyennes();
+}
+function _moyAdoptRows() {
+  const isAdopt = t => normFold(t||'').includes('adopt');
+  return { caisse: getMoyRows('caisse').filter(r=>isAdopt(r.type_mouvement)), banque: getMoyRows('banque').filter(r=>isAdopt(r.type_mouvement)), remises: getMoyRows('remises').filter(r=>isAdopt(r.type_mouvement)) };
+}
+function _moyAdoptStatutsDisponibles() {
+  const { caisse, banque, remises } = _moyAdoptRows();
+  const set = new Set();
+  caisse.forEach(r=>{ const d=(r.description||r.libelle||'').trim(); if(d)set.add(d); });
+  banque.forEach(r=>{ const d=(r.description||r.libelle||'').trim(); if(d)set.add(d); });
+  remises.forEach(r=>{ const d=(r.description||'').trim(); if(d)set.add(d); });
+  return [...set].sort((a,b)=>a.localeCompare(b,'fr'));
+}
+async function loadMoyAdoptConfig() {
+  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle','moy_adopt_statuts').maybeSingle();
+  moyAdoptStatuts = new Map(Object.entries((data && data.valeur) || {}));
+}
+function _moyAdoptStatutState(name) { if (moyAdoptStatuts.has(name)) return moyAdoptStatuts.get(name); return { on:true, remb: normFold(name).includes('rembours') }; }
+async function saveMoyAdoptionConfig() {
+  const obj = {};
+  document.querySelectorAll('.moy-adopt-row').forEach(row => { obj[row.dataset.name] = { on: row.querySelector('.moy-adopt-on').checked, remb: row.querySelector('.moy-adopt-remb').value==='remb' }; });
+  moyAdoptStatuts = new Map(Object.entries(obj));
+  await saveConfigKey('moy_adopt_statuts', obj);
+  showToast('Statuts enregistrés !');
+  renderMoyennes();
+}
+function renderMoyCoutConfigPanel() {
+  const types = _moyCostTypesDisponibles();
+  document.getElementById('moy-cout-cb-list').innerHTML = types.length ? types.map(t=>`<label class="ag-cb-item"><input type="checkbox" class="moy-cout-cb" value="${escH(t)}" ${moyCostTypes.has(t)?'checked':''}> ${escH(t)}</label>`).join('') : '<span style="color:var(--text-3);">Aucune catégorie trouvée sur les périodes cochées.</span>';
+}
+function renderMoyAdoptConfigPanel() {
+  const statuts = _moyAdoptStatutsDisponibles();
+  document.getElementById('moy-adopt-cb-list').innerHTML = statuts.length ? statuts.map(name => { const st=_moyAdoptStatutState(name); return `<div class="moy-adopt-row" data-name="${escH(name)}" style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:0.5px solid var(--border);">
+    <label class="ag-cb-item" style="flex:1;"><input type="checkbox" class="moy-adopt-on" ${st.on?'checked':''}> ${escH(name)}</label>
+    <select class="moy-adopt-remb" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--border-mid);border-radius:6px;"><option value="ajout" ${!st.remb?'selected':''}>Ajouter</option><option value="remb" ${st.remb?'selected':''}>Soustraire (remboursement)</option></select>
+  </div>`; }).join('') : '<span style="color:var(--text-3);">Aucun mouvement "Adoption" trouvé.</span>';
+}
+function renderMoyennesInit() {
+  moyPeriodes = [activePer];
+  document.getElementById('moy-periode-checks').innerHTML = periodes.map(p=>`<label class="per-check"><input type="checkbox" value="${p}" ${p===activePer?'checked':''} onchange="onMoyPeriodeChange()"> ${p}</label>`).join('');
+  Promise.all([loadMoyCostConfig(), loadMoyAdoptConfig()]).then(renderMoyennes);
+}
+function onMoyPeriodeChange() { moyPeriodes = [...document.querySelectorAll('#moy-periode-checks input:checked')].map(i=>i.value); renderMoyennes(); }
+function selectAllMoyPeriodes(all) { document.querySelectorAll('#moy-periode-checks input').forEach(i=>i.checked=all); onMoyPeriodeChange(); }
+function calcMoyCout() {
+  let total=0; const byType={};
+  const add=(t,v)=>{ if(moyCostTypes.has(t)){total+=v;byType[t]=(byType[t]||0)+v;} };
+  getMoyRows('caisse').forEach(r=>add((r.description||'').trim(), fmtN(r.debit)));
+  getMoyRows('banque').forEach(r=>add((r.description||'').trim(), fmtN(r.debit)));
+  getMoyRows('factures').forEach(r=>add((r.description||'').trim(), fmtN(r.montant_ttc)));
+  const noms = [...(_moyCanonicalChatNames()).values()];
+  const nbChats = noms.length;
+  return { total, byType, nbChats, moyenne: nbChats>0?total/nbChats:0 };
+}
+function calcMoyCession() {
+  const { caisse, banque, remises } = _moyAdoptRows();
+  let total=0, nb=0; const detail={};
+  const process=(rows,getDesc,getMontant)=>{ rows.forEach(r=>{ const desc=(getDesc(r)||'Adoption').trim()||'Adoption'; const st=_moyAdoptStatutState(desc); if(!st.on)return; const montant=fmtN(getMontant(r)); if(montant<=0)return; if(!detail[desc])detail[desc]={somme:0,nb:0,remb:st.remb}; if(st.remb){total-=montant;detail[desc].somme-=montant;} else {total+=montant;nb++;detail[desc].somme+=montant;detail[desc].nb++;} }); };
+  process(caisse, r=>r.description||r.libelle, r=>r.credit);
+  process(banque, r=>r.description||r.libelle, r=>r.credit);
+  process(remises, r=>r.description, r=>r.montant);
+  return { total, nb, moyenne: nb>0?total/nb:0, detail };
+}
+function renderMoyennes() {
+  if (moyCostTypes===null || moyAdoptStatuts===null) return;
+  const cout = calcMoyCout();
+  document.getElementById('moy-cout-wrap').innerHTML = `
+    <div class="kpi-top"><div class="kpi"><div class="kpi-label">Total dépenses chats</div><div class="kpi-value v-red">${fmt(cout.total)}</div></div>
+    <div class="kpi"><div class="kpi-label">Chats concernés</div><div class="kpi-value v-blue">${cout.nbChats}</div></div>
+    <div class="kpi"><div class="kpi-label">Coût moyen / chat</div><div class="kpi-value v-orange">${fmt(cout.moyenne)}</div></div></div>
+    ${Object.keys(cout.byType).length ? `<table><thead><tr><th>Type de dépense</th><th class="r">Montant</th></tr></thead><tbody>${Object.entries(cout.byType).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`<tr><td>${escH(t)}</td><td class="r amount-d">${fmt(v)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Aucune dépense pour les catégories cochées</div>'}`;
+
+  const cession = calcMoyCession();
+  document.getElementById('moy-cession-wrap').innerHTML = `
+    <div class="kpi-top"><div class="kpi"><div class="kpi-label">Total frais de cession</div><div class="kpi-value v-green">${fmt(cession.total)}</div></div>
+    <div class="kpi"><div class="kpi-label">Adoptions</div><div class="kpi-value v-blue">${cession.nb}</div></div>
+    <div class="kpi"><div class="kpi-label">Moyenne / adoption</div><div class="kpi-value v-orange">${fmt(cession.moyenne)}</div></div></div>
+    ${Object.keys(cession.detail).length ? `<table><thead><tr><th>Statut</th><th class="r">Nb</th><th class="r">Montant</th></tr></thead><tbody>${Object.entries(cession.detail).map(([n,d])=>`<tr><td>${escH(n)}${d.remb?' (remboursement)':''}</td><td class="r">${d.nb||'—'}</td><td class="r ${d.somme>=0?'amount-c':'amount-d'}">${fmt(d.somme)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Aucune adoption sur les périodes cochées</div>'}`;
+}
+
+function getFourData() {
+  const rows = [];
+  allFactures.filter(r=>r.periode===activePer).forEach(r => { if(!r.fournisseur)return; const m=fmtN(r.montant_ttc); rows.push({fournisseur:r.fournisseur, source:'Facture', date:r.date_facture, libelle:r.commentaire||r.description||'', type_mvt:r.categorie||'', debit:m, credit:0}); });
+  allCaisse.filter(r=>r.periode===activePer).forEach(r => { if(!r.fournisseur)return; rows.push({fournisseur:r.fournisseur, source:'Caisse', date:r.date_mouvement, libelle:r.libelle||'', type_mvt:r.type_mouvement||'', debit:fmtN(r.debit), credit:fmtN(r.credit)}); });
+  allBanque.filter(r=>r.periode===activePer).forEach(r => { if(!r.fournisseur)return; rows.push({fournisseur:r.fournisseur, source:'Banque', date:r.date_mouvement, libelle:r.libelle||'', type_mvt:r.type_mouvement||'', debit:fmtN(r.debit), credit:fmtN(r.credit)}); });
+  allCheques.filter(r=>r.periode===activePer).forEach(r => { if(!r.fournisseur)return; rows.push({fournisseur:r.fournisseur, source:'Chèque', date:r.date_emission, libelle:r.beneficiaire||'', type_mvt:r.type_mouvement||'', debit:fmtN(r.montant), credit:0}); });
+  return rows;
+}
+function aggregateFournisseurs(rows) {
+  const map = {};
+  rows.forEach(r => { if(!map[r.fournisseur]) map[r.fournisseur]={nom:r.fournisseur,debit:0,credit:0,nb:0,sources:new Set(),types:new Set()}; const e=map[r.fournisseur]; e.debit+=r.debit; e.credit+=r.credit; e.nb++; e.sources.add(r.source); if(r.type_mvt)e.types.add(r.type_mvt); });
+  return Object.values(map).map(e=>({...e,sources:[...e.sources],types:[...e.types]})).sort((a,b)=>(b.debit+b.credit)-(a.debit+a.credit));
+}
+function fourSourceChip(src) { const map={Caisse:'badge-orange',Banque:'badge-grey',Chèque:'badge-grey',Facture:'badge-grey'}; return `<span class="badge ${map[src]||'badge-grey'}" style="margin-right:2px;">${src}</span>`; }
+function renderFourClassement() {
+  const fours = aggregateFournisseurs(getFourData());
+  document.getElementById('four-classement-badge').textContent = activePer;
+  const wrap = document.getElementById('four-classement-wrap');
+  if (!fours.length) { wrap.innerHTML='<div class="empty-state"><i class="ti ti-address-card"></i> Aucun fournisseur renseigné</div>'; return; }
+  wrap.innerHTML = `<table><thead><tr><th>Fournisseur</th><th>Sources</th><th class="r">Dépenses</th><th class="r">Recettes</th><th class="r">Opér.</th><th></th></tr></thead><tbody>
+    ${fours.map(f=>`<tr style="cursor:pointer;" onclick="openFourFiche('${escH(f.nom)}')"><td style="font-weight:500;">${escH(f.nom)}<div style="font-size:10px;color:var(--text-3);">${[...f.types].slice(0,2).map(escH).join(' · ')}</div></td>
+      <td>${f.sources.map(fourSourceChip).join('')}</td><td class="r amount-d">${f.debit>0?fmt(f.debit):'—'}</td><td class="r amount-c">${f.credit>0?fmt(f.credit):'—'}</td><td class="r" style="color:var(--text-3);">${f.nb}</td><td class="r"><span style="font-size:10px;color:var(--blue);">Fiche →</span></td></tr>`).join('')}
+    </tbody></table>`;
+}
+function renderFourCategories() {
+  const fours = aggregateFournisseurs(getFourData());
+  const wrap = document.getElementById('four-categories-wrap');
+  if (!fours.length) { wrap.innerHTML='<div class="empty-state">Aucun fournisseur</div>'; return; }
+  const byType = {};
+  fours.forEach(f => { const key=f.types[0]||'Sans catégorie'; (byType[key]=byType[key]||[]).push(f); });
+  const colors=['#e24b4a','#639922','#ef9f27','#378add','#9a4b9a','#c96b2a']; let ci=0;
+  wrap.innerHTML = `<div class="grid-2">${Object.entries(byType).map(([type,items])=>{ const color=colors[ci++%colors.length]; const totalDep=items.reduce((s,f)=>s+f.debit,0), totalRec=items.reduce((s,f)=>s+f.credit,0);
+    return `<div class="card" style="margin-bottom:0;"><div class="card-head" style="border-left:3px solid ${color};"><div class="card-title" style="color:${color};">${escH(type)}</div><div>${totalDep>0?`<span class="badge badge-red">${fmt(totalDep)}</span>`:''} ${totalRec>0?`<span class="badge badge-green">${fmt(totalRec)}</span>`:''}</div></div>
+    <div class="card-body">${items.map(f=>`<div style="display:flex;justify-content:space-between;margin-bottom:6px;cursor:pointer;" onclick="openFourFiche('${escH(f.nom)}')"><span>${escH(f.nom)}</span><span>${f.debit>0?`<span style="color:var(--red);">${fmt(f.debit)}</span>`:''} ${f.credit>0?`<span style="color:var(--green);">${fmt(f.credit)}</span>`:''}</span></div>`).join('')}</div></div>`;
+  }).join('')}</div>`;
+}
+function buildFourSelect() {
+  const fours = aggregateFournisseurs(getFourData());
+  const sel = document.getElementById('four-fiche-select'); const cur = sel.value;
+  sel.innerHTML = '<option value="">— Sélectionner —</option>' + fours.map(f=>`<option ${f.nom===cur?'selected':''}>${escH(f.nom)} (${f.nb} op.)</option>`).join('');
+}
+function openFourFiche(nom) { document.getElementById('four-fiche-select').value = nom; renderFourFiche(); document.getElementById('four-fiche-select').scrollIntoView({behavior:'smooth'}); }
+function renderFourFiche() {
+  const nom = document.getElementById('four-fiche-select').value;
+  const wrap = document.getElementById('four-fiche-wrap');
+  if (!nom) { wrap.innerHTML = '<div class="empty-state">Sélectionnez un fournisseur</div>'; return; }
+  const rows = getFourData().filter(r=>r.fournisseur===nom).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if (!rows.length) { wrap.innerHTML = '<div class="empty-state">Aucune opération</div>'; return; }
+  const totalDep=rows.reduce((s,r)=>s+r.debit,0), totalRec=rows.reduce((s,r)=>s+r.credit,0);
+  wrap.innerHTML = `<div class="kpi-top" style="margin-bottom:10px;"><div class="kpi"><div class="kpi-label">Dépenses</div><div class="kpi-value v-red">${fmt(totalDep)}</div></div><div class="kpi"><div class="kpi-label">Recettes</div><div class="kpi-value v-green">${fmt(totalRec)}</div></div><div class="kpi"><div class="kpi-label">Opérations</div><div class="kpi-value">${rows.length}</div></div></div>
+    <table><thead><tr><th>Date</th><th>Libellé</th><th>Type</th><th>Source</th><th class="r">Dépense</th><th class="r">Recette</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td style="font-size:10px;color:var(--text-3);">${r.date||'—'}</td><td>${escH(r.libelle)||'—'}</td><td style="font-size:10px;color:var(--text-3);">${escH(r.type_mvt)}</td><td>${fourSourceChip(r.source)}</td><td class="r amount-d">${r.debit>0?fmt(r.debit):'—'}</td><td class="r amount-c">${r.credit>0?fmt(r.credit):'—'}</td></tr>`).join('')}
+    </tbody></table>`;
+}
+
+function _rowsTypePer(keyword, per) {
+  return [...allCaisse.filter(r=>(r.type_mouvement||'').toLowerCase().includes(keyword) && r.periode===per).map(r=>({...r,_src:'caisse'})),
+          ...allBanque.filter(r=>(r.type_mouvement||'').toLowerCase().includes(keyword) && r.periode===per).map(r=>({...r,_src:'banque'}))];
+}
+function _sumCredit(rows) { return rows.reduce((s,r)=>s+fmtN(r.credit),0); }
+function _entreesRemises(keyword, per) {
+  return allRemiseDetails.filter(r => r.periode===per && (r.type_mouvement||'').toLowerCase().includes(keyword))
+    .map(r => ({ nom: r.donateur||'Anonyme', montant: fmtN(r.montant), date: r.date_remise }));
+}
+function _montantsParMois(keyword, mois12) {
+  return mois12.map(m => {
+    let tot = 0;
+    allCaisse.forEach(r => { if ((r.type_mouvement||'').toLowerCase().includes(keyword) && rowInMonth(r.date_mouvement,m.full)) tot+=fmtN(r.credit); });
+    allBanque.forEach(r => { if ((r.type_mouvement||'').toLowerCase().includes(keyword) && rowInMonth(r.date_mouvement,m.full)) tot+=fmtN(r.credit); });
+    allRemiseDetails.forEach(r => { if ((r.type_mouvement||'').toLowerCase().includes(keyword) && rowInMonth(r.date_remise,m.full)) tot+=fmtN(r.montant); });
+    return tot;
+  });
+}
+function _listePersonnes(keyword, per, cfg) {
+  const map = {};
+  const add = (nom,v) => { nom=nom||'Anonyme'; if(!map[nom])map[nom]={total:0,nb:0}; map[nom].total+=v; map[nom].nb++; };
+  allCaisse.filter(r=>(r.type_mouvement||'').toLowerCase().includes(keyword)&&r.periode===per).forEach(r=>add(cfg.getNom(r),fmtN(r.credit)));
+  allBanque.filter(r=>(r.type_mouvement||'').toLowerCase().includes(keyword)&&r.periode===per).forEach(r=>add(cfg.getNom(r),fmtN(r.credit)));
+  _entreesRemises(keyword,per).forEach(e=>add(e.nom,e.montant));
+  return Object.entries(map).sort((a,b)=>b[1].total-a[1].total);
+}
+function _tablePersonnes(personnes, startIdx) {
+  return `<table><thead><tr><th>#</th><th>Nom</th><th class="r">Nb</th><th class="r">Total</th></tr></thead><tbody>
+    ${personnes.map(([nom,d],i)=>`<tr><td style="color:var(--text-3);width:24px;">${startIdx+i}</td><td>${escH(nom)}</td><td class="r" style="color:var(--text-3);">${d.nb}</td><td class="r amount-c">${fmtS(d.total)}</td></tr>`).join('')}</tbody></table>`;
+}
+function _renderDonSection(containerId, keyword, icon, label, chartId, cfg) {
+  const prevPer = getPrevPeriode(activePer);
+  const totCur = _sumCredit(_rowsTypePer(keyword,activePer)) + _entreesRemises(keyword,activePer).reduce((s,e)=>s+e.montant,0);
+  const totPrev = _sumCredit(_rowsTypePer(keyword,prevPer)) + _entreesRemises(keyword,prevPer).reduce((s,e)=>s+e.montant,0);
+  const evol = totPrev>0 ? ((totCur-totPrev)/totPrev*100) : null;
+  const personnes = _listePersonnes(keyword, activePer, cfg);
+  let listeHtml;
+  if (!personnes.length) listeHtml = `<div style="color:var(--text-3);font-size:12px;">Aucun enregistrement pour ${activePer}</div>`;
+  else if (cfg.multiColonne) { const BLOC=10, nb=Math.ceil(personnes.length/BLOC)||1, cols=Math.min(nb,4), blocs=[]; for(let b=0;b<nb;b++) blocs.push(`<div>${_tablePersonnes(personnes.slice(b*BLOC,(b+1)*BLOC),b*BLOC+1)}</div>`); listeHtml = `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:16px;">${blocs.join('')}</div>`; }
+  else listeHtml = `<div style="max-width:480px;">${_tablePersonnes(personnes,1)}</div>`;
+
+  document.getElementById(containerId).innerHTML = `
+    <div class="kpi-top">
+      <div class="kpi"><div class="kpi-label">${label} — ${activePer}</div><div class="kpi-value v-green">${fmtS(totCur)}</div><div class="kpi-sub">${cfg.kpiSub(personnes)}</div></div>
+      <div class="kpi"><div class="kpi-label">Période précédente (${prevPer||'N/A'})</div><div class="kpi-value" style="color:var(--text-3);">${fmtS(totPrev)}</div></div>
+      <div class="kpi"><div class="kpi-label">Évolution</div><div class="kpi-value ${evol===null?'':evol>=0?'v-green':'v-red'}">${evol===null?'—':(evol>=0?'+':'')+evol.toFixed(1)+' %'}</div></div>
+    </div>
+    <div class="card"><div class="card-head"><div class="card-title">Suivi mensuel — ${activePer} vs ${prevPer||'N-1'}</div></div><div class="card-body"><canvas id="${chartId}"></canvas></div></div>
+    <div class="card"><div class="card-head"><div class="card-title">Liste — ${activePer} <span style="font-weight:400;color:var(--text-3);margin-left:8px;">${cfg.listeLabel?cfg.listeLabel(personnes):personnes.length+' personne(s)'}</span></div></div><div class="card-body">${listeHtml}</div></div>`;
+  const mois12 = get12MoisPeriode(activePer), prevMois12 = get12MoisPeriode(prevPer);
+  const ctx = document.getElementById(chartId);
+  if (charts[chartId]) charts[chartId].destroy();
+  charts[chartId] = new Chart(ctx, { type:'bar', data:{ labels: mois12.map(m=>m.label), datasets:[
+    { label:activePer, data:_montantsParMois(keyword,mois12), backgroundColor:cfg.color.bg, borderColor:cfg.color.border, borderWidth:1 },
+    { label:prevPer||'N-1', data:_montantsParMois(keyword,prevMois12), backgroundColor:cfg.color.bgPrev, borderColor:cfg.color.borderPrev, borderWidth:1 }
+  ]}, options:{ responsive:true, scales:{ y:{ beginAtZero:true, ticks:{ callback:v=>v+'€' } } } } });
+}
+const CFG_DONS = { getNom:r=>String(r._src==='caisse'?r.libelle:(r.libelle_complementaire||r.libelle)||'').trim()||'Anonyme', multiColonne:true, kpiSub:p=>`${p.length} personne(s)`, color:{bg:'rgba(59,109,17,0.75)',border:'rgb(59,109,17)',bgPrev:'rgba(59,109,17,0.2)',borderPrev:'rgba(59,109,17,0.5)'} };
+const CFG_SUBV = { getNom:r=>String(r._src==='caisse'?r.libelle:(r.description||r.libelle))||'Anonyme', multiColonne:false, kpiSub:p=>`${p.length} subvention(s)`, listeLabel:p=>`${p.length} subvention(s)`, color:{bg:'rgba(37,99,235,0.75)',border:'rgb(37,99,235)',bgPrev:'rgba(37,99,235,0.2)',borderPrev:'rgba(37,99,235,0.5)'} };
+const CFG_ADH = { getNom:r=>String(r.libelle||r.description||'').trim()||'Anonyme', multiColonne:false, kpiSub:p=>`${p.reduce((s,[,d])=>s+d.nb,0)} adhésion(s)`, listeLabel:p=>`${p.reduce((s,[,d])=>s+d.nb,0)} adhésion(s)`, color:{bg:'rgba(16,163,127,0.75)',border:'rgb(16,163,127)',bgPrev:'rgba(16,163,127,0.2)',borderPrev:'rgba(16,163,127,0.5)'} };
+function renderDons() { _renderDonSection('dons-inner','don','ti ti-coin','Total dons','chart-dons',CFG_DONS); }
+function renderSubventions() { _renderDonSection('subventions-inner','subvention','ti ti-award','Total subventions','chart-subventions',CFG_SUBV); }
+function renderAdhesions() { _renderDonSection('adhesions-inner','adh','ti ti-id-badge','Total adhésions','chart-adhesions',CFG_ADH); }
+
+function renderAdoptions() {
+  const rows = [...allCaisse.filter(r=>r.periode===activePer), ...allBanque.filter(r=>r.periode===activePer)]
+    .filter(r => (r.type_mouvement||'').toLowerCase().includes('adopt'))
+    .sort((a,b) => (b.date_mouvement||'').localeCompare(a.date_mouvement||''));
+  let listeHtml;
+  if (!rows.length) listeHtml = `<div style="color:var(--text-3);font-size:12px;">Aucune adoption pour ${activePer}</div>`;
+  else { const BLOC=15, nb=Math.ceil(rows.length/BLOC)||1, cols=Math.min(nb,2), blocs=[];
+    for (let b=0;b<nb;b++) blocs.push(`<div><table><thead><tr><th>Date</th><th>Libellé</th><th class="r">Montant</th></tr></thead><tbody>
+      ${rows.slice(b*BLOC,(b+1)*BLOC).map(r=>`<tr><td style="font-size:10px;color:var(--text-3);">${r.date_mouvement||'—'}</td><td>${escH(r.libelle||'')}</td><td class="r amount-c">${fmt(r.credit)}</td></tr>`).join('')}
+      </tbody></table></div>`);
+    listeHtml = `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:16px;">${blocs.join('')}</div>`;
+  }
+  document.getElementById('adoptions-inner').innerHTML = `
+    <div class="card"><div class="card-head"><div class="card-title">Suivi des adoptions — 12 mois glissants</div></div><div class="card-body"><canvas id="chart-adoptions"></canvas></div></div>
+    <div class="card"><div class="card-head"><div class="card-title">Détail des adoptions — ${activePer}</div></div><div class="card-body">${listeHtml}</div></div>`;
+  const mois12 = get12MoisGlissants();
+  const counts = mois12.map(m => [...allCaisse,...allBanque].filter(r => (r.type_mouvement||'').toLowerCase().includes('adopt') && rowInMonth(r.date_mouvement, m.full)).length);
+  const ctx = document.getElementById('chart-adoptions');
+  if (charts.adoptions) charts.adoptions.destroy();
+  charts.adoptions = new Chart(ctx, { type:'line', data:{ labels:mois12.map(m=>m.label), datasets:[{ label:'Adoptions', data:counts, borderColor:'#c96b2a', backgroundColor:'rgba(201,107,42,0.1)', tension:0.3, fill:true }] }, options:{ responsive:true, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } } });
+}
+
+let evenementsConfig = null, evenementActif = 'global';
+function _normCat(s) { return normFold(s); }
+function _evenementsData() {
+  const map = {};
+  [...allCaisse.filter(r=>r.periode===activePer), ...allBanque.filter(r=>r.periode===activePer)].forEach(r => {
+    if (!_normCat(r.type_mouvement).includes('evenement')) return;
+    const name = r.description || r.libelle || 'Événement';
+    if (!map[name]) map[name] = { entrees:0, sorties:0, mouvements:[] };
+    map[name].entrees += fmtN(r.credit); map[name].sorties += fmtN(r.debit); map[name].mouvements.push(r);
+  });
+  allRemiseDetails.filter(r=>r.periode===activePer).forEach(r => {
+    if (!_normCat(r.type_mouvement).includes('evenement')) return;
+    const name = r.description || r.type_mouvement || 'Événement';
+    if (!map[name]) map[name] = { entrees:0, sorties:0, mouvements:[] };
+    map[name].entrees += fmtN(r.montant); map[name].mouvements.push({...r, _remise:true});
+  });
+  return map;
+}
+function _tousLesEvenementsConnus() {
+  const set = new Set();
+  [...allCaisse, ...allBanque].forEach(r => { if (_normCat(r.type_mouvement).includes('evenement')) set.add(r.description || r.libelle || 'Événement'); });
+  allRemiseDetails.forEach(r => { if (_normCat(r.type_mouvement).includes('evenement')) set.add(r.description || r.type_mouvement || 'Événement'); });
+  return [...set];
+}
+async function loadEvenementsConfig() {
+  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle','evenements_selection').maybeSingle();
+  evenementsConfig = (data && Array.isArray(data.valeur)) ? new Set(data.valeur) : new Set(_tousLesEvenementsConnus());
+}
+async function saveEvenementsConfig() { await saveConfigKey('evenements_selection', [...evenementsConfig]); showToast('Sélection enregistrée !'); }
+function toggleEvenementConfigCb(name, checked) { checked ? evenementsConfig.add(name) : evenementsConfig.delete(name); }
+function evenementsConfigSelectAll(all) { evenementsConfig = all ? new Set(_tousLesEvenementsConnus()) : new Set(); renderEvenementsConfigPanel(); }
+function selectEvenementTab(name) { evenementActif = name; renderEvenements(); }
+async function renderEvenements() {
+  if (evenementsConfig === null) await loadEvenementsConfig();
+  const data = _evenementsData();
+  const allNames = Object.keys(data).sort((a,b)=>a.localeCompare(b,'fr'));
+  const names = allNames.filter(n => evenementsConfig.has(n));
+  if (evenementActif !== 'global' && !names.includes(evenementActif)) evenementActif = 'global';
+  const tabs = `<div class="evt-tabs"><button class="evt-tab ${evenementActif==='global'?'active':''}" onclick="selectEvenementTab('global')">Globalité <span class="badge">${names.length}</span></button>
+    ${names.map(n=>`<button class="evt-tab ${evenementActif===n?'active':''}" onclick="selectEvenementTab('${escH(n).replace(/'/g,"\\'")}')">${escH(n)} <span class="badge">${data[n].mouvements.length}</span></button>`).join('')}</div>`;
+
+  const wrap = document.getElementById('evenements-inner');
+  if (!allNames.length) { wrap.innerHTML = tabs+`<div class="card"><div class="card-body empty-state">Aucun mouvement de type "Événement" pour ${activePer}.</div></div>`; return; }
+  if (!names.length) { wrap.innerHTML = `<div class="card"><div class="card-body empty-state">Tous les événements sont masqués. <a href="#" onclick="switchTab('parametres');switchParamTab('evenements');return false;">Ouvrir la sélection (Paramètres)</a>.</div></div>`; return; }
+
+  let body;
+  if (evenementActif === 'global') {
+    const totEnt = names.reduce((s,n)=>s+data[n].entrees,0), totSor = names.reduce((s,n)=>s+data[n].sorties,0);
+    body = `<div class="kpi-top"><div class="kpi"><div class="kpi-label">Entrées</div><div class="kpi-value v-green">${fmtS(totEnt)}</div></div><div class="kpi"><div class="kpi-label">Sorties</div><div class="kpi-value v-red">${fmtS(totSor)}</div></div><div class="kpi"><div class="kpi-label">Net</div><div class="kpi-value ${totEnt-totSor>=0?'v-green':'v-red'}">${fmtS(totEnt-totSor)}</div></div></div>
+      <div class="card"><div class="card-head"><div class="card-title">Événements — ${activePer}</div></div><table><thead><tr><th>Événement</th><th class="r">Entrées</th><th class="r">Sorties</th><th class="r">Net</th><th class="r">Mvts</th></tr></thead><tbody>
+      ${names.map(n=>{const d=data[n],net=d.entrees-d.sorties;return `<tr><td style="font-weight:500;cursor:pointer;" onclick="selectEvenementTab('${escH(n).replace(/'/g,"\\'")}')">${escH(n)}</td><td class="r amount-c">${fmtS(d.entrees)}</td><td class="r amount-d">${fmtS(d.sorties)}</td><td class="r" style="font-weight:600;">${fmtS(net)}</td><td class="r">${d.mouvements.length}</td></tr>`;}).join('')}
+      </tbody></table></div>`;
+  } else {
+    const d = data[evenementActif], net = d.entrees-d.sorties;
+    const rows = [...d.mouvements].sort((a,b)=>((b._remise?b.date_remise:b.date_mouvement)||'').localeCompare((a._remise?a.date_remise:a.date_mouvement)||''));
+    body = `<div class="kpi-top"><div class="kpi"><div class="kpi-label">Entrées</div><div class="kpi-value v-green">${fmtS(d.entrees)}</div></div><div class="kpi"><div class="kpi-label">Sorties</div><div class="kpi-value v-red">${fmtS(d.sorties)}</div></div><div class="kpi"><div class="kpi-label">Net</div><div class="kpi-value ${net>=0?'v-green':'v-red'}">${fmtS(net)}</div></div></div>
+      <div class="card"><div class="card-head"><div class="card-title">Mouvements — ${escH(evenementActif)}</div></div><table><thead><tr><th>Date</th><th>Libellé</th><th class="r">Entrée</th><th class="r">Sortie</th></tr></thead><tbody>
+      ${rows.map(r=>`<tr><td style="font-size:10px;color:var(--text-3);">${(r._remise?r.date_remise:r.date_mouvement)||'—'}</td><td>${escH(r._remise?(r.donateur||''):(r.libelle||''))}</td><td class="r amount-c">${fmtN(r._remise?r.montant:r.credit)?fmt(fmtN(r._remise?r.montant:r.credit)):'—'}</td><td class="r amount-d">${fmtN(r.debit)?fmt(fmtN(r.debit)):'—'}</td></tr>`).join('')}
+      </tbody></table></div>`;
+  }
+  wrap.innerHTML = tabs+body;
+}
+
+// Panneau de config Événements, déplacé dans Paramètres > Événements
+// (auparavant repliable dans l'onglet lui-même).
+function renderEvenementsConfigPanel() {
+  const allNames = _tousLesEvenementsConnus().sort((a,b)=>a.localeCompare(b,'fr'));
+  document.getElementById('evenements-config-panel').innerHTML = `
+    <div class="card"><div class="card-head"><div class="card-title">Événements affichés</div><button class="btn btn-primary btn-sm" onclick="saveEvenementsConfig()">Enregistrer</button></div>
+    <div class="card-body">
+      <div style="margin-bottom:8px;"><a href="#" onclick="evenementsConfigSelectAll(true);return false;" style="font-size:10px;">Tout cocher</a> · <a href="#" onclick="evenementsConfigSelectAll(false);return false;" style="font-size:10px;">Tout décocher</a></div>
+      <div class="cb-grid">${allNames.map(n=>`<label class="cb-item"><input type="checkbox" ${evenementsConfig.has(n)?'checked':''} onchange="toggleEvenementConfigCb('${escH(n).replace(/'/g,"\\'")}',this.checked)"> ${escH(n)}</label>`).join('') || '<span style="color:var(--text-3);">Aucun événement connu.</span>'}</div>
+    </div></div>`;
+}
+</script>
+</body>
+</html>

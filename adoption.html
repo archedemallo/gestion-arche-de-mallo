@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adoption — L'Arche de Mallo</title>
+<link rel="stylesheet" href="formulaires-arche-mallo.css">
+<style>
+    .champ-ligne {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        column-gap: 10px;
+        row-gap: 4px;
+    }
+    .champ-label {
+        display: inline-block;
+        min-width: 150px;
+        flex-shrink: 0;
+    }
+    .groupe-oui-non {
+        display: inline-flex;
+        gap: 16px;
+        min-width: 100px;
+        flex-shrink: 0;
+    }
+    .si-oui-label {
+        min-width: 55px;
+        flex-shrink: 0;
+    }
+    .groupe-resultat {
+        display: inline-flex;
+        gap: 16px;
+    }
+</style>
+</head>
+<body data-form-id="adoption">
+<div id="login-screen" style="position:fixed;inset:0;background:#faf7f2;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid #ddd;border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;color:#3d2b1f;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:#888;margin-bottom:16px;">Connexion requise pour accéder à ce formulaire.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err" style="color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:#c96b2a;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+<div style="background:#fff4e5;border:1px solid #ffd699;color:#7a4a00;font-size:12.5px;padding:8px 14px;text-align:center;" class="no-print">
+  <strong>Formulaire pilote.</strong> Écrit directement dans Supabase. PDF/mail (Apps Script) activés. Photos : toujours gérées par Apps Script, inchangé.
+</div>
+
+
+<div class="buttons">
+    <button class="btn btn-save"  onclick="saveForm()">💾 Sauvegarder</button>
+    <button class="btn btn-print btn-print-disabled" onclick="printForm()" disabled>🖨️ Imprimer</button>
+</div>
+
+<div class="page-container">
+<div class="content">
+
+<!-- En-tête -->
+<div id="entete"></div>
+
+<div class="title">Contrat de cession à charge</div>
+
+<p>
+L'association <em>L'ARCHE DE MALLO</em>, déclarée en préfecture de Belfort le 25 novembre 2021
+sous le n°W901006456, représentée par <em>Mallory ORTEGA</em> déclare confier l'animal suivant :
+</p>
+
+<br>
+<!-- Informations animal -->
+<div class="form-group">
+        <p><span class="blue">Nom usuel : </span><input type="text" class="editable editable-medium" id="nomUsuel" data-required="true" data-label="Nom usuel">
+        </p>
+<div class="form-group">
+    <p>
+        <span class="blue">Nom choisi par la famille : </span><input type="text" class="editable editable-medium" id="nomAdoption" data-required="true" data-label="Nom choisi par la famille"></p>
+</div>
+<div class="form-group">
+    <p>
+        <span class="blue">Sexe :</span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'sexe')"><span class="checkbox" data-group="sexe"></span> Mâle</span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'sexe')"><span class="checkbox" data-group="sexe"></span> Femelle</span>
+        </p>
+</div>
+
+<div class="form-group">
+    <p>    <span class="blue">Né(e) le : </span><input type="date" class="editable editable-date" id="dateNaissance">
+        </p>
+</div>
+    <p><span class="blue">N° de puce ou tatouage : </span><input type="text" class="editable editable-long" id="puce" data-required="true" data-label="N° de puce ou tatouage"></p>
+    <p><span class="blue">Couleur : </span><input type="text" class="editable editable-long" id="couleur" data-required="true" data-label="Couleur"></p>
+    <p>
+        <span class="blue">Stérilisé :</span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'sterilise')"><span class="checkbox" data-group="sterilise"></span> OUI</span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'sterilise')"><span class="checkbox" data-group="sterilise"></span> NON</span>
+        &nbsp;&nbsp;
+        <span class="blue">Date stérilisation prévue :</span>
+        <input type="date" class="editable editable-date" id="dateSterilisationPrevue" data-label="Date stérilisation prévue">
+    </p>
+    <p>
+       <span class="blue"> Vermifugé :</span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'vermifuge'); majObligatoire('vermifuge', ['dateVermifuge','produitVermifuge','prochainVermifuge'])"><span class="checkbox" data-group="vermifuge"></span> OUI</span>
+le <input type="date" class="editable editable-date" id="dateVermifuge">
+AVEC <input type="text" class="editable editable-medium" id="produitVermifuge" data-label="Produit vermifuge">
+<span class="clickable-row" onclick="toggleCheck(this, 'vermifuge'); majObligatoire('vermifuge', ['dateVermifuge','produitVermifuge','prochainVermifuge'])"><span class="checkbox" data-group="vermifuge"></span> NON</span>
+    </p>
+    <p><span class="blue">Prochain vermifuge : </span>le <input type="date" class="editable editable-date" id="prochainVermifuge" data-label="Prochain vermifuge"></p>
+    <p>
+       <span class="blue"> Anti-Puces :</span>
+       <span class="clickable-row" onclick="toggleCheck(this, 'antipuces'); majObligatoire('antipuces', ['dateAntiPuces','dateprochainAntiPuces','produitAntiPuces'])"><span class="checkbox" data-group="antipuces"></span> OUI</span>
+le <input type="date" class="editable editable-date" id="dateAntiPuces">
+AVEC <input type="text" class="editable editable-medium" id="produitAntiPuces" data-label="Produit anti-puces">
+<span class="clickable-row" onclick="toggleCheck(this, 'antipuces'); majObligatoire('antipuces', ['dateAntiPuces','dateprochainAntiPuces','produitAntiPuces'])">
+    <span class="checkbox" data-group="antipuces"></span> NON</span>
+    </p>
+	
+    <p><span class="blue">Prochain Anti-puces et tiques :</span> le <input type="date" class="editable editable-date" id="dateprochainAntiPuces"></p>
+    <div class="champ-ligne">
+        <span class="champ-label blue">Testé(e) FIV/FEL :</span>
+        <span class="groupe-oui-non">
+            <span class="clickable-row" onclick="toggleCheck(this, 'testFIV'); majObligatoire('testFIV', ['resultatFIV'])"><span class="checkbox" data-group="testFIV"></span> OUI</span>
+            <span class="clickable-row" onclick="toggleCheck(this, 'testFIV'); majObligatoire('testFIV', ['resultatFIV'])"><span class="checkbox" data-group="testFIV"></span> NON</span>
+        </span>
+        <span class="si-oui-label">Si oui :</span>
+        <span class="groupe-resultat">
+            <span class="clickable-row" onclick="toggleCheck(this, 'resultatFIV')"><span class="checkbox" data-group="resultatFIV"></span> NÉGATIF</span>
+            <span class="clickable-row" onclick="toggleCheck(this, 'resultatFIV')"><span class="checkbox" data-group="resultatFIV"></span> POSITIF</span>
+        </span>
+    </div>
+    <div class="champ-ligne">
+        <span class="champ-label blue">Test diarrhée :</span>
+        <span class="groupe-oui-non">
+            <span class="clickable-row" onclick="toggleCheck(this, 'testDiarrhee'); majObligatoire('testDiarrhee', ['resultatDiarrhee'])"><span class="checkbox" data-group="testDiarrhee"></span> OUI</span>
+            <span class="clickable-row" onclick="toggleCheck(this, 'testDiarrhee'); majObligatoire('testDiarrhee', ['resultatDiarrhee'])"><span class="checkbox" data-group="testDiarrhee"></span> NON</span>
+        </span>
+        <span class="si-oui-label">Si oui :</span>
+        <span class="groupe-resultat">
+            <span class="clickable-row" onclick="toggleCheck(this, 'resultatDiarrhee')"><span class="checkbox" data-group="resultatDiarrhee"></span> NÉGATIF</span>
+            <span class="clickable-row" onclick="toggleCheck(this, 'resultatDiarrhee')"><span class="checkbox" data-group="resultatDiarrhee"></span> POSITIF</span>
+        </span>
+    </div>
+    <p><span class="blue">
+        Vaccin Coryza-Typhus :</span>
+        <span class="clickable-row" onclick="var n=document.getElementById('vaccin_non'); if(n){n.classList.toggle('checked'); if(n.classList.contains('checked')){['vaccin_primo','vaccin_secundo'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('checked');});}}"><span class="checkbox" data-group="vaccin_non" id="vaccin_non"></span> NON</span>
+        <span class="clickable-row" onclick="toggleCheckMultiVaccin(this, 'vaccin_primo')"><span class="checkbox" id="vaccin_primo"></span> Primo</span>
+        <span class="clickable-row" onclick="toggleCheckMultiVaccin(this, 'vaccin_secundo')"><span class="checkbox" id="vaccin_secundo"></span> Secundo</span>
+    </p>
+    <p><span class="blue">
+        Date vaccin Primo : </span><input type="date" class="editable editable-date" id="dateVaccin">
+        <span class="blue">
+        Date vaccin Secundo / Rappel : </span><input type="date" class="editable editable-date" id="dateRappel">
+    </p>
+</div>
+<br>
+	
+	
+<!-- Adoptant -->
+<div><strong><span class="highlight-red">LA FAMILLE</strong></span></div>
+<div class="section">
+    <!-- Civilite -->
+<div class="section">
+    <p id="bloc_civilite">
+        <span class="clickable-row" onclick="toggleCheck(this, 'civilite')">
+            <span class="checkbox" data-group="civilite"></span>
+            <span class="blue">Monsieur</span>
+        </span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'civilite')">
+            <span class="checkbox" data-group="civilite"></span>
+            <span class="blue">Madame</span>
+        </span>
+    </p>
+    <p><span class="blue">Nom :</span> <input type="text" class="editable editable-long" id="nom" data-required="true" data-label="Nom" oninput="majNomAttestation(); this.value=this.value.toUpperCase()""></p>
+    <p><span class="blue">Prénom :</span> <input type="text" class="editable editable-long" id="prenom" data-required="true" data-label="Prénom" oninput="majNomAttestation(); this.value=this.value.toUpperCase()"></p>
+    <p><span class="blue">Adresse :</span> <input type="text" class="editable editable-long" id="adresse" data-required="true" data-label="Adresse"></p>
+    <p>
+        <span class="blue">Code postal :</span> <input type="text" class="editable editable-short" id="codePostal" data-required="true" data-label="Code postal" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        &nbsp;&nbsp;
+        <span class="blue">Ville :</span> <input type="text" class="editable editable-medium" id="ville" data-required="true" data-label="Ville" oninput="this.value=this.value.toUpperCase()">
+    </p>
+    <p><span class="blue">Portable :</span> <input type="tel" class="editable editable-tel" id="portable" data-required="true" data-label="Téléphone portable" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></p>
+    <p><span class="blue">Email :</span> <input type="email" class="editable editable-email" id="email" data-required="true" data-label="Email"></p>
+</div>
+	
+ <p class="mt-20"><strong><span class="red">Pièces justificatives obligatoires à nous fournir :</span></strong></p>
+
+<!-- Photo prise lors de la réservation (référence, si formulaire préremplié) -->
+<div class="section no-print" id="photoReservationPreview" style="display:none;"></div>
+
+<!-- Photo de l'animal -->
+<div class="section">
+    <p class="bold blue no-print">📷 Photo de l'animal <span class="red">*</span> (obligatoire)</p>
+    <div class="no-print" style="margin:8px 0;">
+        <label style="display:inline-block; padding:8px 14px; background:#0563c1; color:white; border-radius:5px; cursor:pointer; font-size:13px;">
+            📷 Prendre en photo
+            <input type="file" accept="image/*" capture="environment" id="photoAnimal" style="display:none;"
+                onchange="aperçuPhoto(this, 'preview_Animal')">
+        </label>
+    </div>
+    <!-- Aperçu visible dans le PDF — HORS no-print intentionnellement -->
+    <div id="preview_Animal" style="margin-top:6px;"></div>
+    <div class="no-print" style="margin-top:4px;">
+        <button type="button" class="btn-voir-photo" onclick="ouvrirPhoto('preview_Animal')" id="btn_voir_animal" style="display:none;">Voir la photo de l'animal</button>
+    </div>
+</div>
+
+<div class="section">
+    <p class="bold blue">Pièce d'identité :
+        <span class="clickable-row" onclick="toggleCheck(this, 'cni_statut')">
+            <span class="checkbox" data-group="cni_statut"></span> Déjà fournie
+        </span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'cni_statut')">
+            <span class="checkbox" data-group="cni_statut"></span> À fournir
+        </span>
+    </p>
+    <div class="no-print" style="display:flex; gap:20px; flex-wrap:wrap; margin:8px 0;">
+        <div>
+            <p class="small">Recto</p>
+            <label class="no-print" style="display:inline-block; padding:8px 14px; background:#0563c1; color:white; border-radius:5px; cursor:pointer; font-size:13px;">
+                📷 Prendre en photo
+                <input type="file" accept="image/*" capture="environment" id="photoCNI_recto" style="display:none;"
+                    onchange="aperçuPhoto(this, 'preview_CNI_recto')">
+            </label>
+            <div id="preview_CNI_recto" style="margin-top:6px;"></div>
+        </div>
+        <div>
+            <p class="small">Verso</p>
+            <label style="display:inline-block; padding:8px 14px; background:#0563c1; color:white; border-radius:5px; cursor:pointer; font-size:13px;">
+                📷 Prendre en photo
+                <input type="file" accept="image/*" capture="environment" id="photoCNI_verso" style="display:none;"
+                    onchange="aperçuPhoto(this, 'preview_CNI_verso')">
+            </label>
+            <div id="preview_CNI_verso" style="margin-top:6px;"></div>
+        </div>
+    </div>
+
+    <p class="bold blue mt-20">Justificatif de domicile :
+        <span class="clickable-row" onclick="toggleCheck(this, 'domicile_statut')">
+            <span class="checkbox" data-group="domicile_statut"></span> Déjà fourni
+        </span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'domicile_statut')">
+            <span class="checkbox" data-group="domicile_statut"></span> À fournir
+        </span>
+    </p>
+    <div class="no-print" style="display:flex; gap:20px; flex-wrap:wrap; margin:8px 0;">
+        <div>
+            <p class="small">Page 1</p>
+            <label style="display:inline-block; padding:8px 14px; background:#0563c1; color:white; border-radius:5px; cursor:pointer; font-size:13px;">
+                📷 Prendre en photo
+                <input type="file" accept="image/*" capture="environment" id="photoDomicile_1" style="display:none;"
+                    onchange="aperçuPhoto(this, 'preview_Domicile_1')">
+            </label>
+            <div id="preview_Domicile_1" style="margin-top:6px;"></div>
+        </div>
+        <div>
+            <p class="small">Page 2</p>
+            <label style="display:inline-block; padding:8px 14px; background:#0563c1; color:white; border-radius:5px; cursor:pointer; font-size:13px;">
+                📷 Prendre en photo
+                <input type="file" accept="image/*" capture="environment" id="photoDomicile_2" style="display:none;"
+                    onchange="aperçuPhoto(this, 'preview_Domicile_2')">
+            </label>
+            <div id="preview_Domicile_2" style="margin-top:6px;"></div>
+        </div>
+    </div>
+
+    <p class="bold blue mt-20">Certificat de Bonne Santé (CBS) :
+        <span class="clickable-row" onclick="toggleCheck(this, 'cbs_statut')">
+            <span class="checkbox" data-group="cbs_statut"></span> Fourni
+        </span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'cbs_statut')">
+            <span class="checkbox" data-group="cbs_statut"></span> À fournir
+        </span>
+    </p>
+    <div class="no-print" style="display:flex; gap:20px; flex-wrap:wrap; margin:8px 0;">
+        <div>
+            <p class="small">Page 1</p>
+            <label style="display:inline-block; padding:8px 14px; background:#0563c1; color:white; border-radius:5px; cursor:pointer; font-size:13px;">
+                📷 Prendre en photo
+                <input type="file" accept="image/*" capture="environment" id="photoCBS_1" style="display:none;"
+                    onchange="aperçuPhoto(this, 'preview_CBS_1')">
+            </label>
+            <div id="preview_CBS_1" style="margin-top:6px;"></div>
+        </div>
+    </div>
+
+    <p class="bold blue mt-20">📒 Carnet de santé — pages vaccins :
+        <span style="font-size:0.9em; font-weight:normal; color:#555;"></span>
+    </p>
+    <div class="no-print" style="display:flex; gap:20px; flex-wrap:wrap; margin:8px 0;">
+        <div>
+            <p class="small">Page vaccin 1</p>
+            <label style="display:inline-block; padding:8px 14px; background:#0563c1; color:white; border-radius:5px; cursor:pointer; font-size:13px;">
+                📷 Prendre en photo
+                <input type="file" accept="image/*" capture="environment" id="photoCarnetSante_1" style="display:none;"
+                    onchange="aperçuPhoto(this, 'preview_CarnetSante_1')">
+            </label>
+            <div id="preview_CarnetSante_1" style="margin-top:6px;"></div>
+        </div>
+        <div>
+            <p class="small">Page vaccin 2</p>
+            <label style="display:inline-block; padding:8px 14px; background:#0563c1; color:white; border-radius:5px; cursor:pointer; font-size:13px;">
+                📷 Prendre en photo
+                <input type="file" accept="image/*" capture="environment" id="photoCarnetSante_2" style="display:none;"
+                    onchange="aperçuPhoto(this, 'preview_CarnetSante_2')">
+            </label>
+            <div id="preview_CarnetSante_2" style="margin-top:6px;"></div>
+        </div>
+    </div>
+</div>
+<br>
+
+
+	
+
+<!-- Engagement stérilisation -->
+<div><strong><span class="highlight-red">ENGAGEMENT À LA STÉRILISATION</strong></span></div>
+
+<div class="cas-box">
+    <p><span class="red">CAS 1 :</span></p>
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this, 'cas'); majObligatoire('cas1direct', ['dateSterilisationCas1'])">
+    <span class="checkbox" data-group="cas" id="cas1_check"></span></span>
+        Vous accueillez un chat de + de 7 mois à l'Arche de Mallo avec la stérilisation déjà effectuée
+        en date du <input type="date" class="editable editable-date" id="dateSterilisationCas1" data-label="Date stérilisation (Cas 1)">
+
+<!-- CAS 2 -->
+    </p>
+    <p class="italic">
+        Vous n'avez rien à fournir, l'ICAD de l'animal restera au nom de l'association pendant 1 mois
+        après la date de cession à charge afin de valider sa cession définitive.
+    </p>
+</div>
+
+<div class="cas-box">
+    <p><span class="red">CAS 2 :</span></p>
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this, 'cas'); majObligatoire('cas2direct', ['dateLimiteSterilisation'])">
+    <span class="checkbox" data-group="cas" id="cas2_check"></span></span>
+        Vous accueillez aujourd'hui un chaton de - de 6 mois à L'Arche de Mallo,
+        la stérilisation est à effectuer avant le <input type="date" class="editable editable-date" id="dateLimiteSterilisation" data-label="Date limite stérilisation (Cas 2)">
+    </p>
+    <p>Du fait de son jeune âge, il ne peut donc pas être stérilisé actuellement. Cependant,
+    le but de l'Arche de Mallo étant de stopper la prolifération de chats, et de placer ses animaux
+    en tant qu'animaux de compagnie et non d'animaux de reproduction.</p>
+    <p class="bold">Vous devez vous engager à stériliser votre chat entre 6 et 7 mois d'âge à vos frais,
+    dans la clinique vétérinaire de votre choix.</p>
+    <p>Dans le cas d'une pathologie empêchant la stérilisation, un certificat de votre vétérinaire
+    devra nous être délivré.</p>
+    <p><strong><span class="underline red">IMPORTANT</span></strong> :
+    <span class="red">L'ICAD de l'animal restera au nom de l'association jusqu'à réception du certificat de stérilisation
+    fourni par votre vétérinaire.</span></p>
+    <p><span class="red bold">Vous devez envoyer le certificat de stérilisation par e-mail à :</span>
+    <a href="mailto:archedemallo@gmail.com" class="blue">archedemallo@gmail.com</a></p>
+    <p><span class="red">Le changement de propriétaire sera effectué à votre nom dès réception du certificat.</span></p>
+    <p><span class="red">Si toutefois vous ne respectez pas ce contrat, L'Arche de Mallo se donne le droit de récupérer
+    l'animal sans conditions. Un suivi de cet engagement sera tenu par l'association.</span></p>
+</div>
+
+<br>
+<br>
+<br>
+
+
+
+
+
+	
+<!-- Participation -->
+<div><strong><span class="highlight-red">Participation financière :</strong></span></div>
+<div class="section">
+    <!-- Cases multiples : chaque option est indépendante -->
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox"></span></span>
+        participation de <span class="red bold">90 € </span>pour la cession à charge (Comprenant l'identification par puce électronique +
+        la 1ère vaccination TC + tests). <span class="blue">Les frais de stérilisation restent à la charge de la famille.</span>
+    </p>
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox"></span></span>
+        participation de <span class="red bold">120 € </span>pour la cession à charge (Comprenant l'identification par puce électronique +
+        la 1ère et 2ème vaccination TC + tests). <span class="blue">Les frais de stérilisation restent à la charge de la famille.</span>
+    </p>
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox"></span></span>
+        participation de <span class="red bold">150 € </span>pour la cession à charge (Comprenant l'identification par puce électronique
+        et la stérilisation + tests)
+    </p>
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox"></span></span>
+        participation de <span class="red bold">180 € </span>pour la cession à charge (Comprenant l'identification par puce électronique +
+        la stérilisation + la vaccination TC + tests).
+    </p>
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox"></span></span>
+        participation de <span class="red bold">220 € </span>pour la cession à charge (Comprenant l'identification par puce électronique +
+        la stérilisation + la 1ère et 2ème vaccination TC + tests).
+    </p>
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox"></span></span>
+        tarif particulier de <input type="number" class="editable editable-num" id="tarifParticulier"><span class="red"> €</span>
+    </p>
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox"></span></span> Passeport <span class="red bold">20 €</span>
+        
+        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox"></span></span> Vaccin de la rage <span class="red bold">40 €</span>
+        
+        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox"></span></span> Test divers maladies <span class="red bold">40 €</span>
+        
+        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox"></span></span> Radio <span class="red bold">65 €</span>
+    </p>
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox"></span></span> Caisse de transport <span class="red bold">10 €</span>
+    </p>
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this); toggleDonLibre()"><span class="checkbox" id="donLibre_check"></span></span>
+        Dons libre de <input type="number" class="editable editable-num" id="montantDonLibre" min="0" step="0.01"><span class="red"> €</span>
+    </p>
+    <p id="bloc_recuDonLibre" style="display:none; margin-left:24px;">
+        <span class="blue">Reçu fiscal :</span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'recuDonLibre')">
+            <span class="checkbox" data-group="recuDonLibre"></span> Don avec reçu
+        </span>
+        &nbsp;&nbsp;
+        <span class="clickable-row" onclick="toggleCheck(this, 'recuDonLibre')">
+            <span class="checkbox" data-group="recuDonLibre"></span> Don sans reçu
+        </span>
+    </p>
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox"></span></span>
+        Autres : (préciser) <input type="text" class="editable editable-long" id="autres">
+    </p>
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox" id="adhesionLibre_check"></span></span>
+        Je souhaite adhérer à l'association L'ARCHE DE MALLO <span class="red bold">(20 € par an).</span> En adhérant, vous soutenez
+        notre démarche de protection et vous nous aidez à sauver toujours plus de chats dans le besoin.
+    </p>
+    <p>
+        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox"></span></span>
+        Reprise d'acompte de <span class="red bold">50 €</span> pour la réservation
+    </p>
+    <p>Reste à payer <input type="number" class="editable editable-num" id="resteAPayer"><span class="red"> €</span></p>
+    <p class="total-line">Total de la participation : </span><input type="number" class="editable editable-num" id="totalParticipation" data-required="true" data-label="Total participation (€)"> <span class="red"> €</span></p>
+
+    <!-- Paiement : multi-sélection -->
+<p><strong><span class="blue">Paiement effectué par :</span></strong></p>
+<div id="paiement-section">
+    <div class="paiement-ligne">
+        <span class="clickable-row" onclick="togglePaiement(this, 'virement', event)">
+            <span class="checkbox" id="pay_virement"></span> Virement
+        </span>
+        <span id="detail_virement" style="display:none;">
+            &nbsp; Montant : <input type="number" class="editable editable-num" id="montant_virement" min="0" step="0.01"> €
+        </span>
+    </div>
+    <div class="paiement-ligne">
+        <span class="clickable-row" onclick="togglePaiement(this, 'cb', event)">
+            <span class="checkbox" id="pay_cb"></span> CB
+        </span>
+        <span id="detail_cb" style="display:none;">
+            &nbsp; Montant : <input type="number" class="editable editable-num" id="montant_cb" min="0" step="0.01"> €
+        </span>
+    </div>
+    <div class="paiement-ligne">
+        <span class="clickable-row" onclick="togglePaiement(this, 'espece', event)">
+            <span class="checkbox" id="pay_espece"></span> Espèces
+        </span>
+        <span id="detail_espece" style="display:none;">
+            &nbsp; Montant : <input type="number" class="editable editable-num" id="montant_espece" min="0" step="0.01"> €
+        </span>
+    </div>
+    <div class="paiement-ligne">
+        <span class="clickable-row" onclick="togglePaiement(this, 'cheque', event)">
+            <span class="checkbox" id="pay_cheque"></span> Chèque
+        </span>
+        <span id="detail_cheque" style="display:none;">
+            &nbsp; Montant : <input type="number" class="editable editable-num" id="montant_cheque" min="0" step="0.01"> €
+            &nbsp; <span class="blue">N° <input type="text" class="editable editable-medium" id="numeroPaiement" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></span>
+        </span>
+    </div>
+    <div class="paiement-ligne">
+        <span class="clickable-row" onclick="togglePaiement(this, 'plusieurs_cheques', event)">
+            <span class="checkbox" id="pay_plusieurs_cheques"></span> Plusieurs chèques
+        </span>
+        <span id="detail_plusieurs_cheques" style="display:none;">
+                <br>&nbsp;&nbsp;
+                N°1 <input type="text" class="editable editable-short" id="cheque1" oninput="this.value=this.value.replace(/[^0-9]/g,'')"> montant : <input type="number" class="editable editable-num" id="montant_cheque1" min="0" step="0.01"> €
+                <br>&nbsp;&nbsp;
+                N°2 <input type="text" class="editable editable-short" id="cheque2" oninput="this.value=this.value.replace(/[^0-9]/g,'')"> montant : <input type="number" class="editable editable-num" id="montant_cheque2" min="0" step="0.01"> €
+                <br>&nbsp;&nbsp;
+                N°3 <input type="text" class="editable editable-short" id="cheque3" oninput="this.value=this.value.replace(/[^0-9]/g,'')"> montant : <input type="number" class="editable editable-num" id="montant_cheque3" min="0" step="0.01"> €
+                <br>&nbsp;&nbsp;
+                N°4 <input type="text" class="editable editable-short" id="cheque4" oninput="this.value=this.value.replace(/[^0-9]/g,'')"> montant : <input type="number" class="editable editable-num" id="montant_cheque4" min="0" step="0.01"> €
+            </span>
+        </div>
+</div>
+</div>
+<br>
+
+
+
+	
+<!-- Obligations -->
+<div><strong><span class="highlight-red">LES OBLIGATIONS DE LA FAMILLE</span></strong></div><br>
+<p><strong><span class="underline">En signant le présent contrat, la famille s'engage :</span></strong></p>
+
+<div class="article"><p><strong><span class="underline">Article 1</span></strong> : A apporter à l'animal tous les soins qu'il nécessite,
+le nourrir correctement, le soigner, à le protéger avec tous les moyens en ma possession,
+à le rendre heureux et ne pas permettre qu'il soit maltraité. Le préserver contre la chaleur et le froid.</p></div>
+
+<div class="article"><p><strong><span class="underline">Article 2</span></strong> : A ne pas céder l'animal sans en avoir au préalable
+averti l'association et à faire part à l'association de tout changement d'adresse, téléphone ou mail.</p></div>
+
+<div class="article"><p><strong><span class="underline">Article 3</span></strong> : En accueillant l'animal, les familles s'engagent
+à faire en sorte de lui offrir les meilleures conditions d'accueil et d'adaptation. Si toutefois,
+l'animal n'arrivait pas à s'habituer dans un délai de 30 jours maximum, l'association s'engage à le récupérer
+(il faudra restituer le carnet de santé),<span class="blue"> mais la participation financière et de réservation resteront acquis
+par l'association.</span></p></div>
+
+<div class="article"><p><strong><span class="underline">Article 4</span></strong> : A donner des nouvelles régulières de l'animal accueilli
+ainsi que des photos. L'association se réserve le droit de mandater une personne au domicile des familles
+afin de vérifier les conditions de vie de l'animal. La famille s'engage à laisser entrer cette personne
+sous réserve qu'elle lui présente sa carte de membre ou une pièce d'identité.</p></div>
+
+<div class="article"><p><strong><span class="underline">Article 5</span></strong> : A ne pas procéder à une quelconque euthanasie de convenance.
+En cas de décès accidentel, de fugue ou de perte, la famille s'engage à prévenir l'association dans les meilleurs
+délais, à fournir un justificatif ou à tout mettre en œuvre afin de retrouver son animal.</p></div>
+
+<div class="article"><p><strong><span class="underline">Article 6</span></strong> : <span class="blue">A faire stériliser l'animal à ses frais, à ses 7 mois
+maximum et à fournir un certificat de stérilisation établi par le vétérinaire.</span></p></div>
+
+<div class="article"><p><strong><span class="underline">Article 7</span></strong> : A garantir un bon état sanitaire de l'animal,
+par les vaccins et autres soins préventifs. Nous vous rappelons que l'association n'effectue que des sauvetages
+de chats errants et ne peut donc fournir de garantie vétérinaire pour les maladies cachées dont pourrait souffrir
+l'animal. La famille s'engage donc à ne pas rendre responsable l'association.</p></div>
+
+<div class="article"><p><strong><span class="underline">Article 8</span></strong> : La famille reconnaît qu'il accueille l'animal « en l'état »
+et qu'il ne pourra jamais réclamer à l'association aucun remboursement ni dédommagement en cas de dégâts, morsures,
+maladies ou décès de l'animal qui pourrait survenir postérieurement à la cession</p></div>
+
+<div class="article"><p><strong><span class="underline">Article 9</span></strong> : A respecter les consignes données par l'association
+concernant les vermifuges, soins, vaccinations, stérilisation ou mesure de sécurité à suivre.</p></div>
+
+<div class="article"><p><strong><span class="underline">Article 10</span></strong> : La famille donne son accord sur tout ce qui précède
+et autorise l'association à reprendre l'animal confié sans paiement d'aucune indemnité dans le cas où elle
+constaterait un manquement quelconque au susdit engagement.</p></div>
+
+<div class="article"><p><strong><span class="underline">Article 11</span></strong> : En cas de décès de la famille, les héritiers devront
+contacter l'association au plus vite. En accord avec eux, il sera trouvé la meilleure solution pour l'animal.</p></div>
+
+<div class="article"><p><strong><span class="underline">Article 12</span></strong> : La famille reconnaît que la somme versée à l'association
+pour la cession est inhérente aux frais de sauvetage et de mise en conformité de l'animal. Ce montant peut donc varier
+selon les actes vétérinaires effectués.</p></div>
+
+<div class="article"><p><strong><span class="underline">Article 13</span></strong> : Reconnais que l'association a fourni les documents
+suivants ce jour :</p>
+<ul>
+    <li><span class="blue">Carnet de santé et/ou passeport n° </span><input type="text" class="editable editable-medium" id="numeroPasseport"></li>
+    <li><span class="blue">Certificat vétérinaire avant cession daté du </span><input type="date" class="editable editable-date" id="dateCertificatVeto"></li>
+    <li>Copie du certificat ICAD</li>
+    <li>Copie du contrat de cession</li>
+    <li>Copie du certificat d'engagement</li>
+</ul>
+</div>
+
+<p>Le présent contrat est conclu pour une durée indéterminée et prend fin par le décès de l'animal,
+celui de sa famille ou la renonciation de celui-ci.</p>
+<br>
+
+	
+<!-- Attestation -->
+<div><strong><span class="highlight-red">ATTESTATION</span></strong></div>
+<div class="section">
+    <p><span class="blue">Je soussigné(e) :</span> <input type="text" class="editable editable-long" id="nomAttestation"></p>
+    <p>Déclare vouloir accueillir l'animal désigné dans ce contrat.</p>
+    <ul>
+        <li>Je m'engage, si celle-ci n'a pas encore été effectuée, à procéder à la stérilisation de l'animal
+        avant ses 7 mois (date indiquée dans le contrat) par un vétérinaire de mon choix et nous fournir le
+        justificatif de stérilisation.</li>
+        <li>Il est également convenu qu'à partir de la date où je signe le contrat,<span class="red bold"> tous les frais vétérinaires
+        seront à ma charge malgré le fait que le chat soit identifié à l'Arche de Mallo. L'ICAD ne sera modifié
+        qu'après réception du certificat de stérilisation établi par le vétérinaire, ou après validation de
+        la cession soit un mois après signature si l'animal est déjà stérilisé.</span></li>
+        <li>Je m'engage à donner des nouvelles, des photos et vidéos régulièrement de l'animal à l'association
+        afin de valider la cession. Et j'accepte que l'association procède à un entretien téléphonique ou une
+        visite post-cession dans les 6 mois après la cession.</li>
+        <li>Je reconnais avoir été averti(e) du caractère, de la santé de l'animal et avoir été conseillé(e)
+        pour son éducation, son alimentation et son adaptation.</li>
+        <li>Je reconnais avoir été averti(e) qu'en cas de non-respect d'une des clauses du contrat de cession,
+        l'association sera en droit de résilier le contrat et de récupérer l'animal dans les plus brefs délais.</li>
+        <li>La participation financière versée à l'association couvre une petite partie des frais vétérinaires et de
+        soins dont l'animal a fait l'objet et permettent à l'association de continuer à sauver et à nourrir le
+        maximum d'animaux. En cas de retour de l'animal (pour des raisons exceptionnelles et contrôlées), 
+		la participation financière ne sera pas remboursée.</li>
+    </ul>
+    <p>La famille prend note que le changement de propriétaire sera effectué par l'association au moment de la
+    preuve de stérilisation et dans un délai de 1 mois, une fois que toutes les clauses sont réunies.</p>
+</div>
+
+
+	
+<!-- Rappel important -->
+<div><strong><span class="highlight-red">RAPPEL IMPORTANT :</strong></span></div>
+<ul>
+    <li><strong><span class="blue">Responsabilité liée à la garde de l'animal</span></strong>
+    <p>La responsabilité d'une association de protection animale dépend avant tout de la notion de « garde »
+    de l'animal. Tant que l'animal est sous la garde effective de l'association (entretien, soins quotidiens,
+    surveillance), elle peut être tenue responsable des dommages causés par cet animal ou des conséquences
+    liées à son état de santé. Une fois que l'animal est remis à la famille, la garde est transférée à ce dernier,
+    et c'est donc lui qui assume la responsabilité et le soin de l'animal (article 1243 du Code civil).</p>
+    </li>
+</ul>
+
+<ul>
+    <li><strong><span class="blue">Exonération de responsabilité après cession</span></strong>
+    <p>Après cession, sauf clause contractuelle claire et acceptée, l’association n’est pas légalement responsable des 
+	maladies survenues ultérieurement. En effet, la responsabilité du fait des animaux s’applique au gardien de l’animal, et la famille 
+	devient gardien au moment de la remise. L’association doit toutefois informer la famille de l’état de santé connu de 
+	l’animal au moment de la cession. La jurisprudence précise que pour se dégager de responsabilité, l'association doit
+	prouver qu'elle n’avait plus la garde ni le contrôle de l'animal au moment où le dommage est survenu.</p>
+    </li>
+</ul>
+<br>
+<div>
+
+
+
+<div class="section mt-30">
+    <p class="bold">Fait à Autrechêne, le <input type="date" class="editable editable-date" id="dateFait"></p>
+    <p class="bold no-print">Saisi par <select id="saisiPar" class="editable"></select></p>
+
+       <table class="signature-table">
+        <tr>
+            <td>
+                <p>L'Arche de Mallo :<br></p>
+			
+				<!-- Case Lu et approuvé -->
+    <p class="mt-20">
+        <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve1" data-required="true" data-label="Lu et approuvé (Arche de Mallo)">
+    <span class="checkbox"></span>
+    <span class="bold"> Lu et approuvé</span>
+			</span>
+    </p>
+                <div class="section mt-20">
+                    <p class="bold underline">Signature de l'Arche de Mallo :</p>
+                    <div id="sig1"></div>
+                    <div id="sig1-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+                </div>
+            </td>
+            <td>
+                <p>La famille :<br></p>
+				<!-- Case Lu et approuvé -->
+    <p class="mt-20">
+        <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve2" data-required="true" data-label="Lu et approuvé (La famille)">
+    <span class="checkbox"></span>
+    <span class="bold"> Lu et approuvé</span>
+			</span>
+    </p>
+                <div class="section mt-20">
+                    <p class="bold underline">Signature de la famille :</p>
+                    <div id="sig2"></div>
+                    <div id="sig2-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+</div><!-- /content -->
+</div><!-- /page-container -->
+
+
+
+
+
+	
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="selecteur-animal.js"></script>
+<script src="config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script>
+creerEntete({ dateId: 'dateAdoption', dateLabel: 'Date de cession à charge :' });
+	
+	creerSignature('sig1');
+    creerSignature('sig2');
+    var today = new Date().toISOString().split('T')[0];
+    ['dateAdoption','dateFait'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el && !el.value) el.value = today;
+    });
+    // Ne pas pré-remplir la date de stérilisation
+    var steril = document.getElementById('dateSterilisationPrevue');
+    if (steril) steril.value = '';
+    appliquerPrefill();
+
+// remplie le nom de la partie je soussigné avec le nom de la famille
+function majNomAttestation() {
+    var nom    = document.getElementById('nom')    ? document.getElementById('nom').value    : '';
+    var prenom = document.getElementById('prenom') ? document.getElementById('prenom').value : '';
+    var champ  = document.getElementById('nomAttestation');
+    if (champ) champ.value = (prenom + ' ' + nom).trim().toUpperCase();  // ← toUpperCase()
+}
+	
+    // Aperçu miniature après prise de photo
+function aperçuPhoto(input, previewId) {
+    var preview = document.getElementById(previewId);
+    if (!preview) return;
+    if (!input.files || !input.files[0]) return;
+    var file = input.files[0];
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var src = e.target.result;
+        preview._photoBase64 = src;
+        if (previewId === 'preview_Animal') {
+            preview.innerHTML =
+                '<img src="' + src + '" style="max-width:200px;max-height:150px;margin-top:4px;border:1px solid #ccc;border-radius:4px;display:block;" alt="Photo animal">' +
+                '<span class="no-print" style="font-size:10px;color:green;display:block;margin-top:2px;">✔ ' + file.name + '</span>';
+            // Afficher le bouton Voir la photo
+            var btnVoir = document.getElementById('btn_voir_animal');
+            if (btnVoir) btnVoir.style.display = 'inline-block';
+        } else {
+            preview.innerHTML =
+                `<span style="font-size:11px;color:green;display:block;">✔ ${file.name}</span>` +
+                `<button type="button" class="btn-voir-photo no-print" onclick="ouvrirPhoto('${previewId}')" style="margin-top:4px;">Voir la photo</button>`;
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
+// ouvrirPhoto() est désormais dans formulaires-arche-mallo.js (partagé) —
+// retirée d'ici pour éviter la duplication.
+
+    // Redimensionner une image avant envoi (max 1200px, qualité 0.7)
+    function redimensionnerImage(file, callback) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var img = new Image();
+            img.onload = function() {
+                var canvas = document.createElement('canvas');
+                var max = 1200;
+                var w = img.width, h = img.height;
+                if (w > max || h > max) {
+                    if (w > h) { h = Math.round(h * max / w); w = max; }
+                    else       { w = Math.round(w * max / h); h = max; }
+                }
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                callback(canvas.toDataURL('image/jpeg', 0.7).split(',')[1]);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Envoi des photos à Apps Script
+    async function envoyerPhotos(nomAdoptant, nomChat, dateStr) {
+    if (envoyerPhotos._enCours) return;   // ← garde anti-doublon
+    envoyerPhotos._enCours = true;
+    
+    var photos = [
+        { id: 'photoAnimal',        type: 'Photo_Animal'     },
+        { id: 'photoCNI_recto',     type: 'CNI_Recto'        },
+        { id: 'photoCNI_verso',     type: 'CNI_Verso'        },
+        { id: 'photoDomicile_1',    type: 'Domicile_1'       },
+        { id: 'photoDomicile_2',    type: 'Domicile_2'       },
+        { id: 'photoCBS_1',         type: 'CBS_1'            },
+        { id: 'photoCarnetSante_1', type: 'CarnetSante_1'    },
+        { id: 'photoCarnetSante_2', type: 'CarnetSante_2'    },
+    ];
+        var nom  = (nomAdoptant || 'Inconnu').replace(/\s+/g, '_');
+        var chat = (nomChat     || 'Chat'   ).replace(/\s+/g, '_');
+        var date = (dateStr     || today    );
+        // Date ISO dédiée au nom du sous-dossier Drive (dateStr reçu ici est
+        // déjà au format JJ-MM-AAAA pour le nom de fichier legacy — on
+        // reconstruit l'ISO à partir de dateAdoption pour le tri Drive).
+        var dateAdoptionEl = document.getElementById('dateAdoption');
+        var dateISODossier = (dateAdoptionEl && dateAdoptionEl.value) || new Date().toISOString().split('T')[0];
+
+        for (var i = 0; i < photos.length; i++) {
+            var input = document.getElementById(photos[i].id);
+            if (!input || !input.files || !input.files[0]) continue;
+            var file     = input.files[0];
+            var filename = nom + '_' + chat + '_' + photos[i].type + '_' + date;
+            await new Promise(function(resolve) {
+                var f = file, fn = filename;
+                redimensionnerImage(f, function(base64) {
+                    fetch(APPS_SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action:      'photo',
+                            onglet:      'Adoption',
+                            filename:    fn,
+                            imageBase64: base64,
+                            mimeType:    'image/jpeg',
+                            personne:    nom,
+                            animal:      chat,
+                            dateDossier: dateISODossier
+                        })
+                    }).then(resolve).catch(resolve);
+                });
+            });
+        }
+		envoyerPhotos._enCours = false;   // ← libérer à la fin
+    }
+
+	// signature obligatoire
+	function majObligatoire(group, champIds, valeursOui) {
+    valeursOui = valeursOui || ['OUI'];
+    var checked  = document.querySelector('.checkbox[data-group="' + group + '"].checked');
+    var estActif = false;
+    if (checked) {
+        var texte = checked.parentElement.textContent.trim().toUpperCase();
+        estActif  = valeursOui.some(function(v) { return texte.startsWith(v.toUpperCase()); });
+    }
+    if (group === 'cas1direct') {
+        var c = document.getElementById('cas1_check');
+        estActif = c ? c.classList.contains('checked') : false;
+    }
+    if (group === 'cas2direct') {
+        var c = document.getElementById('cas2_check');
+        estActif = c ? c.classList.contains('checked') : false;
+    }
+    champIds.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) {
+            document.body.setAttribute('data-required-group-' + id, estActif ? 'true' : '');
+            return;
+        }
+        if (estActif) {
+            el.setAttribute('data-required', 'true');
+            el.setAttribute('data-label', el.getAttribute('data-label') || id);
+        } else {
+            el.removeAttribute('data-required');
+            el.style.borderBottom = '';
+        }
+    });
+}
+
+
+	
+function toggleCheckMulti(element) {
+    var box = element.querySelector('.checkbox');
+    if (box) box.classList.toggle('checked');
+}
+
+// Vaccins multi-sélection (Primo et/ou Secundo cochables simultanément)
+// Si on coche NON, on décoche Primo et Secundo ; si on coche Primo ou Secundo, on décoche NON
+function toggleCheckMultiVaccin(element, id) {
+    var box = document.getElementById(id);
+    if (!box) return;
+    box.classList.toggle('checked');
+    // Si Primo ou Secundo coché, décocher NON
+    if (box.classList.contains('checked')) {
+        var non = document.getElementById('vaccin_non');
+        if (non) non.classList.remove('checked');
+    }
+}
+
+// Paiement dynamique : toggle case + affiche/masque le détail montant
+function togglePaiement(element, mode) {
+    var box    = element.querySelector('.checkbox');
+    var detail = document.getElementById('detail_' + mode);
+    if (!box) return;
+    box.classList.toggle('checked');
+    if (detail) detail.style.display = box.classList.contains('checked') ? 'inline' : 'none';
+}
+
+// ============================================================
+// DONS LIBRE — affichage du choix "avec / sans reçu" + génération
+// automatique du formulaire Dons pré-rempli après sauvegarde
+// ============================================================
+
+// Afficher/masquer le choix avec/sans reçu selon la case "Dons libre"
+function toggleDonLibre() {
+    var caseDon = document.getElementById('donLibre_check');
+    var estCoche = caseDon && caseDon.classList.contains('checked');
+    var bloc = document.getElementById('bloc_recuDonLibre');
+    if (bloc) bloc.style.display = estCoche ? '' : 'none';
+    if (!estCoche) {
+        // Réinitialisation si la case est décochée
+        var montant = document.getElementById('montantDonLibre');
+        if (montant) { montant.value = ''; montant.style.borderBottom = ''; }
+        document.querySelectorAll('.checkbox[data-group="recuDonLibre"]').forEach(function(cb) {
+            cb.classList.remove('checked');
+            cb.style.outline = '';
+        });
+    }
+}
+
+// Ouvre Dons.html dans un nouvel onglet, pré-rempli avec les infos
+// du donateur (= l'adoptant), le montant saisi, la date et la personne
+// qui a saisi le contrat, ainsi que le choix avec/sans reçu fiscal.
+function ouvrirFormulaireDon() {
+    var recuChoisi = document.querySelector('.checkbox[data-group="recuDonLibre"].checked');
+    var texteRecu  = recuChoisi ? recuChoisi.parentElement.textContent.trim() : '';
+    var recuFiscalSouhaite = texteRecu.indexOf('avec') >= 0 ? 'oui' : 'non';
+
+    var champs = ['nom', 'prenom', 'adresse', 'codePostal', 'ville', 'email', 'saisiPar'];
+    var slim = {};
+    champs.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el && el.value) slim[id] = el.value;
+    });
+
+    var portableEl = document.getElementById('portable');
+    if (portableEl && portableEl.value) slim.telephone = portableEl.value;
+
+    var montantEl = document.getElementById('montantDonLibre');
+    if (montantEl && montantEl.value) slim.montantDon = montantEl.value;
+
+    var dateAdoptionEl = document.getElementById('dateAdoption');
+    if (dateAdoptionEl && dateAdoptionEl.value) slim.dateSignature = dateAdoptionEl.value;
+
+    // Civilité (Monsieur / Madame)
+    var civiliteChoisie = document.querySelector('.checkbox[data-group="civilite"].checked');
+    if (civiliteChoisie) {
+        slim._civilite = civiliteChoisie.parentElement.textContent.trim();
+    }
+
+    // Mode(s) de règlement — repris tel quel (mode(s) coché(s), montant(s)
+    // et numéro(s) de chèque le cas échéant), pour éviter à l'association
+    // de ressaisir cette information sur le formulaire de don. Les ids des
+    // champs montant/numéro de chèque sont identiques entre les deux
+    // formulaires, donc ils seront pré-remplis automatiquement ; seuls les
+    // cases à cocher "pay_..." ont besoin d'un traitement particulier
+    // (voir _modesPaiement, interprété par Dons.html).
+    var modesPaiement = [];
+    ['virement', 'cb', 'espece', 'cheque', 'plusieurs_cheques'].forEach(function(mode) {
+        var box = document.getElementById('pay_' + mode);
+        if (!box || !box.classList.contains('checked')) return;
+        modesPaiement.push(mode);
+
+        var montantModeEl = document.getElementById('montant_' + mode);
+        if (montantModeEl && montantModeEl.value) slim['montant_' + mode] = montantModeEl.value;
+
+        if (mode === 'cheque') {
+            var numEl = document.getElementById('numeroPaiement');
+            // Champ nommé différemment sur Dons.html ("numeroCheque" au lieu
+            // de "numeroPaiement" sur le Contrat d'adoption) : on écrit donc
+            // sous le nom attendu par le formulaire de destination.
+            if (numEl && numEl.value) slim.numeroCheque = numEl.value;
+        }
+        if (mode === 'plusieurs_cheques') {
+            ['1', '2', '3', '4'].forEach(function(n) {
+                var numEl = document.getElementById('cheque' + n);
+                var mtEl  = document.getElementById('montant_cheque' + n);
+                if (numEl && numEl.value) slim['cheque' + n] = numEl.value;
+                if (mtEl  && mtEl.value)  slim['montant_cheque' + n] = mtEl.value;
+            });
+        }
+    });
+    if (modesPaiement.length > 0) slim._modesPaiement = modesPaiement;
+
+    // Champs spéciaux, non liés à un input : interprétés par Dons.html
+    // pour pré-cocher "Particulier", la civilité, le choix de reçu fiscal
+    // et le(s) mode(s) de paiement.
+    slim._typeDonateur       = 'Particulier';
+    slim._recuFiscalSouhaite = recuFiscalSouhaite;
+    slim._adoptionId         = dernierAdoptionId;
+
+    var prefill = encodeURIComponent(JSON.stringify(slim));
+    var url     = 'don.html?prefill=' + prefill;
+
+    var fenetre = window.open(url, '_blank');
+    if (!fenetre) {
+        afficherLienFormulaireDon(url);
+    }
+}
+
+function ouvrirFormulaireAdhesion() {
+    var champs = ['nom', 'prenom', 'adresse', 'codePostal', 'ville', 'email', 'saisiPar'];
+    var slim = {};
+    champs.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el && el.value) slim[id] = el.value;
+    });
+
+    var portableEl = document.getElementById('portable');
+    if (portableEl && portableEl.value) slim.portable = portableEl.value;
+
+    var dateAdoptionEl = document.getElementById('dateAdoption');
+    if (dateAdoptionEl && dateAdoptionEl.value) slim.dateAdhesion = dateAdoptionEl.value;
+
+    var civiliteChoisie = document.querySelector('.checkbox[data-group="civilite"].checked');
+    if (civiliteChoisie) slim._civilite = civiliteChoisie.parentElement.textContent.trim();
+
+    // Adhésion libre depuis une adoption : toujours "Membre adhérent",
+    // cotisation standard de 20 € (pas de montant séparé à saisir ici).
+    slim._typeAdhesion = 'Membre adherent';
+    slim.cotisationAdherent = '20';
+    slim.montantAdhesion = '20';
+    slim._adoptionId = dernierAdoptionId;
+
+    var prefill = encodeURIComponent(JSON.stringify(slim));
+    var url     = 'adhesion.html?prefill=' + prefill;
+
+    var fenetre = window.open(url, '_blank');
+    if (!fenetre) {
+        afficherLienFormulaireAdhesion(url);
+    }
+}
+
+function afficherLienFormulaireAdhesion(url) {
+    var conteneur = document.querySelector('.buttons');
+    if (!conteneur || document.getElementById('btnFormulaireAdhesion')) return;
+    var btn = document.createElement('button');
+    btn.id = 'btnFormulaireAdhesion';
+    btn.className = 'btn btn-save';
+    btn.textContent = '🪪 Ouvrir le formulaire d\'adhésion (bloqué par le navigateur)';
+    btn.onclick = function() { window.open(url, '_blank'); };
+    conteneur.appendChild(btn);
+}
+
+function afficherLienFormulaireDon(url) {
+    var conteneur = document.querySelector('.buttons');
+    if (!conteneur || document.getElementById('btnFormulaireDon')) return;
+    var btn = document.createElement('button');
+    btn.id = 'btnFormulaireDon';
+    btn.className = 'btn btn-save';
+    btn.textContent = '💶 Ouvrir le formulaire de don (bloqué par le navigateur)';
+    btn.onclick = function() { window.open(url, '_blank'); };
+    conteneur.appendChild(btn);
+}
+
+// ============================================================
+// SUPABASE — remplace l'envoi (sheet) vers Apps Script pour la partie
+// structurée. PDF + Drive (photos incluses) + mail restent sur Apps
+// Script (ENVOYER_PDF_MAIL=true), exactement comme avant.
+// ============================================================
+const ENVOYER_PDF_MAIL = true;
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+chargerListeSaisisseurs();
+var dernierAdoptionId = null;
+
+var selecteurAnimal = initSelecteurAnimal({
+    inputId: 'nomUsuel',
+    contexte: 'adoption',
+    champsVerrouilles: { puce: 'puce', dateNaissance: 'date_naissance' },
+    champsModifiables: { couleur: 'couleur' },
+    champsPersonne: {
+        nom: 'nom', prenom: 'prenom', adresse: 'adresse', codePostal: 'code_postal',
+        ville: 'ville', email: 'email', portable: 'telephone'
+    }
+});
+
+function chequesDepuisFormData(data) {
+    var cheques = [];
+    ['1', '2', '3', '4'].forEach(function(n) {
+        var num = data['cheque' + n];
+        var montant = data['montant_cheque' + n];
+        if (num || montant) {
+            cheques.push({ numero_cheque: num || null, montant: montant ? parseFloat(montant) : null });
+        }
+    });
+    if (cheques.length === 0 && (data.numeroPaiement || data.montant_cheque)) {
+        cheques.push({
+            numero_cheque: data.numeroPaiement || null,
+            montant: data.montant_cheque ? parseFloat(data.montant_cheque) : null
+        });
+    }
+    return cheques;
+}
+
+function typeVaccinDepuisFormData(data) {
+    if (document.getElementById('vaccin_primo') && document.getElementById('vaccin_primo').classList.contains('checked')) return 'Primo';
+    if (document.getElementById('vaccin_secundo') && document.getElementById('vaccin_secundo').classList.contains('checked')) return 'Secundo';
+    return null;
+}
+
+async function _saveFormOriginal() {
+    var missing = validateRequiredFields();
+    if (missing.length > 0) {
+        afficherMessage('⚠️ Veuillez remplir les champs obligatoires :<br><br>• ' + missing.join('<br>• '), 'erreur');
+        return;
+    }
+
+    var data = collectFormData();
+    data.onglet = document.body.getAttribute('data-form-id') || 'adoption';
+    data.signatureImage = getSignatureImage();
+    data.htmlContent = encodeBase64Unicode(buildHtmlWithData());
+
+    var cas1 = document.getElementById('cas1_check');
+    var cas1Coche = cas1 && cas1.classList.contains('checked');
+
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:bold;font-family:Arial;';
+    overlay.innerHTML = '<div style="text-align:center">En cours...<br><br><small>Veuillez patienter</small></div>';
+    document.body.appendChild(overlay);
+
+    try {
+        const { data: adoptionId, error } = await supabaseClient.rpc('creer_adoption', {
+            p_nom: data.nom,
+            p_prenom: data.prenom,
+            p_civilite: (document.querySelector('.checkbox[data-group="civilite"].checked') || {}).parentElement
+                ? document.querySelector('.checkbox[data-group="civilite"].checked').parentElement.textContent.trim() : null,
+            p_adresse: data.adresse,
+            p_code_postal: data.codePostal,
+            p_ville: data.ville,
+            p_email: data.email,
+            p_telephone: data.portable,
+            p_nom_usuel: data.nomUsuel,
+            p_nom_adoption: data.nomAdoption,
+            p_couleur: data.couleur,
+            p_date_naissance_animal: data.dateNaissance || null,
+            p_puce: data.puce,
+            p_numero_carnet_sante: data.numeroPasseport,
+            p_nom_attestation: data.nomAttestation,
+            p_tarif_particulier: data.tarifParticulier ? parseFloat(data.tarifParticulier) : null,
+            p_total_participation: data.totalParticipation ? parseFloat(data.totalParticipation) : null,
+            p_montant_virement: data.montant_virement ? parseFloat(data.montant_virement) : null,
+            p_montant_espece: data.montant_espece ? parseFloat(data.montant_espece) : null,
+            p_montant_cb: data.montant_cb ? parseFloat(data.montant_cb) : null,
+            p_date_fait: data.dateFait || null,
+            p_saisi_par_id: data.saisiPar || null,
+            p_cheques: chequesDepuisFormData(data),
+            p_date_vaccin: data.dateVaccin || null,
+            p_date_rappel_vaccin: data.dateRappel || null,
+            p_type_vaccin: typeVaccinDepuisFormData(data),
+            p_date_vermifuge: data.dateVermifuge || null,
+            p_produit_vermifuge: data.produitVermifuge,
+            p_prochain_vermifuge: data.prochainVermifuge || null,
+            p_date_antipuces: data.dateAntiPuces || null,
+            p_produit_antipuces: data.produitAntiPuces,
+            p_prochain_antipuces: data.dateprochainAntiPuces || null,
+            p_date_certificat_veto: data.dateCertificatVeto || null,
+            p_sterilisation_cas1: !!cas1Coche,
+            p_date_sterilisation_cas1: data.dateSterilisationCas1 || null,
+            p_animal_id: selecteurAnimal.getAnimalId()
+        });
+
+        document.body.removeChild(overlay);
+        if (error) throw error;
+
+        dernierAdoptionId = adoptionId;
+
+        if (ENVOYER_PDF_MAIL) {
+            data.filename = buildFilename(data);
+            await sendToGoogle(data);
+        }
+
+        formSaved = true;
+        var btnSave = document.querySelector('.btn-save');
+        var btnPrint = document.querySelector('.btn-print');
+        if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
+        if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
+        afficherMessage('✅ Adoption enregistrée (id ' + adoptionId + ').');
+    } catch (err) {
+        document.body.removeChild(overlay);
+        console.error(err);
+        alert('Erreur lors de la sauvegarde : ' + (err.message || err));
+    }
+}
+
+saveForm = async function() {
+    // Validation spécifique "Dons libre" avant la sauvegarde
+    var caseDon  = document.getElementById('donLibre_check');
+    var donLibreCoche = caseDon && caseDon.classList.contains('checked');
+    if (donLibreCoche) {
+        var missingDon = [];
+        var montantEl  = document.getElementById('montantDonLibre');
+        var montantVal = montantEl ? parseFloat(montantEl.value) : 0;
+        if (!montantVal || montantVal <= 0) {
+            missingDon.push('Montant du don libre');
+            if (montantEl) montantEl.style.borderBottom = '2px solid red';
+        } else if (montantEl) {
+            montantEl.style.borderBottom = '';
+        }
+        var recuChoisi = document.querySelector('.checkbox[data-group="recuDonLibre"].checked');
+        if (!recuChoisi) {
+            missingDon.push('Don avec reçu / Don sans reçu');
+            document.querySelectorAll('.checkbox[data-group="recuDonLibre"]').forEach(function(cb) {
+                cb.style.outline = '2px solid red'; cb.style.outlineOffset = '1px';
+            });
+        } else {
+            document.querySelectorAll('.checkbox[data-group="recuDonLibre"]').forEach(function(cb) {
+                cb.style.outline = '';
+            });
+        }
+        if (missingDon.length > 0) {
+            afficherMessage('⚠️ Dons libre coché — veuillez compléter :<br><br>• ' + missingDon.join('<br>• '), 'erreur');
+            return;
+        }
+    }
+
+    await _saveFormOriginal();
+    // N'envoyer les photos QUE si la sauvegarde a réussi (formSaved = true)
+    if (!formSaved) return;
+    var prenom      = (document.getElementById('prenom')      || {}).value || '';
+    var nom         = (document.getElementById('nom')         || {}).value || '';
+    var nomAdoptant = (prenom + ' ' + nom).trim();
+    var nomChat     = (document.getElementById('nomUsuel')    || {}).value || '';
+    var dateRaw     = (document.getElementById('dateAdoption')|| {}).value || today;
+    var dateFr      = dateRaw ? dateRaw.split('-').reverse().join('-') : today;
+    await envoyerPhotos(nomAdoptant, nomChat, dateFr);
+
+    // Génération automatique du formulaire de don si "Dons libre" était coché
+    if (donLibreCoche) {
+        ouvrirFormulaireDon();
+    }
+
+    // Génération automatique du formulaire d'adhésion si la case était cochée
+    var caseAdhesion = document.getElementById('adhesionLibre_check');
+    if (caseAdhesion && caseAdhesion.classList.contains('checked')) {
+        ouvrirFormulaireAdhesion();
+    }
+};
+</script>
+
+</body>
+</html>

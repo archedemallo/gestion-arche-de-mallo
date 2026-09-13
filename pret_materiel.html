@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prêt de matériel — L'Arche de Mallo</title>
+<link rel="stylesheet" href="formulaires-arche-mallo.css">
+</head>
+<body data-form-id="pret_materiel">
+<div id="login-screen" style="position:fixed;inset:0;background:#faf7f2;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid #ddd;border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;color:#3d2b1f;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:#888;margin-bottom:16px;">Connexion requise pour accéder à ce formulaire.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err" style="color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:#c96b2a;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+<div style="background:#fff4e5;border:1px solid #ffd699;color:#7a4a00;font-size:12.5px;padding:8px 14px;text-align:center;" class="no-print">
+  <strong>Formulaire pilote.</strong> Écrit directement dans Supabase. PDF/mail (Apps Script) activés. Le n° de cage/la caution/la date de retour prévue sont ajoutés en texte dans le champ matériel (pas encore de colonnes dédiées).
+</div>
+
+<div class="buttons">
+    <button class="btn btn-save" onclick="saveForm()">💾 Sauvegarder</button>
+    <button class="btn btn-print btn-print-disabled" onclick="printForm()" disabled>🖨️ Imprimer</button>
+</div>
+
+<div class="page-container">
+<div class="content">
+
+    <div id="entete"></div>
+
+    <div class="title" style="text-align:center; margin-top:5px;">Contrat de prêt de matériel</div>
+
+    <div class="section" style="text-align:center; font-style:italic; font-size:0.9em; color:#555; margin:6px 0 10px;">
+        <p>En aucun cas une association ne peut être contrainte de prêter du matériel.<br>
+        Objectif : Formaliser les conditions de prêt de matériel entre l'association et un particulier,
+        dans le but de contribuer à la réalisation d'un trappage. Il s'agit d'une démarche volontaire
+        et de bonne entente entre partenaires respectueux.</p>
+    </div>
+
+    <!-- Parties -->
+    <div class="section">
+        <p class="bold underline">Prêt de matériel entre :</p>
+        <p>
+            L'association <strong>L'Arche de Mallo</strong>, représentée par
+            <strong>Mme ORTEGA Mallory</strong>, agissant en qualité de présidente, dénommée « Prêteur » d'une part,
+        </p>
+        <p>— Et —</p>
+        <p>
+            <span class="blue">Nom :</span>
+            <input type="text" class="editable editable-long" id="nomEmprunteur"
+                data-required="true" data-label="Nom de l'emprunteur" oninput="this.value=this.value.toUpperCase()">
+        </p>
+        <p>
+            <span class="blue">Prénom :</span>
+            <input type="text" class="editable editable-long" id="prenomEmprunteur"
+                data-label="Prénom de l'emprunteur" oninput="this.value=this.value.toUpperCase()">
+        </p>
+        <p>
+            <span class="blue">Domicilié(e) :</span>
+            <input type="text" class="editable editable-long" id="adresseEmprunteur" data-required="true" data-label="Adresse emprunteur">
+        </p>
+        <p>
+            <span class="blue">Code postal :</span>
+            <input type="text" class="editable editable-short" id="codePostalEmprunteur" data-label="Code postal" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+            &nbsp;&nbsp;
+            <span class="blue">Ville :</span>
+            <input type="text" class="editable editable-medium" id="villeEmprunteur" data-label="Ville" oninput="this.value=this.value.toUpperCase()">
+        </p>
+        <p>
+            <span class="blue">Téléphone :</span>
+            <input type="tel" class="editable editable-tel" id="telephoneEmprunteur" data-label="Téléphone emprunteur"
+                oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        </p>
+        <p>
+            <span class="blue">E-mail :</span>
+            <input type="email" class="editable editable-email" id="emailEmprunteur" data-label="Email emprunteur">
+        </p>
+    </div>
+
+    <!-- Matériel -->
+    <div class="section">
+        <p>
+            <span class="blue">Date de prise en charge du matériel :</span>
+            <input type="date" class="editable editable-date" id="datePriseEnCharge" data-required="true" data-label="Date prise en charge">
+        </p>
+        <p><span class="blue">Matériel prêté :</span></p>
+        <div class="motif-ligne" onclick="toggleCheckMulti(this)">
+            <span class="checkbox" id="materiel_cage_trappe"></span>
+            <span>Cage trappe</span>
+        </div>
+        <div class="motif-ligne" onclick="toggleCheckMulti(this)">
+            <span class="checkbox" id="materiel_cage_transport"></span>
+            <span>Cage transport</span>
+        </div>
+        <div class="motif-ligne" onclick="toggleCheckMulti(this)">
+            <span class="checkbox" id="materiel_autre"></span>
+            <span>Autre : <input type="text" class="editable editable-medium" onclick="event.stopPropagation()" id="materiel_autre_texte"></span>
+        </div>
+        <p>
+            <span class="blue">N° de la cage / trappe ou de transport :</span>
+            <input type="text" class="editable editable-medium" id="numeroCage" data-required="true" data-label="N° cage ou trappe">
+        </p>
+        <p>
+            <span class="blue">Date de retour du matériel :</span>
+            <input type="date" class="editable editable-date" id="dateRetour" data-required="true" data-label="Date retour">
+        </p>
+        <p>
+            <span class="blue bold">Caution fixée à 100 €. Mode de versement de la caution :</span>
+        </p>
+        <div id="paiement-section">
+            <div class="paiement-ligne">
+                <span class="clickable-row" onclick="togglePaiement(this, 'cb')">
+                    <span class="checkbox" id="pay_cb"></span> CB
+                </span>
+                <span id="detail_cb" style="display:none;">
+                    &nbsp; Montant : <input type="number" class="editable editable-num" id="montant_cb" min="0" step="0.01"> €
+                </span>
+            </div>
+            <div class="paiement-ligne">
+                <span class="clickable-row" onclick="togglePaiement(this, 'cheque')">
+                    <span class="checkbox" id="pay_cheque"></span> Chèque
+                </span>
+                <span id="detail_cheque" style="display:none;">
+                    &nbsp; N° <input type="text" class="editable editable-medium" id="numeroPaiement" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                    &nbsp; Montant : <input type="number" class="editable editable-num" id="montant_cheque" min="0" step="0.01"> €
+                </span>
+            </div>
+            <div class="paiement-ligne">
+                <span class="clickable-row" onclick="togglePaiement(this, 'espece')">
+                    <span class="checkbox" id="pay_espece"></span> Espèces
+                </span>
+                <span id="detail_espece" style="display:none;">
+                    &nbsp; Montant : <input type="number" class="editable editable-num" id="montant_espece" min="0" step="0.01"> €
+                </span>
+            </div>
+            <div class="paiement-ligne">
+                <span class="clickable-row" onclick="togglePaiement(this, 'virement')">
+                    <span class="checkbox" id="pay_virement"></span> Virement
+                </span>
+                <span id="detail_virement" style="display:none;">
+                    &nbsp; Montant : <input type="number" class="editable editable-num" id="montant_virement" min="0" step="0.01"> €
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conditions -->
+    <div class="section">
+        <p>
+            L'emprunteur reconnaît que le matériel qui lui est confié est en parfait état de fonctionnement
+            et de propreté, et rangé / conditionné de telle façon à le protéger lors des manipulations et des transports.
+        </p>
+        <p>
+            L'emprunteur s'engage à prendre livraison, contre caution, au lieu, jour et heure indiqués par le
+            « Prêteur », de même il s'engage à le restituer selon les conditions dictées par le « Prêteur ».
+            Lors du retour du matériel, un contrôle sera effectué pour s'assurer de son bon état général
+            (fonctionnement, propreté et conditionnement). Si une anomalie est constatée, la totalité de la
+            caution sera conservée. En cas de dysfonctionnement, le coût de la réparation sera à la charge
+            de l'emprunteur. S'il est constaté que le matériel est devenu inutilisable, son remplacement
+            par un matériel neuf et identique aux frais de l'emprunteur sera exigé.
+        </p>
+    </div>
+
+    <!-- Signatures -->
+    <div class="section">
+        <p class="bold">Fait à Autrechêne, le
+            <input type="date" class="editable editable-date" id="dateFait">
+        </p>
+    <p class="bold no-print">Saisi par <select id="saisiPar" class="editable"></select></p>
+        <table class="signature-table">
+            <tr>
+                <td>
+                    <p>Le Prêteur — L'Arche de Mallo :</p>
+                    <p class="mt-20">
+                        <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve1_pm">
+                            <span class="checkbox"></span>
+                            <span class="bold"> Lu et approuvé</span>
+                        </span>
+                    </p>
+                    <div id="sig1"></div>
+                    <div id="sig1-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+                </td>
+                <td>
+                    <p>L'Emprunteur :</p>
+                    <p class="mt-20">
+                        <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve2_pm">
+                            <span class="checkbox"></span>
+                            <span class="bold"> Lu et approuvé</span>
+                        </span>
+                    </p>
+                    <div id="sig2"></div>
+                    <div id="sig2-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script>
+    creerEntete({ dateId: 'datePretMateriel', dateLabel: 'Date :' });
+    creerSignature('sig1');
+    creerSignature('sig2');
+
+    var today = new Date().toISOString().split('T')[0];
+    var el = document.getElementById('dateFait');
+    if (el && !el.value) el.value = today;
+    document.addEventListener('DOMContentLoaded', function() {
+        ['datePriseEnCharge','dateRetour'].forEach(function(id) {
+            var e = document.getElementById(id); if (e) e.value = '';
+        });
+    });
+
+    function toggleCheckMulti(element) {
+        var box = element.querySelector('.checkbox');
+        if (box) box.classList.toggle('checked');
+    }
+
+    function togglePaiement(element, mode) {
+        var box    = element.querySelector('.checkbox');
+        var detail = document.getElementById('detail_' + mode);
+        if (!box) return;
+        box.classList.toggle('checked');
+        if (detail) detail.style.display = box.classList.contains('checked') ? 'inline' : 'none';
+    }
+
+    validateRequiredFields = function() {
+        var missing = [];
+        document.querySelectorAll('[data-required="true"]').forEach(function(el) {
+            var label = el.getAttribute('data-label') || el.id;
+            if (!el.value || el.value.trim() === '') {
+                missing.push(label);
+                el.style.borderBottom = '2px solid red';
+            } else {
+                el.style.borderBottom = '';
+            }
+        });
+
+        // Matériel : au moins un coché
+        var matIds = ['materiel_cage_trappe','materiel_cage_transport','materiel_autre'];
+        var matCoche = matIds.some(function(id) {
+            var e = document.getElementById(id);
+            return e && e.classList.contains('checked');
+        });
+        if (!matCoche) {
+            missing.push('Matériel prêté (au moins un à cocher)');
+            matIds.forEach(function(id) {
+                var e = document.getElementById(id);
+                if (e) { e.style.outline = '2px solid red'; e.style.outlineOffset = '1px'; }
+            });
+        } else {
+            matIds.forEach(function(id) {
+                var e = document.getElementById(id);
+                if (e) e.style.outline = '';
+            });
+        }
+
+        // Paiement : au moins un mode
+        var payIds = ['pay_cb','pay_cheque','pay_espece','pay_virement'];
+        var payCoche = payIds.some(function(id) {
+            var e = document.getElementById(id);
+            return e && e.classList.contains('checked');
+        });
+        if (!payCoche) {
+            missing.push('Mode de règlement caution (au moins un)');
+            payIds.forEach(function(id) {
+                var e = document.getElementById(id);
+                if (e) { e.style.outline = '2px solid red'; e.style.outlineOffset = '1px'; }
+            });
+        } else {
+            payIds.forEach(function(id) {
+                var e = document.getElementById(id);
+                if (e) e.style.outline = '';
+            });
+        }
+
+        // Lu et approuvé
+        ['luApprouve1_pm','luApprouve2_pm'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) {
+                var box = el.querySelector('.checkbox');
+                if (box && !box.classList.contains('checked')) {
+                    missing.push('Lu et approuvé (' + (id === 'luApprouve1_pm' ? 'Prêteur' : 'Emprunteur') + ')');
+                    box.style.outline = '2px solid red';
+                } else if (box) box.style.outline = '';
+            }
+        });
+
+        // Signatures
+        ['sig1','sig2'].forEach(function(sigId) {
+            var container = document.getElementById(sigId);
+            if (container && !container._signed) {
+                missing.push('Signature ' + (sigId === 'sig1' ? 'Prêteur' : 'Emprunteur'));
+            }
+        });
+
+        return missing;
+    };
+
+    collectFormData = function() {
+        var data = {};
+        data.onglet   = 'Pret_Materiel';
+        data.filename  = 'PretMateriel_' + (document.getElementById('nomEmprunteur') ? document.getElementById('nomEmprunteur').value.replace(/\s+/g,'_') : '') + '_' + today;
+
+        var ids = ['nomEmprunteur','prenomEmprunteur','adresseEmprunteur','telephoneEmprunteur','emailEmprunteur',
+                   'datePriseEnCharge','numeroCage','dateRetour','dateFait',
+                   'materiel_autre_texte','numeroPaiement',
+                   'montant_cb','montant_cheque','montant_espece','montant_virement'];
+        ids.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) data[id] = el.value || '';
+        });
+
+        var mats = ['materiel_cage_trappe','materiel_cage_transport','materiel_autre'];
+        var matsCoches = [];
+        mats.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && el.classList.contains('checked')) matsCoches.push(id.replace('materiel_',''));
+        });
+        data.materiel = matsCoches.join(', ');
+
+        var pays = ['pay_cb','pay_cheque','pay_espece','pay_virement'];
+        var paysCoches = [];
+        pays.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && el.classList.contains('checked')) paysCoches.push(id.replace('pay_',''));
+        });
+        data.check_paiement = paysCoches.join(', ');
+
+        data.htmlContent = btoa(unescape(encodeURIComponent(document.querySelector('.page-container').outerHTML)));
+        return data;
+    };
+
+    // ============================================================
+    // SUPABASE
+    // ============================================================
+    const ENVOYER_PDF_MAIL = true;
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+chargerListeSaisisseurs();
+
+    async function saveForm() {
+        var missing = validateRequiredFields();
+        if (missing.length > 0) {
+            afficherMessage('⚠️ Veuillez remplir les champs obligatoires :<br><br>• ' + missing.join('<br>• '), 'erreur');
+            return;
+        }
+        var data = collectFormData();
+        data.signatureImage = getSignatureImage();
+        // codePostalEmprunteur/villeEmprunteur/saisiPar : la collectFormData
+        // propre à ce formulaire ne les capte pas, on les lit directement.
+        var codePostal = (document.getElementById('codePostalEmprunteur') || {}).value || null;
+        var ville = (document.getElementById('villeEmprunteur') || {}).value || null;
+        var saisiPar = (document.getElementById('saisiPar') || {}).value || null;
+        var montantCaution = ['montant_cb', 'montant_cheque', 'montant_espece', 'montant_virement']
+            .reduce(function(somme, id) { return somme + (parseFloat(data[id]) || 0); }, 0);
+
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:bold;font-family:Arial;';
+        overlay.innerHTML = '<div style="text-align:center">En cours...<br><br><small>Veuillez patienter</small></div>';
+        document.body.appendChild(overlay);
+
+        try {
+            const { data: pretId, error } = await supabaseClient.rpc('creer_pret_materiel', {
+                p_nom: data.nomEmprunteur,
+                p_prenom: data.prenomEmprunteur,
+                p_adresse: data.adresseEmprunteur,
+                p_code_postal: codePostal,
+                p_ville: ville,
+                p_telephone: data.telephoneEmprunteur,
+                p_email: data.emailEmprunteur,
+                p_materiel: data.materiel + (data.materiel_autre_texte ? ' (' + data.materiel_autre_texte + ')' : ''),
+                p_numero_cage: data.numeroCage,
+                p_date_prise_en_charge: data.datePriseEnCharge || null,
+                p_date_retour_prevue: data.dateRetour || null,
+                p_montant_caution: montantCaution || null,
+                p_date_fait: data.dateFait || null,
+                p_saisi_par_id: saisiPar
+            });
+
+            document.body.removeChild(overlay);
+            if (error) throw error;
+
+            if (ENVOYER_PDF_MAIL) {
+                await sendToGoogle(data);
+            }
+
+            formSaved = true;
+            var btnSave = document.querySelector('.btn-save');
+            var btnPrint = document.querySelector('.btn-print');
+            if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
+            if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
+            afficherMessage('✅ Prêt enregistré (id ' + pretId + ').');
+        } catch (err) {
+            document.body.removeChild(overlay);
+            console.error(err);
+            alert('Erreur lors de la sauvegarde : ' + (err.message || err));
+        }
+    }
+</script>
+</body>
+</html>

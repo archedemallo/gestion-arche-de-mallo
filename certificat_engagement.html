@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Certificat d'engagement et de connaissance — L'Arche de Mallo</title>
+<link rel="stylesheet" href="formulaires-arche-mallo.css">
+</head>
+<body data-form-id="certificat_engagement">
+<div id="login-screen" style="position:fixed;inset:0;background:#faf7f2;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid #ddd;border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;color:#3d2b1f;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:#888;margin-bottom:16px;">Connexion requise pour accéder à ce formulaire.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err" style="color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:#c96b2a;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+<div style="background:#fff4e5;border:1px solid #ffd699;color:#7a4a00;font-size:12.5px;padding:8px 14px;text-align:center;" class="no-print">
+  <strong>Formulaire pilote.</strong> Écrit directement dans Supabase. PDF/mail (Apps Script) activés.
+</div>
+
+<div class="buttons">
+    <button class="btn btn-save"  onclick="saveForm()">💾 Sauvegarder</button>
+    <button class="btn btn-print btn-print-disabled" onclick="printForm()" disabled>🖨️ Imprimer</button>
+    </div>
+
+<div class="page-container">
+<div class="content">
+
+    
+    <!-- En-tête -->
+<div id="entete"></div>
+ 
+<table class="header-table">
+    <tr>
+            <td class="col-center">
+            <div class="title-main">
+                CERTIFICAT D'ENGAGEMENT ET DE CONNAISSANCE
+                POUR LES ACQUÉREURS D'UN ANIMAL DE COMPAGNIE
+           </div>
+        </td>
+    </tr>
+</table>
+<div class="subtitle">Loi 2021-1539 du 30 novembre 2021</div>
+
+<div class="content-section">
+    Ce certificat a pour but de sensibiliser le futur acquéreur aux besoins du chat, aux obligations concernant son
+    identification ainsi qu'aux coûts et à la logistique à engager tout au long de sa vie. La cession d'un chat ne doit
+    en aucun cas être prise à la légère par l'acquéreur. Ce dernier doit être pleinement conscient de ce que cela
+    implique afin d'assurer à l'animal des conditions de vie optimales et d'éviter l'abandon par manque de temps,
+    d'argent ou de connaissance.
+</div>
+<div>
+<strong><span class="highlight-red">I. LES BESOINS PHYSIOLOGIQUES, COMPORTEMENTAUX ET MÉDICAUX</span></strong>
+</div>
+<div class="content-section">
+    <p>Le chat a besoin de manger à satiété et sous la forme de petits repas. Il est important de <span class="bold">laisser les aliments à
+    disposition </span>en adaptant l'apport calorique à l'activité et à l'appétit. Attention aux excès, l'obésité chez le chat
+    diminue sa qualité et son espérance de vie.</p>
+
+    <p>Un animal doit pouvoir disposer<span class="bold"> en permanence</span> d'eau pour pouvoir se désaltérer. Celle-ci doit toujours être<span class="bold">
+    fraîche et propre.</span> Certains chats peuvent préférer une eau en mouvement. Dans ce cas, une fontaine à eau est
+    recommandée.</p>
+
+    <p>Le chat a besoin de se reposer dans un espace qu'il aura lui-même choisi. Il est important de lui fournir des<span class="bold"> lieux
+    isolés, cachés et/ou en hauteur</span> pour se mettre à l'abri de l'agitation environnante. Veillez à ne pas le déranger
+    lorsqu'il se repose.</p>
+
+    <p>Son environnement doit pouvoir lui permettre<span class="bold"> d'explorer et d'observer.</span> Assurez-lui un accès à toutes les pièces
+    de vie possibles. Des zones d'observation comme des fenêtres, un balcon ou un extérieur ne lui seront que
+    bénéfiques. Veillez à bien<span class="bold"> sécuriser </span>ces différents espaces afin d'éviter les fugues, les chutes, etc. Faites attention
+    aux fenêtres oscillo-battantes dans lesquelles le chat peut se coincer, aux appareils ménagers, aux plantes
+    d'intérieur, aux produits ménagers...</p>
+
+    <p>Il doit pouvoir s'épanouir dans un<span class="bold"> environnement stimulant </span>grâce à des enrichissements (jouets) et des
+    apprentissages variés où il aura la possibilité d'exprimer son répertoire comportemental (faire ses griffes,
+    chasser…).</p>
+
+    <p>Pouvoir éliminer dans un lieu approprié est un besoin essentiel du chat. À défaut, il risque de se soulager dans des
+    endroits indésirables (lit, tapis, canapé). La litière doit être placée dans un<span class="bold"> endroit calme et facile d'accès, loin
+    de sa nourriture. </span>Pour la garder propre, il est nécessaire de retirer les urines et les selles une fois par jour. Le
+    nettoyage intégral des bacs est préconisé une fois par semaine. Certains chats peuvent avoir besoin d'un
+    changement plus fréquent.</p>
+
+    <p><span class="red">Pour entretenir une bonne relation avec votre chat, quelques règles sont à respecter :</span></p>
+    <div class="bullet-list"><span class="red">
+        - laissez votre chat être à l'initiative des interactions sans le contraindre (être porté dans les bras, caressé
+        sur le ventre… quand il ne le souhaite pas) ;<br>
+        - laissez le chat tranquille lorsqu'il dort, boit, mange ou se trouve dans sa litière ;<br>
+        - apprenez-lui à être brossé sans contrainte ;<br>
+        - ne le punissez pas en le prenant par la peau du cou ou en lui faisant peur.
+    </span></div>
+
+    <p><span class="red">
+        L'éducation du chat doit se faire en respectant son intégrité physique et psychique. Une éducation
+        s'appuyant sur un renforcement positif, sans contrainte, permet au chat de s'épanouir dans sa relation avec
+        vous. Les besoins peuvent varier en fonction des individus, il est donc primordial d'être très attentif et
+        d'adapter ces recommandations en fonction des préférences de votre animal.
+    </span></p>
+
+    <p>Afin d'assurer un bon suivi médical, <span class="bold">une visite de contrôle annuelle </span>chez le vétérinaire est nécessaire. Être à jour
+    des vaccins, vermifuges, antiparasitaires est également essentiel à sa bonne santé, tout comme lui prodiguer des
+    soins réguliers d'entretien (brossage). Un nettoyage des yeux, oreilles et dents peut vous être conseillé par votre
+    vétérinaire.</p>
+</div>
+
+<div>
+<span class="highlight-red">II. LES OBLIGATIONS RELATIVES À L'IDENTIFICATION DE L'ANIMAL</span>
+</div>
+
+<div class="content-section">
+    <p><span class="bold">L'identification est obligatoire</span> et sera effectuée par l'association. L'Arche de Mallo est tenue de fournir à
+    la famille le document attestant l'identification de l'animal à l'I-CAD le jour de la cession. L'animal est identifié
+    au nom de l'association « L'Arche de Mallo » jusqu'à la preuve de sa stérilisation. Ainsi, le changement de
+    propriétaire I-CAD pourra se faire au nom et adresse de la famille par l'association. N'oubliez pas de signaler au
+    fichier national votre <span class="bold">changement d'adresse </span>si vous déménagez.</p>
+    <p class="italic">Toutes les informations sont à retrouver sur le site de l'I-CAD dans l'onglet "Identifier son animal".</p>
+</div>
+
+<div>
+<span class="highlight-red">III. LES IMPLICATIONS FINANCIÈRES ET LOGISTIQUES TOUT AU LONG DE LA VIE DU CHAT</span>
+</div>
+
+<div class="content-section">
+    <p>Le budget alloué à l'alimentation du chat dépendra du type de nourriture adoptée (croquettes, nourriture humide,
+    ration ménagère…). Bien qu'il existe des aliments très peu chers, il est important de rappeler qu'une alimentation
+    de qualité participe à la bonne santé de votre chat. C'est le meilleur moyen de prévenir des soucis de santé pouvant
+    entraîner des frais vétérinaires supplémentaires. En moyenne, il faut compter environ <span class="bold">200 à 300 €</span> par an pour
+    l'alimentation d'un chat.</p>
+
+    <p>Pour la litière, comptez environ <span class="bold">100 € par an</span>.</p>
+
+    <p>En termes de santé, des frais sont à prévoir comprenant rappel vaccinal, vermifuge, antiparasitaire (<span class="bold">environ 200 €
+    par an</span>). La souscription d'une assurance pour votre chat vous permet la prise en charge de tout ou partie de
+    certains frais vétérinaires. Le montant des assurances est très variable et dépend du contrat choisi (de 60 à 700 €
+    par an).</p>
+
+    <p>S'ajoutent à ces dépenses de base tous les frais vétérinaires ponctuels non prévus. L'espérance de vie d'un chat
+    étant supérieure à une dizaine d'années, il est important de se questionner sur votre capacité à faire face à
+    d'importantes dépenses. Les frais vétérinaires peuvent augmenter significativement lorsque le chat avance en âge.
+    Les soins ou les opérations peuvent se compter en centaines d'euros.</p>
+
+    <p>L'achat d'un matériel dédié se fait avant même la cession : gamelles, bac à litière, cage de transport, brosse,
+    jouets, paniers, griffoirs, coupe griffes, plateformes en hauteur (arbre à chat)… Durant la première année de vie
+    avec un animal, un budget supplémentaire de <span class="bold">100 à 300 € </span> est à prévoir pour équiper son environnement.</p>
+
+    <p>L'acquisition d'un animal implique enfin toute une organisation logistique. Les départs en vacances peuvent alors
+    être plus difficiles. Veillez donc à l'emmener avec vous (certains lieux acceptent les animaux) ou à lui trouver un
+    système de garde pendant votre absence (famille d'accueil, garde à domicile, pension). <span class="bold">À titre indicatif, une
+    journée de pension pour un chat coûte en moyenne 10 à 20 €.</span></p>
+
+    <p><span class="bold">Même au quotidien, assurez-vous de ne pas laisser votre animal seul pendant une longue période.</span></p>
+<br>
+    <p><span class="red">
+        Les différents montants énumérés sont indicatifs et peuvent grandement varier. L'acquisition et l'entretien
+        d'un chat durant toute sa vie représente donc un budget significatif. Vous devez garder à l'esprit que
+        la cession d'un animal ne se fait en aucun cas de manière impulsive.<br><br>
+        Accueillir un chat est un engagement de long terme.</span>
+    </p>
+</div>
+
+<p> <span class="bold">Certificat délivré au moins 7 jours avant la cession.</span></p>
+
+
+<!-- Signature de la famille -->
+<div class="signature-section mt-30">
+    <p class="bold underline"><strong><span class="red">La famille :</span></strong></p>
+    <p>
+        <span class="blue">Nom :</span>
+        <input type="text" class="editable editable-long" id="nomAdoptant" data-required="true" data-label="Nom" oninput="this.value=this.value.toUpperCase()">
+    </p>
+    <p>
+        <span class="blue">Prénom :</span>
+        <input type="text" class="editable editable-long" id="prenomAdoptant" data-required="true" data-label="Prénom" oninput="this.value=this.value.toUpperCase()">
+    </p>
+    <p>
+        <span class="blue">Adresse :</span>
+        <input type="text" class="editable editable-long" id="adresseAdoptant" data-required="true" data-label="Adresse">
+    </p>
+    <p>
+        <span class="blue">Code postal :</span>
+        <input type="text" class="editable editable-short" id="codePostalAdoptant" data-label="Code postal" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        &nbsp;&nbsp;
+        <span class="blue">Ville :</span>
+        <input type="text" class="editable editable-medium" id="villeAdoptant" data-label="Ville" oninput="this.value=this.value.toUpperCase()">
+    </p>
+    <p>
+        <span class="blue">Téléphone :</span>
+        <input type="tel" class="editable editable-tel" id="telephone" data-label="Téléphone" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+    </p>
+    <p>
+        <span class="blue">Email :</span>
+        <input type="email" class="editable editable-email" id="email" data-required="true" data-label="Email">
+    </p>
+    <p>atteste avoir pris connaissance de toutes les informations ci-dessus.</p>
+    <p>Fait à Autrechêne, le <input type="date" class="editable editable-date" id="dateAdoptant"></p>
+    <p class="bold no-print">Saisi par <select id="saisiPar" class="editable"></select></p>
+
+        <!-- Case à cocher obligatoire -->
+    <p class="mt-20">
+        <span class="clickable-row" onclick="toggleCheck(this)" id="checkEngagement">
+            <span class="checkbox"></span>
+            <span class="bold"> Je m'engage à respecter les besoins et l'intégrité de l'animal cédé tout au long de sa vie</span>
+        </span>
+    </p>
+
+<!-- Signatures côte à côte -->
+    <table class="signature-table mt-30">
+        <tr>
+            <td>
+                <p class="bold underline">Signature de l'Arche de Mallo :</p>
+                <div id="sig1"></div>
+                <div id="sig1-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+            </td>
+            <td>
+                <p class="bold underline">Signature de la famille :</p>
+                <div id="sig2"></div>
+                <div id="sig2-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+
+
+
+    
+
+</div><!-- /content -->
+</div><!-- /page-container -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script>
+    creerEntete({ dateId: 'dateCertificat', dateLabel: 'Date :' });
+    creerSignature('sig1');
+    creerSignature('sig2');
+    appliquerPrefill();
+    var today = new Date().toISOString().split('T')[0];
+var elDate = document.getElementById('dateCertificat');
+    if (elDate && !elDate.value) elDate.value = today;
+    var elDateAdoptant = document.getElementById('dateAdoptant');
+    if (elDateAdoptant && !elDateAdoptant.value) elDateAdoptant.value = today;
+
+// Validation spécifique au certificat
+validateRequiredFields = function() {
+    var missing = [];
+
+    // Champs data-required uniquement
+    document.querySelectorAll('[data-required="true"]').forEach(function(el) {
+        var label = el.getAttribute('data-label') || el.id;
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+            if (!el.value || el.value.trim() === '') {
+                missing.push(label);
+                el.style.borderBottom = '2px solid red';
+            } else {
+                el.style.borderBottom = '';
+            }
+        }
+    });
+
+    // Case engagement obligatoire + rouge
+    var engagement = document.getElementById('checkEngagement');
+    if (engagement) {
+        var cb = engagement.querySelector('.checkbox');
+        if (!cb.classList.contains('checked')) {
+            missing.push('Engagement à cocher');
+            cb.style.outline = '2px solid red';
+            cb.style.outlineOffset = '1px';
+        } else {
+            cb.style.outline = '';
+        }
+    }
+
+    // Signatures obligatoires
+    ['sig1', 'sig2'].forEach(function(sigId) {
+        var container = document.getElementById(sigId);
+        if (container && !container._signed) {
+            var labels = { sig1: 'Signature de la famille', sig2: 'Signature de l\'Arche de Mallo' };
+            missing.push(labels[sigId]);
+        }
+    });
+
+// Email format
+    var elEmail = document.getElementById('email');
+    if (elEmail && elEmail.value.trim()) {
+        var valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(elEmail.value.trim());
+        if (!valid) {
+            missing.push('Email invalide');
+            elEmail.style.borderBottom = '2px solid red';
+        }
+    }
+
+    return missing;
+    
+    return missing;
+};
+
+// ============================================================
+// SUPABASE
+// ============================================================
+const ENVOYER_PDF_MAIL = true;
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+chargerListeSaisisseurs();
+
+async function saveForm() {
+    var missing = validateRequiredFields();
+    if (missing.length > 0) {
+        afficherMessage('⚠️ Veuillez remplir les champs obligatoires :<br><br>• ' + missing.join('<br>• '), 'erreur');
+        return;
+    }
+    var data = collectFormData();
+    data.onglet = 'certificat_engagement';
+    data.signatureImage = getSignatureImage();
+    data.htmlContent = encodeBase64Unicode(buildHtmlWithData());
+
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:bold;font-family:Arial;';
+    overlay.innerHTML = '<div style="text-align:center">En cours...<br><br><small>Veuillez patienter</small></div>';
+    document.body.appendChild(overlay);
+
+    try {
+        const { data: certifId, error } = await supabaseClient.rpc('creer_certificat_engagement', {
+            p_nom: data.nomAdoptant,
+            p_prenom: data.prenomAdoptant,
+            p_adresse: data.adresseAdoptant,
+            p_code_postal: data.codePostalAdoptant,
+            p_ville: data.villeAdoptant,
+            p_telephone: data.telephone,
+            p_email: data.email,
+            p_date_fait: data.dateAdoptant || null,
+            p_saisi_par_id: data.saisiPar || null
+        });
+
+        document.body.removeChild(overlay);
+        if (error) throw error;
+
+        if (ENVOYER_PDF_MAIL) {
+            data.filename = buildFilename(data);
+            await sendToGoogle(data);
+        }
+
+        formSaved = true;
+        var btnSave = document.querySelector('.btn-save');
+        var btnPrint = document.querySelector('.btn-print');
+        if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
+        if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
+        afficherMessage('✅ Certificat enregistré (id ' + certifId + ').');
+    } catch (err) {
+        document.body.removeChild(overlay);
+        console.error(err);
+        alert('Erreur lors de la sauvegarde : ' + (err.message || err));
+    }
+}
+    
+</script>

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attestation CBS absent — L'Arche de Mallo</title>
+<link rel="stylesheet" href="formulaires-arche-mallo.css">
+<style>
+    .page-container { font-size: 0.85em; }
+    .title { font-size: 1.1em !important; }
+</style>
+</head>
+<body data-form-id="attestation_cbs_absent">
+<div id="login-screen" style="position:fixed;inset:0;background:#faf7f2;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid #ddd;border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;color:#3d2b1f;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:#888;margin-bottom:16px;">Connexion requise pour accéder à ce formulaire.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err" style="color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:#c96b2a;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+<div style="background:#fff4e5;border:1px solid #ffd699;color:#7a4a00;font-size:12.5px;padding:8px 14px;text-align:center;" class="no-print">
+  <strong>Formulaire pilote.</strong> Écrit directement dans Supabase. PDF/mail (Apps Script) activés.
+</div>
+
+<div class="buttons">
+    <button class="btn btn-save" onclick="saveForm()">💾 Sauvegarder</button>
+    <button class="btn btn-print btn-print-disabled" onclick="printForm()" disabled>🖨️ Imprimer</button>
+</div>
+
+<div class="page-container">
+<div class="content">
+
+    <div id="entete"></div>
+
+    <div class="title" style="text-align:center; margin-top:5px;">Attestation — Certificat de Bonne Santé Absent</div>
+
+    <div class="section">
+        <p>
+            Je soussigné(e),
+        </p>
+        <p>
+            <span class="blue">Nom :</span>
+            <input type="text" class="editable editable-long" id="nomSignataire"
+                data-required="true" data-label="Nom du signataire" oninput="this.value=this.value.toUpperCase()">
+        </p>
+        <p>
+            <span class="blue">Prénom :</span>
+            <input type="text" class="editable editable-long" id="prenomSignataire"
+                data-label="Prénom du signataire" oninput="this.value=this.value.toUpperCase()">
+        </p>
+        <p>
+            <span class="blue">E-mail :</span>
+            <input type="email" class="editable editable-email" id="email" data-label="Email">
+        </p>
+        <p>
+            atteste avoir été informé(e) que le certificat de bonne santé du chat
+            <input type="text" class="editable editable-medium" id="nomChat"
+                data-required="true" data-label="Nom du chat">,
+            confié par l'association L'Arche de Mallo, ne m'a pas été remis.
+        </p>
+
+        <p class="bold blue">Motif de l'absence du CBS :</p>
+
+        <div class="motif-ligne" onclick="toggleCheckMulti(this)">
+            <span class="checkbox" id="motif_traitement"></span>
+            <span>L'animal est actuellement sous traitement :
+                <input type="text" class="editable editable-long" onclick="event.stopPropagation()" id="motifTraitement" placeholder="préciser le traitement">
+            </span>
+        </div>
+
+        <div class="motif-ligne" onclick="toggleCheckMulti(this)">
+            <span class="checkbox" id="motif_jeune"></span>
+            <span>L'animal est trop jeune pour faire l'objet d'un certificat de bonne santé.</span>
+        </div>
+
+        <div class="motif-ligne" onclick="toggleCheckMulti(this)">
+            <span class="checkbox" id="motif_attente"></span>
+            <span>Le vétérinaire ne peut pas fournir de certificat de bonne santé pour le moment.
+                Rendez-vous prévu le <input type="date" class="editable editable-date" id="dateRdvVet"></span>
+        </div>
+
+        <div class="motif-ligne" onclick="toggleCheckMulti(this)">
+            <span class="checkbox" id="motif_autre"></span>
+            <span>Autre motif : <input type="text" class="editable editable-long" onclick="event.stopPropagation()" id="motifAutre"></span>
+        </div>
+
+        <p class="mt-20">
+            Cette déclaration est faite pour servir et valoir ce que de droit.
+        </p>
+    </div>
+
+    <!-- Signatures -->
+    <div class="section">
+        <p class="bold">Fait à Autrechêne, le
+            <input type="date" class="editable editable-date" id="dateFait">
+        </p>
+    <p class="bold no-print">Saisi par <select id="saisiPar" class="editable"></select></p>
+
+        <table class="signature-table">
+            <tr>
+                <td style="vertical-align:top;">
+                    <p>L'Arche de Mallo :</p>
+                    <p>
+                        <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve1_cbs" style="display:inline-flex; align-items:center;">
+                            <span class="checkbox"></span>
+                            <span class="bold"> Lu et approuvé</span>
+                        </span>
+                    </p>
+                    <div id="sig1"></div>
+                    <div id="sig1-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+                </td>
+                <td style="vertical-align:top;">
+                    <p>Le(la) signataire :</p>
+                    <p>
+                        <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve2_cbs" style="display:inline-flex; align-items:center;">
+                            <span class="checkbox"></span>
+                            <span class="bold"> Lu et approuvé</span>
+                        </span>
+                    </p>
+                    <div id="sig2"></div>
+                    <div id="sig2-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script>
+    creerEntete({ dateId: 'dateCBS', dateLabel: 'Date :' });
+    creerSignature('sig1');
+    creerSignature('sig2');
+    appliquerPrefill();
+
+    var today = new Date().toISOString().split('T')[0];
+    var el = document.getElementById('dateFait');
+    if (el && !el.value) el.value = today;
+
+    function toggleCheckMulti(element) {
+        var box = element.querySelector('.checkbox');
+        if (box) box.classList.toggle('checked');
+    }
+
+    validateRequiredFields = function() {
+        var missing = [];
+        document.querySelectorAll('[data-required="true"]').forEach(function(el) {
+            var label = el.getAttribute('data-label') || el.id;
+            if (!el.value || el.value.trim() === '') {
+                missing.push(label);
+                el.style.borderBottom = '2px solid red';
+            } else {
+                el.style.borderBottom = '';
+            }
+        });
+
+        // Au moins un motif coché (obligatoire)
+        var motifs = ['motif_traitement','motif_jeune','motif_attente','motif_autre'];
+        var motifCoche = motifs.some(function(id) {
+            var e = document.getElementById(id);
+            return e && e.classList.contains('checked');
+        });
+        if (!motifCoche) {
+            missing.push('Motif de l\'absence du CBS (au moins un)');
+            motifs.forEach(function(id) {
+                var e = document.getElementById(id);
+                if (e) { e.style.outline = '2px solid red'; e.style.outlineOffset = '1px'; }
+            });
+        } else {
+            motifs.forEach(function(id) {
+                var e = document.getElementById(id);
+                if (e) e.style.outline = '';
+            });
+        }
+
+        // Lu et approuvé
+        ['luApprouve1_cbs','luApprouve2_cbs'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) {
+                var box = el.querySelector('.checkbox');
+                if (box && !box.classList.contains('checked')) {
+                    missing.push('Lu et approuvé (' + (id === 'luApprouve1_cbs' ? 'Arche de Mallo' : 'Signataire') + ')');
+                    box.style.outline = '2px solid red';
+                } else if (box) { box.style.outline = ''; }
+            }
+        });
+
+        // Signatures
+        ['sig1','sig2'].forEach(function(sigId) {
+            var container = document.getElementById(sigId);
+            if (container && !container._signed) {
+                missing.push('Signature ' + (sigId === 'sig1' ? 'Arche de Mallo' : 'Signataire'));
+            }
+        });
+
+        return missing;
+    };
+
+    collectFormData = function() {
+        var data = {};
+        data.onglet   = 'CBS_Absent';
+        data.filename  = 'CBS_Absent_' + (document.getElementById('nomSignataire') ? document.getElementById('nomSignataire').value.replace(/\s+/g,'_') : '') + '_' + today;
+
+        var ids = ['nomSignataire','prenomSignataire','email','nomChat','motifTraitement','dateRdvVet','motifAutre','dateFait'];
+        ids.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) data[id] = el.value || '';
+        });
+
+        var motifs = ['motif_traitement','motif_jeune','motif_attente','motif_autre'];
+        var motifsCoches = [];
+        motifs.forEach(function(id) {
+            var e = document.getElementById(id);
+            if (e && e.classList.contains('checked')) motifsCoches.push(id.replace('motif_',''));
+        });
+        data.motifCBS = motifsCoches.join(', ');
+
+        data.htmlContent = btoa(unescape(encodeURIComponent(document.querySelector('.page-container').outerHTML)));
+        return data;
+    };
+
+    // ============================================================
+    // SUPABASE
+    // ============================================================
+    const ENVOYER_PDF_MAIL = true;
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+chargerListeSaisisseurs();
+
+    async function saveForm() {
+        var missing = validateRequiredFields();
+        if (missing.length > 0) {
+            afficherMessage('⚠️ Veuillez remplir les champs obligatoires :<br><br>• ' + missing.join('<br>• '), 'erreur');
+            return;
+        }
+        var data = collectFormData();
+        data.signatureImage = getSignatureImage();
+
+        var motifDetail = data.motifCBS === 'traitement' ? data.motifTraitement
+                         : data.motifCBS === 'autre' ? data.motifAutre : '';
+        var motifComplet = data.motifCBS + (motifDetail ? ' : ' + motifDetail : '');
+
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:bold;font-family:Arial;';
+        overlay.innerHTML = '<div style="text-align:center">En cours...<br><br><small>Veuillez patienter</small></div>';
+        document.body.appendChild(overlay);
+
+        try {
+            const { data: attestId, error } = await supabaseClient.rpc('creer_attestation_cbs', {
+                p_nom: data.nomSignataire,
+                p_prenom: data.prenomSignataire,
+                p_email: data.email,
+                p_nom_chat: data.nomChat,
+                p_motif: motifComplet || null,
+                p_date_rdv_veto: data.dateRdvVet || null,
+                p_date_fait: data.dateFait || null,
+                p_saisi_par_id: (document.getElementById('saisiPar') || {}).value || null
+            });
+
+            document.body.removeChild(overlay);
+            if (error) throw error;
+
+            if (ENVOYER_PDF_MAIL) {
+                await sendToGoogle(data);
+            }
+
+            formSaved = true;
+            var btnSave = document.querySelector('.btn-save');
+            var btnPrint = document.querySelector('.btn-print');
+            if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
+            if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
+            afficherMessage('✅ Attestation enregistrée (id ' + attestId + ').');
+        } catch (err) {
+            document.body.removeChild(overlay);
+            console.error(err);
+            alert('Erreur lors de la sauvegarde : ' + (err.message || err));
+        }
+    }
+</script>
+</body>
+</html>

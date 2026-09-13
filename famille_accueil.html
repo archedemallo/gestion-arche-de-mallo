@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Famille d'accueil — L'Arche de Mallo</title>
+<link rel="stylesheet" href="formulaires-arche-mallo.css">
+</head>
+<body data-form-id="famille_accueil">
+<div id="login-screen" style="position:fixed;inset:0;background:#faf7f2;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid #ddd;border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;color:#3d2b1f;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:#888;margin-bottom:16px;">Connexion requise pour accéder à ce formulaire.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err" style="color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:#c96b2a;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+<div style="background:#fff4e5;border:1px solid #ffd699;color:#7a4a00;font-size:12.5px;padding:8px 14px;text-align:center;" class="no-print">
+  <strong>Formulaire pilote.</strong> Écrit directement dans Supabase. PDF/mail (Apps Script) activés.
+</div>
+
+<div class="buttons">
+    <button class="btn btn-save" onclick="saveForm()">💾 Sauvegarder</button>
+    <button class="btn btn-print btn-print-disabled" onclick="printForm()" disabled>🖨️ Imprimer</button>
+</div>
+
+<div class="page-container">
+<div class="content">
+
+<!-- En-tête -->
+<div id="entete"></div>
+
+<h2>Famille d'accueil</h2>
+
+<p style="text-align:center;">
+    <span class="blue bold">Type :</span>
+    <span class="clickable-row" onclick="toggleCheck(this, 'typeFA'); majTypeAccueil()"><span class="checkbox" data-group="typeFA" id="type_provisoire"></span> Provisoire</span>
+    <span class="clickable-row" onclick="toggleCheck(this, 'typeFA'); majTypeAccueil()"><span class="checkbox" data-group="typeFA" id="type_chat_libre"></span> Chat libre</span>
+    <span class="clickable-row" onclick="toggleCheck(this, 'typeFA'); majTypeAccueil()"><span class="checkbox" data-group="typeFA" id="type_adoption"></span> En vue d'adoption</span>
+</p>
+
+<!-- Informations générales -->
+<div class="section">
+    <div class="section-title">Informations générales</div>
+
+    <p><span class="blue">Nom :</span>
+        <input type="text" class="editable editable-long" id="nom" data-required="true" data-label="Nom" oninput="this.value=this.value.toUpperCase()">
+    </p>
+    <p><span class="blue">Prénom :</span>
+        <input type="text" class="editable editable-long" id="prenom" data-required="true" data-label="Prénom" oninput="this.value=this.value.toUpperCase()">
+    </p>
+    <p><span class="blue">Adresse :</span>
+        <input type="text" class="editable editable-long" id="adresse" data-required="true" data-label="Adresse">
+    </p>
+    <p>
+        <span class="blue">Code postal :</span>
+        <input type="text" class="editable editable-short" id="code_postal" data-required="true" data-label="Code postal" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        &nbsp;&nbsp;
+        <span class="blue">Ville :</span>
+        <input type="text" class="editable editable-medium" id="ville" data-required="true" data-label="Ville" oninput="this.value=this.value.toUpperCase()">
+    </p>
+    <p><span class="blue">Téléphone :</span>
+        <input type="tel" class="editable editable-tel" id="telephone" data-required="true" data-label="Téléphone" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+    </p>
+    <p><span class="blue">E-mail :</span>
+        <input type="email" class="editable editable-email" id="email" data-required="true" data-label="Email">
+    </p>
+</div>
+
+<!-- Informations sur l'animal -->
+<div class="section">
+    <div class="section-title">Informations sur l'animal</div>
+
+    <p>
+        <span class="blue bold">Nom de l'animal :</span>
+        <input type="text" class="editable editable-medium" id="nom_animal" data-required="true" data-label="Nom de l'animal">
+    </p>
+    <div id="bloc_animal_detail">
+    <p>
+        <span class="blue bold">Son espèce :</span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'espece')">
+            <span class="checkbox" data-group="espece"></span> Chat
+        </span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'espece')">
+            <span class="checkbox" data-group="espece"></span> Chien
+        </span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'espece')">
+            <span class="checkbox" data-group="espece"></span> Lapin
+        </span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'espece')">
+            <span class="checkbox" data-group="espece"></span> Autre :
+        </span>
+        <input type="text" class="editable editable-medium" id="espece_autre">
+    </p>
+    <p>
+        <span class="blue bold">Date de naissance :</span>
+        <input type="date" class="editable editable-date" id="date_naissance" autocomplete="off">
+        &nbsp;&nbsp;
+        <span class="blue bold">Couleur :</span>
+        <input type="text" class="editable editable-medium" id="couleur">
+    </p>
+    <p>
+        <span class="blue bold">Sexe :</span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'sexe')">
+            <span class="checkbox" data-group="sexe"></span> Mâle
+        </span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'sexe')">
+            <span class="checkbox" data-group="sexe"></span> Femelle
+        </span>
+    </p>
+    <p>
+        <span class="blue bold">Tatouage ou puce :</span>
+        <input type="text" class="editable editable-medium" id="puce">
+    </p>
+    </div>
+</div>
+
+<!-- Conditions -->
+<div class="conditions">
+    <h3>Conditions générales du contrat de famille d'accueil</h3>
+    <ol>
+        <li>La famille d'accueil s'engage à nourrir, héberger et donner une vie de famille à l'animal accueilli</li>
+        <li>L'animal confié est toujours adoptable et doit être présenté à tout adoptant potentiel envoyé par l'association</li>
+        <li>Les frais de nourriture, antiparasite, litière (...) sont à la charge de la famille d'accueil</li>
+        <li>Les frais vétérinaires et vaccins sont à la charge de l'association</li>
+        <li>La famille d'accueil s'engage à prévenir l'association en cas de problème comportemental ou de santé et avant d'engager des soins importants (opération...) pouvant être traité par un vétérinaire avec qui l'association a passé un contrat spécifique (tarifs, suivis...)</li>
+        <li>Si, pour une raison ou une autre, ce contrat devait être rompu, la famille d'accueil s'engage à laisser un délai minimum nécessaire à l'association pour trouver une solution de remplacement ou de transport pour le rapatriement de l'animal</li>
+        <li>La famille d'accueil est toujours prioritaire pour adopter l'animal qu'elle a en accueil</li>
+        <li>Si la famille d'accueil possède déjà des animaux de la même espèce, ils doivent être identifiés, stérilisés et à jour de leurs vaccins</li>
+        <li>La famille s'engage à ne pas prendre en accueil un animal d'une autre association sans notre accord</li>
+        <li>La famille déclare avoir lu et accepté les conditions du présent contrat</li>
+    </ol>
+</div>
+
+
+<!-- Photo de l'animal -->
+<div class="section">
+    <p class="bold blue">📷 Photo de l'animal <span class="red">*</span> (obligatoire)</p>
+    <div class="no-print" style="margin:8px 0;">
+        <label style="display:inline-block; padding:8px 14px; background:#0563c1; color:white; border-radius:5px; cursor:pointer; font-size:13px;">
+            📷 Prendre en photo
+            <input type="file" accept="image/*" capture="environment" id="photoAnimal" style="display:none;"
+                onchange="aperçuPhoto(this, 'preview_Animal')">
+        </label>
+    </div>
+    <!-- Aperçu visible dans le PDF -->
+    <div id="preview_Animal" style="margin-top:6px;"></div>
+    <div class="no-print" style="margin-top:4px;">
+        <button type="button" class="btn-voir-photo" onclick="ouvrirPhoto('preview_Animal')" id="btn_voir_animal" style="display:none;">Voir la photo de l'animal</button>
+    </div>
+</div>
+
+<!-- Signatures -->
+<div class="section mt-30">
+    <div id="bloc_dates_adoption" style="display:none;">
+    <p>Du <input type="date" class="editable editable-date" id="date_debut">
+       &nbsp;&nbsp; Au <input type="date" class="editable editable-date" id="date_fin"></p>
+</div>
+
+<p class="bold">Fait à Autrechêne, le <input type="date" class="editable editable-date" id="date_fait"></p>
+    <p class="bold no-print">Saisi par <select id="saisiPar" class="editable"></select></p>
+
+    <table class="signature-table">
+            <tr>
+                <td>
+                    <p>L'Arche de Mallo :</p>
+                    <p class="mt-20">
+                        <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve1_fa">
+                            <span class="checkbox"></span>
+                            <span class="bold"> Lu et approuvé</span>
+                        </span>
+                    </p>
+                    <p class="bold underline">Signature de L'Arche de Mallo :</p>
+                    <div id="sig1"></div>
+                    <div id="sig1-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+                </td>
+                <td>
+                    <p>La famille d'accueil :</p>
+                    <p class="mt-20">
+                        <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve2_fa">
+                            <span class="checkbox"></span>
+                            <span class="bold"> Lu et approuvé</span>
+                        </span>
+                    </p>
+                    <p class="bold underline">Signature de la famille d'accueil :</p>
+                    <div id="sig2"></div>
+                <div id="sig2-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+</div><!-- /content -->
+</div><!-- /page-container -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script>
+    creerEntete({ dateId: 'date_signature', dateLabel: 'Date :' });
+    creerSignature('sig1');
+    creerSignature('sig2');
+    appliquerPrefill();
+
+    var typeAccueilActuel = null;
+    function typeAccueilChoisi() {
+        if (document.getElementById('type_provisoire').classList.contains('checked')) return 'provisoire';
+        if (document.getElementById('type_chat_libre').classList.contains('checked')) return 'chat_libre';
+        if (document.getElementById('type_adoption').classList.contains('checked')) return 'adoption';
+        return null;
+    }
+    function majTypeAccueil() {
+        typeAccueilActuel = typeAccueilChoisi();
+        var estAdoption = typeAccueilActuel === 'adoption';
+        document.getElementById('bloc_animal_detail').style.display = estAdoption ? 'none' : '';
+        document.getElementById('bloc_dates_adoption').style.display = estAdoption ? '' : 'none';
+    }
+
+    var today = new Date().toISOString().split('T')[0];
+    ['date_signature', 'date_fait'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el && !el.value) el.value = today;
+    });
+
+    // Date naissance animal vide
+    document.addEventListener('DOMContentLoaded', function() {
+        ['date_naissance', 'date_debut', 'date_fin'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+    });
+
+    validateRequiredFields = function() {
+        var missing = [];
+
+        // Champs data-required
+        document.querySelectorAll('[data-required="true"]').forEach(function(el) {
+            var label = el.getAttribute('data-label') || el.id;
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                if (!el.value || el.value.trim() === '') {
+                    missing.push(label);
+                    el.style.borderBottom = '2px solid red';
+                } else {
+                    el.style.borderBottom = '';
+                }
+            }
+        });
+
+        // Email format
+        var elEmail = document.getElementById('email');
+        if (elEmail && elEmail.value.trim()) {
+            var valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(elEmail.value.trim());
+            if (!valid) {
+                missing.push('Email invalide');
+                elEmail.style.borderBottom = '2px solid red';
+            }
+        }
+
+        // Lu et approuvé
+        ['luApprouve1_fa', 'luApprouve2_fa'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) {
+                var cb = el.querySelector('.checkbox');
+                if (!cb.classList.contains('checked')) {
+                    var labels = {
+                        luApprouve1_fa: 'Lu et approuvé (Famille d\'accueil)',
+                        luApprouve2_fa: 'Lu et approuvé (Arche de Mallo)'
+                    };
+                    missing.push(labels[id]);
+                    cb.style.outline = '2px solid red';
+                    cb.style.outlineOffset = '1px';
+                } else {
+                    cb.style.outline = '';
+                }
+            }
+        });
+
+        // Signatures
+        ['sig1', 'sig2'].forEach(function(sigId) {
+            var container = document.getElementById(sigId);
+            if (container && !container._signed) {
+                var labels = {
+                    sig1: 'Signature famille d\'accueil',
+                    sig2: 'Signature Arche de Mallo'
+                };
+                missing.push(labels[sigId]);
+            }
+        });
+
+
+        // Photo de l'animal obligatoire
+        var photoAnimal = document.getElementById('photoAnimal');
+        if (!photoAnimal || !photoAnimal.files || !photoAnimal.files[0]) {
+            missing.push("Photo de l'animal (obligatoire)");
+            var lblAnimal = photoAnimal ? photoAnimal.parentElement : null;
+            if (lblAnimal) lblAnimal.style.outline = '2px solid red';
+        } else {
+            var lblAnimal = photoAnimal.parentElement;
+            if (lblAnimal) lblAnimal.style.outline = '';
+        }
+        if (!typeAccueilChoisi()) {
+            missing.push("Type d'accueil (Provisoire / Chat libre / En vue d'adoption)");
+        }
+        return missing;
+    };
+
+    // ============================================================
+    // SUPABASE
+    // ============================================================
+    const ENVOYER_PDF_MAIL = true;
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+chargerListeSaisisseurs();
+
+    async function saveForm() {
+        var missing = validateRequiredFields();
+        if (missing.length > 0) {
+            afficherMessage('⚠️ Veuillez remplir les champs obligatoires :<br><br>• ' + missing.join('<br>• '), 'erreur');
+            return;
+        }
+        var data = collectFormData();
+        data.onglet = 'famille_accueil_' + typeAccueilActuel;
+        data.signatureImage = getSignatureImage();
+        data.htmlContent = encodeBase64Unicode(buildHtmlWithData());
+
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:bold;font-family:Arial;';
+        overlay.innerHTML = '<div style="text-align:center">En cours...<br><br><small>Veuillez patienter</small></div>';
+        document.body.appendChild(overlay);
+
+        try {
+            const { data: faId, error } = await supabaseClient.rpc('creer_famille_accueil', {
+                p_type_accueil: typeAccueilActuel,
+                p_nom: data.nom,
+                p_prenom: data.prenom,
+                p_adresse: data.adresse,
+                p_code_postal: data.code_postal,
+                p_ville: data.ville,
+                p_telephone: data.telephone,
+                p_email: data.email,
+                p_nom_animal: data.nom_animal,
+                p_couleur: typeAccueilActuel !== 'adoption' ? data.couleur : null,
+                p_date_naissance_animal: (typeAccueilActuel !== 'adoption' && data.date_naissance) ? data.date_naissance : null,
+                p_puce: typeAccueilActuel !== 'adoption' ? data.puce : null,
+                p_date_debut: typeAccueilActuel === 'adoption' ? (data.date_debut || null) : null,
+                p_date_fin: typeAccueilActuel === 'adoption' ? (data.date_fin || null) : null,
+                p_date_fait: data.date_fait || null,
+                p_saisi_par_id: data.saisiPar || null
+            });
+
+            document.body.removeChild(overlay);
+            if (error) throw error;
+
+            if (ENVOYER_PDF_MAIL) {
+                data.filename = buildFilename(data);
+                await sendToGoogle(data);
+                if (typeof postSavePhotos === 'function') {
+                    await postSavePhotos(data, data.filename);
+                }
+            }
+
+            formSaved = true;
+            var btnSave = document.querySelector('.btn-save');
+            var btnPrint = document.querySelector('.btn-print');
+            if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
+            if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
+            afficherMessage('✅ Famille d\'accueil enregistrée (id ' + faId + ').');
+        } catch (err) {
+            document.body.removeChild(overlay);
+            console.error(err);
+            alert('Erreur lors de la sauvegarde : ' + (err.message || err));
+        }
+    }
+
+    // Envoi photo après sauvegarde réussie
+    async function postSavePhotos(data, filename) {
+        var nomEl    = document.getElementById('nomComplet') || document.getElementById('nom');
+        var animalEl = document.getElementById('nom_animal');
+        var dateEl   = document.getElementById('date_fait') || document.getElementById('dateFait');
+        var nom    = nomEl    ? nomEl.value    : '';
+        var animal = animalEl ? animalEl.value : '';
+        var date   = dateEl   ? dateEl.value   : '';
+        await envoyerPhotoAnimal('Famille_Accueil_Provisoire', nom, animal, date);
+    }
+</script>
+
+</body>
+</html>
