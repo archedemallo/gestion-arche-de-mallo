@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Abandon — L'Arche de Mallo</title>
+<link rel="stylesheet" href="formulaires-arche-mallo.css">
+</head>
+<body data-form-id="abandon">
+<div id="login-screen" style="position:fixed;inset:0;background:#faf7f2;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid #ddd;border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;color:#3d2b1f;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:#888;margin-bottom:16px;">Connexion requise pour accéder à ce formulaire.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err" style="color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:#c96b2a;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+<div style="background:#fff4e5;border:1px solid #ffd699;color:#7a4a00;font-size:12.5px;padding:8px 14px;text-align:center;" class="no-print">
+  <strong>Formulaire pilote.</strong> Écrit directement dans Supabase. PDF/mail (Apps Script) activés.
+</div>
+
+<div class="buttons">
+    <button class="btn btn-save"  onclick="saveForm()">💾 Sauvegarder</button>
+    <button class="btn btn-print btn-print-disabled" onclick="printForm()" disabled>🖨️ Imprimer</button>
+    </div>
+
+
+<div class="page-container">
+<div class="content">
+
+<!-- En-tête -->
+<div id="entete"></div>
+    
+    
+
+    <div class="title">📋 FORMULAIRE D'ABANDON</div>
+
+    <!-- Propriétaire -->
+    <div class="section">
+        <p class="bold underline">Vous :</p>
+        <p>
+            <span class="clickable-row" onclick="toggleCheck(this, 'civilite')">
+                <span class="checkbox" data-group="civilite"></span>
+                <span class="blue">Monsieur</span>
+            </span>
+            <span class="clickable-row" onclick="toggleCheck(this, 'civilite')">
+                <span class="checkbox" data-group="civilite"></span>
+                <span class="blue">Madame</span>
+            </span>
+        </p>
+        <p><span class="blue">Nom :</span>
+            <input type="text" class="editable editable-long" id="nom" data-required="true" data-label="Nom" oninput="this.value=this.value.toUpperCase(); majNomAttestation()">
+        </p>
+        <p><span class="blue">Prénom :</span>
+            <input type="text" class="editable editable-long" id="prenom" data-required="true" data-label="Prénom" oninput="this.value=this.value.toUpperCase(); majNomAttestation()">
+        </p>
+        <p><span class="blue">Adresse :</span>
+            <input type="text" class="editable editable-long" id="adresse" data-required="true" data-label="Adresse">
+        </p>
+        <p>
+            <span class="blue">Code postal :</span>
+            <input type="text" class="editable editable-short" id="codePostal" data-required="true" data-label="Code postal" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+            &nbsp;&nbsp;
+            <span class="blue">Ville :</span>
+            <input type="text" class="editable editable-medium" id="ville" data-required="true" data-label="Ville" oninput="this.value=this.value.toUpperCase()">
+        </p>
+        <p><span class="blue">Téléphone :</span>
+            <input type="tel" class="editable editable-tel" id="telephone" data-required="true" data-label="Téléphone" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        </p>
+        <p><span class="blue">Email :</span>
+            <input type="email" class="editable editable-email" id="email" data-required="true" data-label="Email">
+        </p>
+    </div>
+
+    <!-- Animal -->
+    <div class="section">
+        <p class="bold underline">Animal :</p>
+        <p><span class="blue">Nom :</span>
+            <input type="text" class="editable editable-long" id="nomAnimal" placeholder="Nom de l'animal">
+        </p>
+        <p><span class="blue">Puce ou tatouage :</span>
+            <input type="text" class="editable editable-medium" id="identification" placeholder="Numéro d'identification">
+        </p>
+        <p>
+            <span class="blue">Sexe :</span>
+            <span class="clickable-row" onclick="toggleCheck(this, 'sexe')">
+                <span class="checkbox" data-group="sexe"></span> Mâle
+            </span>
+            <span class="clickable-row" onclick="toggleCheck(this, 'sexe')">
+                <span class="checkbox" data-group="sexe"></span> Femelle
+            </span>
+        </p>
+        <p><span class="blue">Date de naissance / âge approximatif :</span>
+            <input type="text" class="editable editable-medium" id="dateNaissance" placeholder="Date de naissance ou âge approximatif">
+        </p>
+        <p class="blue">Cause de l'abandon :</p>
+        <input type="text" class="editable editable-long" id="causeAbandon1" data-required="true" data-label="Cause de l'abandon" style="width:100%;display:block;margin-bottom:6px;">
+        <input type="text" class="editable editable-long" id="causeAbandon2" style="width:100%;display:block;">
+    </div>
+
+    <!-- Comportement -->
+    <div class="section">
+        <p class="bold underline">Comportement :</p>
+       <p><span class="blue">Qualités :</span></p>
+        <input type="text" class="editable editable-long" id="qualites1" style="width:100%;display:block;margin-bottom:6px;">
+        <input type="text" class="editable editable-long" id="qualites2" style="width:100%;display:block;">
+
+        <p><span class="blue">Défauts :</span></p>
+        <input type="text" class="editable editable-long" id="defauts1" style="width:100%;display:block;margin-bottom:6px;">
+        <input type="text" class="editable editable-long" id="defauts2" style="width:100%;display:block;">
+
+        <p>
+            <span class="blue">Lieu de vie :</span>
+            <span id="bloc_lieuvie">
+                <span class="clickable-row" onclick="toggleCheck(this, 'lieuvie')">
+                    <span class="checkbox" data-group="lieuvie"></span> Intérieur
+                </span>
+                <span class="clickable-row" onclick="toggleCheck(this, 'lieuvie')">
+                    <span class="checkbox" data-group="lieuvie"></span> Extérieur
+                </span>
+                <span class="clickable-row" onclick="toggleCheck(this, 'lieuvie')">
+                    <span class="checkbox" data-group="lieuvie"></span> Intérieur et Extérieur
+                </span>
+            </span>
+        </p>
+        <p>
+            <span class="bold">Habitué à sortir :</span>
+            <span class="clickable-row" onclick="toggleCheck(this, 'sortir')">
+                <span class="checkbox" data-group="sortir"></span> Oui
+            </span>
+            <span class="clickable-row" onclick="toggleCheck(this, 'sortir')">
+                <span class="checkbox" data-group="sortir"></span> Non
+            </span>
+        </p>
+        <p>
+            <span class="blue">Autres animaux :</span>
+            <span class="clickable-row" onclick="toggleCheck(this, 'autresAnimaux')">
+                <span class="checkbox" data-group="autresAnimaux"></span> Oui
+            </span>
+            <span class="clickable-row" onclick="toggleCheck(this, 'autresAnimaux')">
+                <span class="checkbox" data-group="autresAnimaux"></span> Non
+            </span>
+        </p>
+    </div>
+
+    <!-- Soins vétérinaires -->
+    <div class="section">
+        <p class="bold underline">Soins vétérinaires :</p>
+        <p>
+            <span class="blue">Identification :</span>
+            <span class="clickable-row" onclick="toggleCheck(this, 'identificationVeto')">
+                <span class="checkbox" data-group="identificationVeto"></span> Oui
+            </span>
+            <span class="clickable-row" onclick="toggleCheck(this, 'identificationVeto')">
+                <span class="checkbox" data-group="identificationVeto"></span> Non
+            </span>
+        </p>
+        <p>
+            <span class="blue">Castré/stérilisé :</span>
+            <span class="clickable-row" onclick="toggleCheck(this, 'sterilise')">
+                <span class="checkbox" data-group="sterilise"></span> Oui
+            </span>
+            <span class="clickable-row" onclick="toggleCheck(this, 'sterilise')">
+                <span class="checkbox" data-group="sterilise"></span> Non
+            </span>
+        </p>
+        <p><span class="blue">Vaccins :</span>
+            <input type="text" class="editable" id="vaccins" style="width:100%;display:block;margin-top:4px;">
+        </p>
+                <p class="blue">Problème de santé :</p>
+        <input type="text" class="editable editable-long" id="problemeSante1" style="width:100%;display:block;margin-bottom:6px;">
+        <input type="text" class="editable editable-long" id="problemeSante2" style="width:100%;display:block;">
+    </div>
+
+    <!-- Administratif -->
+    <div class="section">
+        <p class="bold underline">Administratif :</p>
+
+        <div>
+            <p class="bold">Vous possédez la carte d'identification ICAD de l'animal :</p>
+            <p>Le changement de détenteur reste gratuit si l'original de la carte d'identification de
+            l'animal (partie haute ou partie B) est en votre possession. Ce document est à adresser
+            à l'ICAD par courrier dûment complété aux coordonnées du nouveau détenteur (un
+            seul et unique détenteur autorisé) et obligatoirement signé par l'ancien détenteur.</p>
+            <p class="bold">⚠️ Attention, un changement de détenteur ne peut être effectué par internet depuis votre
+            espace détenteur.</p>
+        </div>
+
+        <div>
+            <p class="bold">Vous ne possédez pas la carte d'identification de l'animal :</p>
+            <p>Voir annexe sur la page suivante.</p>
+        </div>
+    </div>
+
+    <!-- Attestation -->
+    <div class="section">
+        <p class="bold underline">Attestation sur l'honneur :</p>
+        <p>
+            Je soussigné(e)
+            <input type="text" class="editable editable-long" id="nomAttestation" placeholder="Nom et prénom">
+            propriétaire du dit animal mentionné plus haut, déclare par la présente que je confie et cède
+            définitivement mon animal à l'association L'Arche de Mallo.
+        </p>
+        <p>Il est donc convenu par la signature de ce document que je n'aurai plus aucun droit de
+        propriété et de responsabilité sur l'animal ci-haut mentionné dès signature du présent contrat.</p>
+    </div>
+
+
+    <!-- Signatures -->
+<div class="signature-section">
+    <p class="bold">Fait à Autrechêne, le <input type="date" class="editable editable-date" id="dateFait"></p>
+    <p class="bold no-print">Saisi par <select id="saisiPar" class="editable"></select></p>
+    <table class="signature-table" style="table-layout:fixed;">
+        <tr style="vertical-align:top;">
+            
+            <!-- Signature Arche -->
+            <td style="width:50%;padding-right:20px;">
+                <p>L'Arche de Mallo :</p>
+                <p class="mt-20">
+                    <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve1_ab">
+                        <span class="checkbox"></span>
+                        <span class="bold"> Lu et approuvé</span>
+                    </span>
+                </p>
+                <p class="bold underline">Signature de l'Arche de Mallo :</p>
+                <div id="sig1"></div>
+                <div id="sig1-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+            </td>
+
+            <!-- Signature propriétaire -->
+            <td style="width:50%;">
+                <p>Le propriétaire :</p>
+                <p class="mt-20">
+                    <span class="clickable-row" onclick="toggleCheck(this)" id="luApprouve2_ab">
+                        <span class="checkbox"></span>
+                        <span class="bold"> Lu et approuvé</span>
+                    </span>
+                </p>
+                <p class="bold underline">Signature du propriétaire :</p>
+                <div id="sig2"></div>
+                <div id="sig2-print" style="display:none;">[[SIGNATURE_IMAGE]]</div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+</div><!-- /content -->
+</div><!-- /page-container -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script>
+    creerEntete({ dateId: 'dateAdoption', dateLabel: 'Date abandon :' });
+    creerSignature('sig1');
+    creerSignature('sig2');
+    appliquerPrefill();
+
+    var today = new Date().toISOString().split('T')[0];
+    ['dateAdoption', 'dateFait'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el && !el.value) el.value = today;
+    });
+
+    function majNomAttestation() {
+        var nom    = document.getElementById('nom')    ? document.getElementById('nom').value    : '';
+        var prenom = document.getElementById('prenom') ? document.getElementById('prenom').value : '';
+        var champ  = document.getElementById('nomAttestation');
+        if (champ) champ.value = (prenom + ' ' + nom).trim();
+    }
+
+    validateRequiredFields = function() {
+        var missing = [];
+
+        document.querySelectorAll('[data-required="true"]').forEach(function(el) {
+            var label = el.getAttribute('data-label') || el.id;
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                if (!el.value || el.value.trim() === '') {
+                    missing.push(label);
+                    el.style.borderBottom = '2px solid red';
+                } else {
+                    el.style.borderBottom = '';
+                }
+            }
+        });
+
+        // Email
+        var elEmail = document.getElementById('email');
+        if (elEmail && elEmail.value.trim()) {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(elEmail.value.trim())) {
+                missing.push('Email invalide');
+                elEmail.style.borderBottom = '2px solid red';
+            }
+        }
+
+        // Lieu de vie obligatoire
+        var lieuVie = document.querySelector('.checkbox[data-group="lieuvie"].checked');
+        if (!lieuVie) {
+            missing.push('Lieu de vie');
+            document.querySelectorAll('.checkbox[data-group="lieuvie"]').forEach(function(cb) {
+                cb.style.outline = '2px solid red'; cb.style.outlineOffset = '1px';
+            });
+        } else {
+            document.querySelectorAll('.checkbox[data-group="lieuvie"]').forEach(function(cb) {
+                cb.style.outline = '';
+            });
+        }
+
+        // Lu et approuvé
+        ['luApprouve1_ab', 'luApprouve2_ab'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) {
+                var cb = el.querySelector('.checkbox');
+                if (!cb.classList.contains('checked')) {
+                    var labels = { luApprouve1_ab: 'Lu et approuvé (Propriétaire)', luApprouve2_ab: 'Lu et approuvé (Arche de Mallo)' };
+                    missing.push(labels[id]);
+                    cb.style.outline = '2px solid red'; cb.style.outlineOffset = '1px';
+                } else { cb.style.outline = ''; }
+            }
+        });
+
+        // Signatures
+        ['sig1', 'sig2'].forEach(function(sigId) {
+            var container = document.getElementById(sigId);
+            if (container && !container._signed) {
+                var labels = { sig1: 'Signature propriétaire', sig2: 'Signature Arche de Mallo' };
+                missing.push(labels[sigId]);
+            }
+        });
+
+        return missing;
+    };
+
+    // ============================================================
+    // SUPABASE
+    // ============================================================
+    const ENVOYER_PDF_MAIL = true;
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+chargerListeSaisisseurs();
+
+    async function saveForm() {
+        var missing = validateRequiredFields();
+        if (missing.length > 0) {
+            afficherMessage('⚠️ Veuillez remplir les champs obligatoires :<br><br>• ' + missing.join('<br>• '), 'erreur');
+            return;
+        }
+        var data = collectFormData();
+        data.onglet = 'abandon';
+        data.signatureImage = getSignatureImage();
+        data.htmlContent = encodeBase64Unicode(buildHtmlWithData());
+
+        var causeAbandon = [data.causeAbandon1, data.causeAbandon2].filter(Boolean).join('; ');
+        var qualites = [data.qualites1, data.qualites2].filter(Boolean).join('; ');
+        var defauts = [data.defauts1, data.defauts2].filter(Boolean).join('; ');
+        var problemeSante = [data.problemeSante1, data.problemeSante2].filter(Boolean).join('; ');
+
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:bold;font-family:Arial;';
+        overlay.innerHTML = '<div style="text-align:center">En cours...<br><br><small>Veuillez patienter</small></div>';
+        document.body.appendChild(overlay);
+
+        try {
+            const { data: abandonId, error } = await supabaseClient.rpc('creer_abandon', {
+                p_nom: data.nom,
+                p_prenom: data.prenom,
+                p_adresse: data.adresse,
+                p_code_postal: data.codePostal,
+                p_ville: data.ville,
+                p_telephone: data.telephone,
+                p_email: data.email,
+                p_nom_animal: data.nomAnimal,
+                p_date_naissance_animal: data.dateNaissance || null,
+                p_identification: data.identification,
+                p_cause_abandon: causeAbandon || null,
+                p_qualites: qualites || null,
+                p_defauts: defauts || null,
+                p_probleme_sante: problemeSante || null,
+                p_vaccins: data.vaccins,
+                p_nom_attestation: data.nomAttestation,
+                p_date_fait: data.dateFait || null,
+                p_saisi_par_id: data.saisiPar || null
+            });
+
+            document.body.removeChild(overlay);
+            if (error) throw error;
+
+            if (ENVOYER_PDF_MAIL) {
+                data.filename = buildFilename(data);
+                await sendToGoogle(data);
+            }
+
+            formSaved = true;
+            var btnSave = document.querySelector('.btn-save');
+            var btnPrint = document.querySelector('.btn-print');
+            if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
+            if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
+            afficherMessage('✅ Abandon enregistré (id ' + abandonId + ').');
+        } catch (err) {
+            document.body.removeChild(overlay);
+            console.error(err);
+            alert('Erreur lors de la sauvegarde : ' + (err.message || err));
+        }
+    }
+</script>
+
+</body>
+</html>
