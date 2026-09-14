@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recherche animal — L'Arche de Mallo</title>
+<style>
+  :root{ --cream:#faf7f2; --warm:#f0e8d8; --brown:#3d2b1f; --orange:#c96b2a; --grey:#8a7968; }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:Arial,sans-serif;background:var(--cream);color:var(--brown);}
+  header{background:#fff;border-bottom:3px solid var(--orange);padding:18px 24px;display:flex;align-items:center;gap:14px;}
+  header h1{font-size:16px;margin:0;}
+  header p{font-size:11px;color:var(--grey);margin:2px 0 0;}
+  .wrap{max-width:900px;margin:0 auto;padding:20px 16px 60px;}
+  .search-box{position:relative;margin-bottom:20px;}
+  .search-box input{width:100%;box-sizing:border-box;padding:12px 14px;font-size:14px;border:1px solid var(--warm);border-radius:10px;background:#fff;}
+  .selecteur-animal-dropdown div{font-size:13px;}
+  .card{background:#fff;border:1px solid var(--warm);border-radius:12px;padding:16px 18px;margin-bottom:14px;}
+  .card h2{font-size:13px;margin:0 0 10px;color:var(--orange);display:flex;align-items:center;gap:6px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:12.5px;}
+  .grid2 .lbl{color:var(--grey);}
+  .empty{color:var(--grey);font-size:12px;font-style:italic;}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px;}
+  th{text-align:left;font-size:10px;color:var(--grey);text-transform:uppercase;padding:4px 6px;border-bottom:1px solid var(--warm);}
+  td{padding:5px 6px;border-bottom:1px solid #f2ece1;}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;background:var(--warm);font-size:10px;}
+  .lien-pdf{color:var(--orange);text-decoration:none;font-size:11px;white-space:nowrap;}
+  .lien-pdf:hover{text-decoration:underline;}
+  #login-err{color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;}
+</style>
+</head>
+<body>
+
+<div id="login-screen" style="position:fixed;inset:0;background:var(--cream);z-index:99999;display:flex;align-items:center;justify-content:center;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid var(--warm);border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:var(--grey);margin-bottom:16px;">Connexion requise.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+
+<header>
+  <div>
+    <h1>Recherche animal</h1>
+    <p>Retrouvez la fiche complète d'un chat déjà connu de l'association</p>
+  </div>
+</header>
+<div class="wrap">
+  <div class="search-box">
+    <input type="text" id="recherche-input" placeholder="Tapez le nom du chat…">
+  </div>
+  <div id="resultat"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script src="selecteur-animal.js"></script>
+<script>
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+
+document.addEventListener('DOMContentLoaded', function() {
+  initSelecteurAnimal({
+    inputId: 'recherche-input',
+    contexte: 'recherche',
+    onSelect: function(animalId) { if (animalId) chargerFiche(animalId); else viderResultat(); }
+  });
+});
+
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+function fmtDate(d) { if (!d) return '—'; const s=String(d).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const p=s.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; } return s; }
+function nomPersonne(p) {
+  if (!p) return '—';
+  if (p.type_personne === 'entreprise') return p.raison_sociale || '—';
+  return `${p.prenom||''} ${p.nom||''}`.trim() || '—';
+}
+function liensPdf(fichiers) {
+  if (!fichiers || !fichiers.length) return '<span class="empty">Aucun document</span>';
+  return fichiers.map((f,i) => `<a class="lien-pdf" href="${escH(f.url)}" target="_blank">📄 ${escH(f.type_fichier||('Document '+(i+1)))}</a>`).join(' · ');
+}
+function viderResultat() { document.getElementById('resultat').innerHTML = ''; }
+
+async function chargerFiche(animalId) {
+  document.getElementById('resultat').innerHTML = '<div class="empty">Chargement…</div>';
+  const { data, error } = await supabaseClient.rpc('obtenir_fiche_animal', { p_animal_id: animalId });
+  if (error) { document.getElementById('resultat').innerHTML = `<div class="empty">Erreur : ${escH(error.message)}</div>`; return; }
+  if (!data) { document.getElementById('resultat').innerHTML = '<div class="empty">Animal introuvable.</div>'; return; }
+  render(data);
+}
+
+function render(d) {
+  const a = d.animal, s = d.sterilisation;
+  let html = '';
+
+  html += `<div class="card"><h2>🐱 ${escH(a.nom_usuel)} ${a.nom_adoption?('— '+escH(a.nom_adoption)):''} <span class="badge">${escH(a.statut_actuel||'—')}</span></h2>
+    <div class="grid2">
+      <div><span class="lbl">Espèce / race :</span> ${escH(a.espece||'—')}${a.race?' — '+escH(a.race):''}</div>
+      <div><span class="lbl">Sexe :</span> ${escH(a.sexe||'—')}</div>
+      <div><span class="lbl">Couleur :</span> ${escH(a.couleur||'—')}</div>
+      <div><span class="lbl">Naissance :</span> ${fmtDate(a.date_naissance)}${a.date_naissance_estimee?' (estimée)':''}</div>
+      <div><span class="lbl">Puce :</span> ${escH(a.puce||'—')}</div>
+      <div><span class="lbl">N° carnet de santé :</span> ${escH(a.numero_carnet_sante||'—')}</div>
+      <div><span class="lbl">Arrivée :</span> ${fmtDate(a.date_arrivee)}${a.origine_arrivee?' — '+escH(a.origine_arrivee):''}</div>
+      <div><span class="lbl">Stérilisé(e) :</span> ${s ? (s.sterilise?'Oui — '+fmtDate(s.date_sterilisation):'Non') : '—'}</div>
+      ${a.noms_precedents ? `<div style="grid-column:1/-1;"><span class="lbl">Noms précédents :</span> ${escH(a.noms_precedents)}</div>` : ''}
+      ${a.signes_particuliers ? `<div style="grid-column:1/-1;"><span class="lbl">Signes particuliers :</span> ${escH(a.signes_particuliers)}</div>` : ''}
+      ${a.date_deces ? `<div style="grid-column:1/-1;color:#c00000;"><span class="lbl">Décès :</span> ${fmtDate(a.date_deces)}</div>` : ''}
+    </div></div>`;
+
+  html += `<div class="card"><h2>📋 Historique de statut</h2>${
+    d.statuts.length ? `<table><thead><tr><th>Statut</th><th>Du</th><th>Au</th></tr></thead><tbody>
+      ${d.statuts.map(h=>`<tr><td>${escH(h.statut)}</td><td>${fmtDate(h.date_debut)}</td><td>${h.date_fin?fmtDate(h.date_fin):'en cours'}</td></tr>`).join('')}
+    </tbody></table>` : '<div class="empty">Aucun historique de statut</div>'}</div>`;
+
+  html += `<div class="card"><h2>💉 Suivi médical</h2>${
+    d.soins.length ? `<table><thead><tr><th>Date</th><th>Type</th><th>Détail</th><th>Prochain rappel</th></tr></thead><tbody>
+      ${d.soins.map(sv=>`<tr><td>${fmtDate(sv.date_soin)}</td><td>${escH(sv.type_soin)}</td><td>${escH(sv.description||'—')}</td><td>${sv.prochain_rappel?fmtDate(sv.prochain_rappel):'—'}</td></tr>`).join('')}
+    </tbody></table>` : '<div class="empty">Aucun soin enregistré</div>'}</div>`;
+
+  const sections = [
+    { key:'adoptions',        titre:'🏠 Adoption(s)',        cols:['Date','Personne','Participation','Documents'],
+      row:r=>[fmtDate(r.date_adoption), nomPersonne(r.personne), r.total_participation?r.total_participation+' €':'—', liensPdf(r.fichiers)] },
+    { key:'reservations',     titre:'📅 Réservation(s)',     cols:['Date','Type','Personne','Documents'],
+      row:r=>[fmtDate(r.date_reservation), escH(r.type_reservation||'—'), nomPersonne(r.personne), liensPdf(r.fichiers)] },
+    { key:'depots',           titre:'📥 Dépôt(s)',           cols:['Date','Personne','Documents'],
+      row:r=>[fmtDate(r.date_depot), nomPersonne(r.personne), liensPdf(r.fichiers)] },
+    { key:'abandons',         titre:'💔 Abandon(s)',         cols:['Date','Personne','Cause','Documents'],
+      row:r=>[fmtDate(r.date_fait), nomPersonne(r.personne), escH(r.cause_abandon||'—'), liensPdf(r.fichiers)] },
+    { key:'familles_accueil', titre:'🤝 Famille(s) d\'accueil', cols:['Type','Du','Au','Personne','Documents'],
+      row:r=>[escH(r.type_accueil||'—'), fmtDate(r.date_debut), r.date_fin?fmtDate(r.date_fin):'en cours', nomPersonne(r.personne), liensPdf(r.fichiers)] },
+    { key:'attestations',     titre:'📜 Attestation(s)',     cols:['Date','Type','Personne','Documents'],
+      row:r=>[fmtDate(r.date_fait), escH(r.type_attestation||'—'), nomPersonne(r.personne), liensPdf(r.fichiers)] },
+  ];
+  sections.forEach(sec => {
+    const rows = d[sec.key] || [];
+    html += `<div class="card"><h2>${sec.titre}</h2>${
+      rows.length ? `<table><thead><tr>${sec.cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>
+        ${rows.map(r=>`<tr>${sec.row(r).map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}
+      </tbody></table>` : '<div class="empty">Aucun enregistrement</div>'}</div>`;
+  });
+
+  document.getElementById('resultat').innerHTML = html;
+}
+</script>
+</body>
+</html>

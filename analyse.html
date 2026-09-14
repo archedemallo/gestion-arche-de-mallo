@@ -213,7 +213,7 @@
 </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
@@ -221,6 +221,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
 let roleActuel = null;
 let allCaisse = [], allBanque = [], allFactures = [], allCheques = [], allRemiseDetails = [];
+let allLiensCaisse = [], allLiensBanque = [];
 let periodes = [], activePer = '';
 let charts = {};
 
@@ -256,22 +257,102 @@ async function chargerPeriodes() {
 }
 function onPeriodeChange(p) { activePer = p; renderAll(); }
 
+// ============================================================
+// VENTILATION — un mouvement caisse/banque peut désormais être lié à un
+// ou plusieurs enregistrements Suivi (don, adhésion, adoption, réservation,
+// prêt de matériel) via caisse_mouvement_suivi_liens / banque_mouvement_suivi_liens
+// (voir le bouton "🔗 Lier" dans Banque/Caisse). Sans ce traitement, Analyse
+// comptait tout le mouvement sous son type_mouvement brut (souvent générique,
+// ex. "Virement") au lieu de le répartir selon ce à quoi il correspond
+// réellement — c'était le trou signalé en revue.
+//
+// Le choix fait ici : décomposer CHAQUE mouvement ventilé en autant de
+// lignes virtuelles que de liens (+ une ligne "reste" pour la part non
+// ventilée), avant toute autre étape. Comme le reste du fichier ne
+// consomme allCaisse/allBanque qu'à travers son propre type_mouvement /
+// nom_chat / libelle, cette décomposition unique en amont met à jour
+// Synthèse, Dons, Adhésions, Adoptions et Par chat sans toucher au code
+// de calcul de chacun.
+// ============================================================
+function nomPersonneLien(p) {
+  if (!p) return null;
+  if (p.type_personne === 'entreprise') return (p.raison_sociale || '').trim() || null;
+  const n = `${p.prenom || ''} ${p.nom || ''}`.trim();
+  return n || null;
+}
+function resoudreLien(lien) {
+  if (lien.don_id)              return { type: 'Dons',             montant: fmtN(lien.montant), chat: null, nom: nomPersonneLien(lien.dons?.personnes) };
+  if (lien.adhesion_id)         return { type: 'Adhesion',         montant: fmtN(lien.montant), chat: null, nom: nomPersonneLien(lien.adhesions?.personnes) };
+  if (lien.adoption_id)         return { type: 'Adoption',         montant: fmtN(lien.montant), chat: lien.adoptions?.animaux?.nom_usuel || null, nom: nomPersonneLien(lien.adoptions?.personnes) };
+  if (lien.reservation_id)      return { type: 'Reservation',      montant: fmtN(lien.montant), chat: lien.reservations?.animaux?.nom_usuel || null, nom: nomPersonneLien(lien.reservations?.personnes) };
+  if (lien.materiel_mouvement_id) return { type: 'Caution materiel', montant: fmtN(lien.montant), chat: null, nom: nomPersonneLien(lien.materiel_mouvements?.personnes) };
+  return null;
+}
+// NB : "Reservation" n'a pas de catégorie Synthèse par défaut (voir
+// AG_CONFIG_DEFAUT) — ajoutez-en une dans Paramètres > Synthèse si vous
+// voulez la suivre ; ça n'empêche pas Par chat de fonctionner pour ces liens.
+function decomposerVentilation(rows, liens, fkCol) {
+  const parMouvement = new Map();
+  liens.forEach(l => { const k = l[fkCol]; if (!parMouvement.has(k)) parMouvement.set(k, []); parMouvement.get(k).push(l); });
+  const out = [];
+  rows.forEach(r => {
+    const mesLiens = parMouvement.get(r.id);
+    if (!mesLiens || !mesLiens.length) { out.push(r); return; }
+    const sens = fmtN(r.credit) > 0 ? 'credit' : (fmtN(r.debit) > 0 ? 'debit' : null);
+    if (!sens) { out.push(r); return; }
+    const autreSens = sens === 'credit' ? 'debit' : 'credit';
+    const total = fmtN(r[sens]);
+    let alloue = 0;
+    mesLiens.forEach((l, i) => {
+      const res = resoudreLien(l);
+      if (!res) return;
+      const montant = Math.max(0, Math.min(res.montant, total - alloue));
+      if (montant <= 0.005) return;
+      alloue += montant;
+      out.push({ ...r, id: r.id + '_lien' + i,
+        type_mouvement: res.type,
+        nom_chat: res.chat || r.nom_chat,
+        libelle: res.nom || r.libelle,
+        libelle_complementaire: res.nom || r.libelle_complementaire,
+        ref_cheque: null, lien_facture: null, // évite une reclassification cheque/facture sur la part ventilée
+        [sens]: montant, [autreSens]: 0 });
+    });
+    const reste = total - alloue;
+    if (reste > 0.005) out.push({ ...r, id: r.id + '_reste', [sens]: reste, [autreSens]: 0 });
+  });
+  return out;
+}
+
 async function loadData() {
   document.getElementById('global-loading').style.display = 'block';
   document.getElementById('tabs-bar').style.display = 'none';
   try {
-    const [c, b, f, ch, rd] = await Promise.all([
+    const [c, b, f, ch, rd, lc, lb] = await Promise.all([
       supabaseClient.from('caisse_mouvements').select('*'),
       supabaseClient.from('banque_mouvements').select('*'),
       supabaseClient.from('factures').select('*'),
       supabaseClient.from('cheques').select('*'),
       supabaseClient.from('remise_cheques_details').select('*, remises_cheques!inner(periode, date_remise)'),
+      supabaseClient.from('caisse_mouvement_suivi_liens').select(`*,
+        dons(personnes(nom,prenom,raison_sociale,type_personne)),
+        adhesions(personnes(nom,prenom,raison_sociale,type_personne)),
+        adoptions(personnes(nom,prenom,raison_sociale,type_personne), animaux(nom_usuel)),
+        reservations(personnes(nom,prenom,raison_sociale,type_personne), animaux(nom_usuel)),
+        materiel_mouvements(personnes(nom,prenom,raison_sociale,type_personne))`),
+      supabaseClient.from('banque_mouvement_suivi_liens').select(`*,
+        dons(personnes(nom,prenom,raison_sociale,type_personne)),
+        adhesions(personnes(nom,prenom,raison_sociale,type_personne)),
+        adoptions(personnes(nom,prenom,raison_sociale,type_personne), animaux(nom_usuel)),
+        reservations(personnes(nom,prenom,raison_sociale,type_personne), animaux(nom_usuel)),
+        materiel_mouvements(personnes(nom,prenom,raison_sociale,type_personne))`),
     ]);
-    allCaisse = c.data || [];
-    allBanque = b.data || [];
     allFactures = f.data || [];
     allCheques = ch.data || [];
     allRemiseDetails = (rd.data || []).map(d => ({ ...d, periode: d.remises_cheques.periode, date_remise: d.remises_cheques.date_remise }));
+    allLiensCaisse = lc.data || [];
+    allLiensBanque = lb.data || [];
+    allCaisse = decomposerVentilation(c.data || [], allLiensCaisse, 'caisse_mouvement_id');
+    allBanque = decomposerVentilation(b.data || [], allLiensBanque, 'banque_mouvement_id');
   } catch(e) { console.error('loadData', e); }
 
   await loadAgConfig();
@@ -380,6 +461,7 @@ const AG_CONFIG_DEFAUT = [
   { cat: 'Subventions', sens: 'recette', sources: ['banque','caisse'], types: ['Subventions'] },
   { cat: 'Adhésions', sens: 'recette', sources: ['banque','caisse'], types: ['Adhesion'] },
   { cat: 'Adoptions', sens: 'recette', sources: ['banque','caisse'], types: ['Adoption'] },
+  { cat: 'Réservations', sens: 'recette', sources: ['banque','caisse'], types: ['Reservation', 'Réservation'] },
   { cat: 'Cautions prêt de matériel', sens: 'recette', sources: ['banque','caisse'], types: ['Pret materiel','Caution materiel'] },
   { cat: 'Frais vétérinaires', sens: 'depense', sources: ['banque','caisse'], types: ['Vétérinaire','Soins','Pharmacie'] },
   { cat: 'Frais de bureau', sens: 'depense', sources: ['banque','caisse'], types: ['Fourniture de bureau'] },

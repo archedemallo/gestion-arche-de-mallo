@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Formulaires pré-remplis — L'Arche de Mallo</title>
+<style>
+  :root{ --cream:#faf7f2; --warm:#f0e8d8; --brown:#3d2b1f; --orange:#c96b2a; --grey:#8a7968; }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:Arial,sans-serif;background:var(--cream);color:var(--brown);}
+  header{background:#fff;border-bottom:3px solid var(--orange);padding:18px 24px;}
+  header h1{font-size:16px;margin:0;}
+  header p{font-size:11px;color:var(--grey);margin:2px 0 0;}
+  .wrap{max-width:900px;margin:0 auto;padding:20px 16px 60px;}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+  @media (max-width:640px){ .cols{grid-template-columns:1fr;} }
+  .card{background:#fff;border:1px solid var(--warm);border-radius:12px;padding:16px 18px;}
+  .card h2{font-size:13px;margin:0 0 10px;color:var(--orange);}
+  .search-box{position:relative;margin-bottom:10px;}
+  .search-box input{width:100%;box-sizing:border-box;padding:10px 12px;font-size:13px;border:1px solid var(--warm);border-radius:8px;}
+  .dropdown{position:absolute;background:#fff;border:1px solid #ccc;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-height:220px;overflow-y:auto;z-index:1000;width:100%;display:none;}
+  .dropdown div{padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f0f0;}
+  .dropdown div:hover{background:#f5f5f5;}
+  .fiche{font-size:12.5px;}
+  .fiche .lbl{color:var(--grey);}
+  .fiche div{margin-bottom:3px;}
+  .empty{color:var(--grey);font-size:12px;font-style:italic;}
+  .btn{display:inline-block;padding:7px 12px;border-radius:8px;border:1px solid var(--orange);background:var(--orange);color:#fff;font-size:12px;cursor:pointer;margin-top:8px;text-decoration:none;}
+  .btn.secondaire{background:#fff;color:var(--orange);}
+  .forms-card{background:#fff;border:1px solid var(--warm);border-radius:12px;padding:16px 18px;}
+  .forms-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;}
+  .forms-grid a{display:block;padding:10px 12px;border:1px solid var(--warm);border-radius:8px;color:var(--brown);text-decoration:none;font-size:12.5px;background:var(--cream);}
+  .forms-grid a:hover{border-color:var(--orange);}
+  .note{background:#fff4e5;border:1px solid #ffd699;color:#7a4a00;font-size:11.5px;padding:8px 12px;border-radius:8px;margin-bottom:16px;}
+  #login-err{color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;}
+</style>
+</head>
+<body>
+
+<div id="login-screen" style="position:fixed;inset:0;background:var(--cream);z-index:99999;display:flex;align-items:center;justify-content:center;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid var(--warm);border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:var(--grey);margin-bottom:16px;">Connexion requise.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+
+<header>
+  <h1>Formulaires pré-remplis</h1>
+  <p>Retrouvez une personne et/ou un chat déjà connus, copiez leurs infos, puis ouvrez le formulaire souhaité</p>
+</header>
+<div class="wrap">
+  <div class="note">Les champs des formulaires ne se remplissent pas encore tout seuls : cherchez ci-dessous, cliquez sur "📋 Copier", puis collez dans le formulaire ouvert. Dites-le si vous préférez un vrai remplissage automatique — ça demande d'adapter chaque formulaire.</div>
+
+  <div class="cols">
+    <div class="card">
+      <h2>👤 Personne</h2>
+      <div class="search-box">
+        <input type="text" id="recherche-personne" placeholder="Nom, société, email, téléphone…" oninput="onRecherchePersonne()" onfocus="onRecherchePersonne()">
+        <div class="dropdown" id="dropdown-personne"></div>
+      </div>
+      <div id="fiche-personne" class="fiche"><div class="empty">Aucune personne sélectionnée</div></div>
+    </div>
+
+    <div class="card">
+      <h2>🐱 Animal</h2>
+      <div class="search-box">
+        <input type="text" id="recherche-animal" placeholder="Nom du chat…">
+      </div>
+      <div id="fiche-animal" class="fiche"><div class="empty">Aucun animal sélectionné</div></div>
+    </div>
+  </div>
+
+  <div class="forms-card">
+    <h2 style="color:var(--orange);font-size:13px;margin:0 0 10px;">Ouvrir un formulaire vierge</h2>
+    <div class="forms-grid">
+      <a href="adoption.html" target="_blank">🏠 Contrat de cession</a>
+      <a href="certificat_engagement.html" target="_blank">📜 Certificat d'engagement</a>
+      <a href="decharge_vaccin.html" target="_blank">💉 Décharge vaccin</a>
+      <a href="attestation_cbs_absent.html" target="_blank">🩺 Attestation CBS absent</a>
+      <a href="reservation.html" target="_blank">📅 Réservation</a>
+      <a href="adhesion.html" target="_blank">🎫 Adhésion</a>
+      <a href="don.html" target="_blank">💝 Don</a>
+      <a href="depot_chat.html" target="_blank">🏠 Dépôt chat</a>
+      <a href="abandon.html" target="_blank">💔 Abandon</a>
+      <a href="famille_accueil.html" target="_blank">🤝 Famille d'accueil</a>
+      <a href="pret_materiel.html" target="_blank">🪤 Prêt matériel</a>
+      <a href="retour_materiel.html" target="_blank">↩️ Retour matériel</a>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script src="selecteur-animal.js"></script>
+<script>
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+
+// ---------- Personne ----------
+let personneChoisie = null;
+let timerPersonne = null;
+function onRecherchePersonne() {
+  clearTimeout(timerPersonne);
+  const texte = document.getElementById('recherche-personne').value.trim();
+  timerPersonne = setTimeout(() => rechercherPersonne(texte), 200);
+}
+async function rechercherPersonne(texte) {
+  const dropdown = document.getElementById('dropdown-personne');
+  if (!texte) { dropdown.style.display = 'none'; return; }
+  const { data, error } = await supabaseClient.rpc('rechercher_personnes', { p_recherche: texte });
+  if (error) { console.error(error); return; }
+  if (!data || !data.length) { dropdown.innerHTML = '<div style="color:#888;">Aucun résultat</div>'; dropdown.style.display = 'block'; return; }
+  dropdown.innerHTML = data.map((p,i) => {
+    const nom = p.type_personne === 'entreprise' ? (p.raison_sociale||'—') : `${p.prenom||''} ${p.nom||''}`.trim();
+    return `<div onclick='choisirPersonne(${i})'>${escH(nom)}${p.ville?' — '+escH(p.ville):''}</div>`;
+  }).join('');
+  window._resultatsPersonnes = data;
+  dropdown.style.display = 'block';
+}
+function choisirPersonne(i) {
+  personneChoisie = window._resultatsPersonnes[i];
+  document.getElementById('dropdown-personne').style.display = 'none';
+  const nom = personneChoisie.type_personne === 'entreprise' ? (personneChoisie.raison_sociale||'—') : `${personneChoisie.prenom||''} ${personneChoisie.nom||''}`.trim();
+  document.getElementById('recherche-personne').value = nom;
+  document.getElementById('fiche-personne').innerHTML = `
+    <div><span class="lbl">Nom :</span> ${escH(nom)}</div>
+    <div><span class="lbl">Adresse :</span> ${escH(personneChoisie.adresse||'—')}</div>
+    <div><span class="lbl">CP / Ville :</span> ${escH(personneChoisie.code_postal||'')} ${escH(personneChoisie.ville||'')}</div>
+    <div><span class="lbl">Email :</span> ${escH(personneChoisie.email||'—')}</div>
+    <div><span class="lbl">Téléphone :</span> ${escH(personneChoisie.telephone||'—')}</div>
+    <button type="button" class="btn" onclick="copierPersonne()">📋 Copier</button>
+    <button type="button" class="btn secondaire" onclick="viderPersonne()">Changer</button>`;
+}
+function viderPersonne() { personneChoisie = null; document.getElementById('recherche-personne').value=''; document.getElementById('fiche-personne').innerHTML = '<div class="empty">Aucune personne sélectionnée</div>'; }
+function copierPersonne() {
+  if (!personneChoisie) return;
+  const p = personneChoisie;
+  const nom = p.type_personne === 'entreprise' ? (p.raison_sociale||'') : `${p.prenom||''} ${p.nom||''}`.trim();
+  const texte = [nom, p.adresse, `${p.code_postal||''} ${p.ville||''}`.trim(), p.email, p.telephone].filter(Boolean).join('\n');
+  navigator.clipboard.writeText(texte).then(() => alert('Copié !'));
+}
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#recherche-personne') && !e.target.closest('#dropdown-personne')) document.getElementById('dropdown-personne').style.display='none';
+});
+
+// ---------- Animal (réutilise le sélecteur partagé) ----------
+let animalChoisi = null;
+document.addEventListener('DOMContentLoaded', function() {
+  initSelecteurAnimal({
+    inputId: 'recherche-animal',
+    contexte: 'recherche',
+    onSelect: async function(animalId) {
+      if (!animalId) { animalChoisi = null; document.getElementById('fiche-animal').innerHTML = '<div class="empty">Aucun animal sélectionné</div>'; return; }
+      const { data, error } = await supabaseClient.rpc('obtenir_animal_pour_formulaire', { p_animal_id: animalId });
+      if (error || !data) { console.error(error); return; }
+      animalChoisi = data.animal;
+      const a = animalChoisi;
+      document.getElementById('fiche-animal').innerHTML = `
+        <div><span class="lbl">Nom :</span> ${escH(a.nom_usuel||'—')}</div>
+        <div><span class="lbl">Nom d'adoption :</span> ${escH(a.nom_adoption||'—')}</div>
+        <div><span class="lbl">Couleur :</span> ${escH(a.couleur||'—')}</div>
+        <div><span class="lbl">Puce :</span> ${escH(a.puce||'—')}</div>
+        <div><span class="lbl">N° carnet de santé :</span> ${escH(a.numero_carnet_sante||'—')}</div>
+        <button type="button" class="btn" onclick="copierAnimal()">📋 Copier</button>`;
+    }
+  });
+});
+function copierAnimal() {
+  if (!animalChoisi) return;
+  const a = animalChoisi;
+  const texte = [a.nom_usuel, a.nom_adoption, a.couleur, a.puce ? 'Puce : '+a.puce : '', a.numero_carnet_sante ? 'Carnet de santé : '+a.numero_carnet_sante : ''].filter(Boolean).join('\n');
+  navigator.clipboard.writeText(texte).then(() => alert('Copié !'));
+}
+</script>
+</body>
+</html>
