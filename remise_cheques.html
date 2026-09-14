@@ -62,7 +62,41 @@
 </div>
 
 <div id="app" class="hidden">
-<div class="main" style="margin:0;">
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-title">L'Arche de Mallo</div>
+    <div class="sidebar-logo-sub">Comptabilité</div>
+  </div>
+
+  <div class="nav-section">Vue d'ensemble</div>
+  <a class="nav-item" href="index_compta.html"><i class="ti ti-layout-dashboard"></i>Tableau de bord</a>
+  <a class="nav-item" href="analyse.html"><i class="ti ti-chart-bar"></i>Analyse</a>
+  <a class="nav-item" href="journal.html"><i class="ti ti-notebook"></i>Journal</a>
+
+  <div class="nav-section">Opérations</div>
+  <a class="nav-item" href="caisse.html"><i class="ti ti-cash"></i>Caisse</a>
+  <a class="nav-item" href="caisse_physique.html"><i class="ti ti-coin"></i>Caisse physique</a>
+  <a class="nav-item" href="banque.html"><i class="ti ti-building-bank"></i>Banque</a>
+  <a class="nav-item" href="cheques.html"><i class="ti ti-checkbook"></i>Chèques</a>
+  <a class="nav-item active" href="remise_cheques.html"><i class="ti ti-file-invoice"></i>Remises de chèques</a>
+  <a class="nav-item" href="import_rapprochement.html"><i class="ti ti-arrows-exchange"></i>Import / rapprochement</a>
+
+  <div class="nav-section">Suivi</div>
+  <a class="nav-item" href="factures.html"><i class="ti ti-receipt"></i>Factures</a>
+  <a class="nav-item" href="notes.html"><i class="ti ti-note"></i>Notes partagées</a>
+
+  <div class="nav-section">Administration</div>
+  <a class="nav-item" href="configuration.html"><i class="ti ti-settings"></i>Configuration</a>
+
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-avatar" id="sidebar-avatar">?</div>
+      <div class="sidebar-username" id="sidebar-username"></div>
+      <span class="sidebar-logout" onclick="seDeconnecter()">Déconnexion</span>
+    </div>
+  </div>
+</aside>
+<div class="main">
   <div class="topbar">
     <div class="topbar-title"><i class="ti ti-file-invoice" style="color:var(--orange)"></i> Remises de chèques</div>
     <div class="topbar-right" style="display:flex;align-items:center;gap:14px;">
@@ -162,6 +196,8 @@ async function demarrerApp(user) {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('topbar-user').textContent = profil.email + (roleActuel==='lecteur' ? ' (lecture seule)' : '');
+  document.getElementById('sidebar-username').textContent = profil.email + (roleActuel==='lecteur' ? ' (lecture seule)' : '');
+  document.getElementById('sidebar-avatar').textContent = (profil.email||'?').charAt(0).toUpperCase();
   if (roleActuel === 'lecteur') document.getElementById('btn-new').style.display = 'none';
   await chargerPeriodes(); await chargerTypesEtDescriptions();
   document.getElementById('rem-date').value = new Date().toISOString().split('T')[0];
