@@ -33,7 +33,7 @@ function creerEntete(options) {
     '<div class="header-adoption-right">' +
         dateLabel + ' <input type="date" class="editable editable-date" id="' + dateId + '"><br>' +
         '<span class="blue bold">Saisi par :</span> ' + 
-        '<input type="text" class="editable editable-medium bold" id="saisiPar" data-required="true" data-label="Saisi par" oninput="this.value=this.value.toUpperCase()">' +
+        '<select class="editable editable-medium bold" id="saisiPar" data-required="true" data-label="Saisi par"></select>' +
     '</div>' +
 '</div>' +
 (titre ? '<div class="title">' + titre + '</div>' : '');
