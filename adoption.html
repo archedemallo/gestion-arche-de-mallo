@@ -427,7 +427,8 @@ AVEC <input type="text" class="editable editable-medium" id="produitAntiPuces" d
     </p>
     <p>
         <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox"></span></span>
-        Autres : (préciser) <input type="text" class="editable editable-long" id="autres">
+        Autres : (préciser) <input type="text" class="editable editable-long" id="autresMotif">
+        <span class="blue"> montant : </span><input type="number" class="editable editable-num" id="autresMontant"><span class="red"> €</span>
     </p>
     <p>
         <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox" id="adhesionLibre_check"></span></span>
@@ -1109,6 +1110,8 @@ async function _saveFormOriginal() {
             p_numero_carnet_sante: data.numeroPasseport,
             p_nom_attestation: data.nomAttestation,
             p_tarif_particulier: data.tarifParticulier ? parseFloat(data.tarifParticulier) : null,
+            p_autres_motif: data.autresMotif || null,
+            p_autres_montant: data.autresMontant ? parseFloat(data.autresMontant) : null,
             p_total_participation: data.totalParticipation ? parseFloat(data.totalParticipation) : null,
             p_montant_virement: data.montant_virement ? parseFloat(data.montant_virement) : null,
             p_montant_espece: data.montant_espece ? parseFloat(data.montant_espece) : null,
