@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Statuts des animaux — L'Arche de Mallo</title>
+<style>
+  :root{ --cream:#faf7f2; --warm:#f0e8d8; --brown:#3d2b1f; --orange:#c96b2a; --grey:#8a7968; --red:#c00000; --green:#2e7d32; }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:Arial,sans-serif;background:var(--cream);color:var(--brown);}
+  header{background:#fff;border-bottom:3px solid var(--orange);padding:18px 24px;display:flex;align-items:center;gap:14px;}
+  header h1{font-size:16px;margin:0;}
+  header p{font-size:11px;color:var(--grey);margin:2px 0 0;}
+  .wrap{max-width:900px;margin:0 auto;padding:20px 16px 60px;}
+  .card{background:#fff;border:1px solid var(--warm);border-radius:12px;padding:16px 18px;margin-bottom:18px;}
+  .card h2{font-size:13px;margin:0 0 12px;color:var(--orange);}
+  .search-box input{width:100%;box-sizing:border-box;padding:12px 14px;font-size:14px;border:1px solid var(--warm);border-radius:10px;background:#fff;}
+  .selecteur-animal-dropdown div{font-size:13px;}
+  .champ{margin-bottom:10px;}
+  .champ label{display:block;font-size:11px;color:var(--grey);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:3px;}
+  .champ input, .champ select{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--warm);border-radius:6px;font-size:13px;background:#fff;}
+  .ligne2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .btn{padding:9px 18px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;}
+  .btn:hover{opacity:0.92;}
+  .msg{font-size:12px;margin-top:8px;min-height:16px;}
+  .msg.ok{color:var(--green);} .msg.err{color:var(--red);}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;background:var(--warm);font-size:10px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:12.5px;margin-bottom:12px;}
+  .grid2 .lbl{color:var(--grey);}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px;}
+  th{text-align:left;font-size:10px;color:var(--grey);text-transform:uppercase;padding:4px 6px;border-bottom:1px solid var(--warm);}
+  td{padding:5px 6px;border-bottom:1px solid #f2ece1;}
+  .empty{color:var(--grey);font-size:12px;font-style:italic;}
+  #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+  optgroup{font-style:normal;}
+</style>
+</head>
+<body>
+
+<div id="login-screen" style="position:fixed;inset:0;background:var(--cream);z-index:99999;display:flex;align-items:center;justify-content:center;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid var(--warm);border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:var(--grey);margin-bottom:16px;">Connexion requise.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+
+<header>
+  <div>
+    <h1>Statuts des animaux</h1>
+    <p>Déclarer une arrivée, ou faire évoluer le statut d'un animal déjà connu</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- Déclarer une arrivée -->
+  <div class="card">
+    <h2>Déclarer une arrivée</h2>
+    <div class="champ">
+      <label>Nom de l'animal *</label>
+      <input type="text" id="arr-nom">
+    </div>
+    <div class="ligne2">
+      <div class="champ">
+        <label>Origine *</label>
+        <select id="arr-origine">
+          <option value="">— Choisir —</option>
+          <option value="trappage">Trappage</option>
+          <option value="depot">Dépôt</option>
+          <option value="abandon">Abandon</option>
+          <option value="saisie">Saisie</option>
+          <option value="ne_a_association">Né à l'association</option>
+          <option value="transfert_autre_association">Transfert autre association</option>
+        </select>
+      </div>
+      <div class="champ">
+        <label>Date d'arrivée *</label>
+        <input type="date" id="arr-date">
+      </div>
+    </div>
+    <div class="ligne2">
+      <div class="champ">
+        <label>Couleur</label>
+        <input type="text" id="arr-couleur">
+      </div>
+      <div class="champ">
+        <label>Puce</label>
+        <input type="text" id="arr-puce">
+      </div>
+    </div>
+    <div class="ligne2">
+      <div class="champ">
+        <label>Nom de la personne à l'origine (ex. trappeur)</label>
+        <input type="text" id="arr-nom-personne">
+      </div>
+      <div class="champ">
+        <label>Prénom</label>
+        <input type="text" id="arr-prenom-personne">
+      </div>
+    </div>
+    <div class="champ">
+      <label>Motif / précisions</label>
+      <input type="text" id="arr-motif">
+    </div>
+    <div class="champ">
+      <label>Saisi par</label>
+      <select id="arr-saisi-par"></select>
+    </div>
+    <button type="button" class="btn" onclick="declarerArrivee()">Enregistrer l'arrivée</button>
+    <div id="arr-msg" class="msg"></div>
+  </div>
+
+  <!-- Rechercher un animal existant -->
+  <div class="card">
+    <h2>Rechercher un animal</h2>
+    <div class="search-box">
+      <input type="text" id="recherche-input" placeholder="Tapez le nom du chat…">
+    </div>
+  </div>
+
+  <div id="fiche"></div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script src="selecteur-animal.js"></script>
+<script>
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+
+let animalSelectionneId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('arr-date').valueAsDate = new Date();
+  chargerListeSaisisseurs('arr-saisi-par');
+  initSelecteurAnimal({
+    inputId: 'recherche-input',
+    contexte: 'recherche',
+    onSelect: function(animalId) {
+      animalSelectionneId = animalId;
+      if (animalId) chargerFiche(animalId);
+      else document.getElementById('fiche').innerHTML = '';
+    }
+  });
+});
+
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+function fmtDate(d) { if (!d) return '—'; const s=String(d).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const p=s.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; } return s; }
+
+async function declarerArrivee() {
+  const msg = document.getElementById('arr-msg');
+  msg.textContent = ''; msg.className = 'msg';
+  const nom = document.getElementById('arr-nom').value.trim();
+  const origine = document.getElementById('arr-origine').value;
+  const date = document.getElementById('arr-date').value;
+  if (!nom) { msg.textContent = 'Le nom est obligatoire.'; msg.className = 'msg err'; return; }
+  if (!origine) { msg.textContent = "L'origine est obligatoire."; msg.className = 'msg err'; return; }
+  const { data, error } = await supabaseClient.rpc('creer_arrivee_animal', {
+    p_nom_usuel: nom,
+    p_origine_arrivee: origine,
+    p_date_arrivee: date || null,
+    p_couleur: document.getElementById('arr-couleur').value.trim() || null,
+    p_puce: document.getElementById('arr-puce').value.trim() || null,
+    p_nom_personne: document.getElementById('arr-nom-personne').value.trim() || null,
+    p_prenom_personne: document.getElementById('arr-prenom-personne').value.trim() || null,
+    p_motif: document.getElementById('arr-motif').value.trim() || null,
+    p_saisi_par_id: document.getElementById('arr-saisi-par').value || null
+  });
+  if (error) { msg.textContent = 'Erreur : ' + error.message; msg.className = 'msg err'; return; }
+  msg.textContent = 'Arrivée enregistrée.';
+  msg.className = 'msg ok';
+  document.getElementById('arr-nom').value = '';
+  document.getElementById('arr-origine').value = '';
+  document.getElementById('arr-couleur').value = '';
+  document.getElementById('arr-puce').value = '';
+  document.getElementById('arr-nom-personne').value = '';
+  document.getElementById('arr-prenom-personne').value = '';
+  document.getElementById('arr-motif').value = '';
+}
+
+async function chargerFiche(animalId) {
+  document.getElementById('fiche').innerHTML = '<div class="card"><div class="empty">Chargement…</div></div>';
+  const { data, error } = await supabaseClient.rpc('obtenir_animal_avec_statuts', { p_animal_id: animalId });
+  if (error) { document.getElementById('fiche').innerHTML = `<div class="card"><div class="empty">Erreur : ${escH(error.message)}</div></div>`; return; }
+  if (!data) { document.getElementById('fiche').innerHTML = '<div class="card"><div class="empty">Animal introuvable.</div></div>'; return; }
+  renderFiche(data);
+}
+
+function renderFiche(d) {
+  const a = d.animal;
+  let html = `<div class="card"><h2>${escH(a.nom_usuel)} <span class="badge">${escH(a.statut_actuel||'—')}</span></h2>
+    <div class="grid2">
+      <div><span class="lbl">Couleur :</span> ${escH(a.couleur||'—')}</div>
+      <div><span class="lbl">Puce :</span> ${escH(a.puce||'—')}</div>
+      <div><span class="lbl">Arrivée :</span> ${fmtDate(a.date_arrivee)}${a.origine_arrivee?' — '+escH(a.origine_arrivee):''}</div>
+      <div><span class="lbl">Décès :</span> ${a.date_deces?fmtDate(a.date_deces):'—'}</div>
+    </div>
+
+    <h2>Historique de statut</h2>
+    ${d.statuts && d.statuts.length ? `<table><thead><tr><th>Statut</th><th>Du</th><th>Au</th></tr></thead><tbody>
+      ${d.statuts.map(h=>`<tr><td>${escH(h.statut)}</td><td>${fmtDate(h.date_debut)}</td><td>${h.date_fin?fmtDate(h.date_fin):'en cours'}</td></tr>`).join('')}
+    </tbody></table>` : '<div class="empty">Aucun historique de statut</div>'}
+
+    <h2 style="margin-top:16px;">Changer le statut</h2>
+    <div class="ligne2">
+      <div class="champ">
+        <label>Nouveau statut *</label>
+        <select id="chg-statut">
+          <option value="">— Choisir —</option>
+          <optgroup label="Arrivée">
+            <option value="arrive">Arrivé</option>
+            <option value="retour">Retour à l'association</option>
+          </optgroup>
+          <optgroup label="En cours">
+            <option value="en_observation">En observation</option>
+            <option value="au_veto">Au véto</option>
+            <option value="adoptable">Adoptable</option>
+            <option value="non_adoptable">Non adoptable</option>
+            <option value="famille_accueil">Famille d'accueil</option>
+            <option value="reserve">Réservé</option>
+          </optgroup>
+          <optgroup label="Départ">
+            <option value="adopte">Adopté</option>
+            <option value="decede">Décédé</option>
+            <option value="relache">Relâché</option>
+            <option value="transfere">Transféré</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="champ">
+        <label>Date *</label>
+        <input type="date" id="chg-date">
+      </div>
+    </div>
+    <div class="champ">
+      <label>Motif / précisions</label>
+      <input type="text" id="chg-motif">
+    </div>
+    <div class="champ">
+      <label>Saisi par</label>
+      <select id="chg-saisi-par"></select>
+    </div>
+    <button type="button" class="btn" onclick="changerStatut('${a.id}')">Enregistrer le statut</button>
+    <div id="chg-msg" class="msg"></div>
+  </div>`;
+
+  document.getElementById('fiche').innerHTML = html;
+  document.getElementById('chg-date').valueAsDate = new Date();
+  chargerListeSaisisseurs('chg-saisi-par');
+}
+
+async function changerStatut(animalId) {
+  const msg = document.getElementById('chg-msg');
+  msg.textContent = ''; msg.className = 'msg';
+  const statut = document.getElementById('chg-statut').value;
+  const date = document.getElementById('chg-date').value;
+  if (!statut) { msg.textContent = 'Choisissez un statut.'; msg.className = 'msg err'; return; }
+  const { error } = await supabaseClient.rpc('changer_statut_animal', {
+    p_animal_id: animalId,
+    p_statut: statut,
+    p_date: date || null,
+    p_motif: document.getElementById('chg-motif').value.trim() || null,
+    p_saisi_par_id: document.getElementById('chg-saisi-par').value || null
+  });
+  if (error) { msg.textContent = 'Erreur : ' + error.message; msg.className = 'msg err'; return; }
+  msg.textContent = 'Statut mis à jour.';
+  msg.className = 'msg ok';
+  chargerFiche(animalId);
+}
+</script>
+</body>
+</html>
