@@ -4,13 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Statuts des animaux — L'Arche de Mallo</title>
+<link rel="stylesheet" href="formulaires-arche-mallo.css">
 <style>
   :root{ --cream:#faf7f2; --warm:#f0e8d8; --brown:#3d2b1f; --orange:#c96b2a; --grey:#8a7968; --red:#c00000; --green:#2e7d32; }
   *{box-sizing:border-box;}
   body{margin:0;font-family:Arial,sans-serif;background:var(--cream);color:var(--brown);}
-  header{background:#fff;border-bottom:3px solid var(--orange);padding:18px 24px;display:flex;align-items:center;gap:14px;}
-  header h1{font-size:16px;margin:0;}
-  header p{font-size:11px;color:var(--grey);margin:2px 0 0;}
   .wrap{max-width:900px;margin:0 auto;padding:20px 16px 60px;}
   .card{background:#fff;border:1px solid var(--warm);border-radius:12px;padding:16px 18px;margin-bottom:18px;}
   .card h2{font-size:13px;margin:0 0 12px;color:var(--orange);}
@@ -48,12 +46,10 @@
   </div>
 </div>
 
-<header>
-  <div>
-    <h1>Statuts des animaux</h1>
-    <p>Déclarer une arrivée, ou faire évoluer le statut d'un animal déjà connu</p>
-  </div>
-</header>
+<div id="entete"></div>
+<div style="max-width:900px;margin:0 auto;padding:0 16px;">
+  <p style="font-size:11px;color:var(--grey);margin:-8px 0 12px;">Déclarer une arrivée, ou faire évoluer le statut d'un animal déjà connu</p>
+</div>
 
 <div class="wrap">
 
@@ -106,10 +102,6 @@
       <label>Motif / précisions</label>
       <input type="text" id="arr-motif">
     </div>
-    <div class="champ">
-      <label>Saisi par</label>
-      <select id="arr-saisi-par"></select>
-    </div>
     <button type="button" class="btn" onclick="declarerArrivee()">Enregistrer l'arrivée</button>
     <div id="arr-msg" class="msg"></div>
   </div>
@@ -137,8 +129,8 @@ initSessionSuivi();
 let animalSelectionneId = null;
 
 document.addEventListener('DOMContentLoaded', function() {
+  creerEntete({ dateId: 'dateRef', dateLabel: 'Date :', titre: 'Statuts des animaux' });
   document.getElementById('arr-date').valueAsDate = new Date();
-  chargerListeSaisisseurs('arr-saisi-par');
   initSelecteurAnimal({
     inputId: 'recherche-input',
     contexte: 'recherche',
@@ -170,7 +162,7 @@ async function declarerArrivee() {
     p_nom_personne: document.getElementById('arr-nom-personne').value.trim() || null,
     p_prenom_personne: document.getElementById('arr-prenom-personne').value.trim() || null,
     p_motif: document.getElementById('arr-motif').value.trim() || null,
-    p_saisi_par_id: document.getElementById('arr-saisi-par').value || null
+    p_saisi_par_id: document.getElementById('saisiPar').value || null
   });
   if (error) { msg.textContent = 'Erreur : ' + error.message; msg.className = 'msg err'; return; }
   msg.textContent = 'Arrivée enregistrée.';
@@ -242,17 +234,12 @@ function renderFiche(d) {
       <label>Motif / précisions</label>
       <input type="text" id="chg-motif">
     </div>
-    <div class="champ">
-      <label>Saisi par</label>
-      <select id="chg-saisi-par"></select>
-    </div>
     <button type="button" class="btn" onclick="changerStatut('${a.id}')">Enregistrer le statut</button>
     <div id="chg-msg" class="msg"></div>
   </div>`;
 
   document.getElementById('fiche').innerHTML = html;
   document.getElementById('chg-date').valueAsDate = new Date();
-  chargerListeSaisisseurs('chg-saisi-par');
 }
 
 async function changerStatut(animalId) {
@@ -266,7 +253,7 @@ async function changerStatut(animalId) {
     p_statut: statut,
     p_date: date || null,
     p_motif: document.getElementById('chg-motif').value.trim() || null,
-    p_saisi_par_id: document.getElementById('chg-saisi-par').value || null
+    p_saisi_par_id: document.getElementById('saisiPar').value || null
   });
   if (error) { msg.textContent = 'Erreur : ' + error.message; msg.className = 'msg err'; return; }
   msg.textContent = 'Statut mis à jour.';
