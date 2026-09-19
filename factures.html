@@ -113,8 +113,8 @@
         <div class="filters-bar">
           <select class="f-select" id="fl-per" onchange="renderTable()"></select>
           <input class="f-input" type="text" id="fl-search" placeholder="Rechercher…" oninput="renderTable()">
-          <select class="f-select" id="fl-cat" onchange="renderTable()"><option value="">Toutes catégories</option></select>
-          <select class="f-select" id="fl-desc" onchange="renderTable()"><option value="">Tous mouvements</option></select>
+          <select class="f-select" id="fl-cat" onchange="renderTable()"><option value="">Tous les types de mouvement</option></select>
+          <select class="f-select" id="fl-desc" onchange="renderTable()"><option value="">Toutes les descriptions</option></select>
           <select class="f-select" id="fl-fourn" onchange="renderTable()"><option value="">Tous fournisseurs</option></select>
           <select class="f-select" id="fl-statut" onchange="renderTable()">
             <option value="">Tous statuts</option><option value="payee">Payées</option><option value="attente">En attente</option>
@@ -146,8 +146,8 @@
         <div class="form-group"><label class="form-label req">Montant TTC (€)</label><input type="number" id="f-montant" step="0.01" min="0"></div>
       </div>
       <div class="form-group"><label class="form-label req">Date facture</label><input type="date" id="f-date"></div>
-      <div class="form-group"><label class="form-label req">Catégorie</label><select id="f-cat" onchange="onCatChange()"></select></div>
-      <div class="form-group"><label class="form-label">Description</label><select id="f-desc"><option value="">— Choisir une catégorie d'abord —</option></select></div>
+      <div class="form-group"><label class="form-label req">Type de mouvement</label><select id="f-cat" onchange="onCatChange()"></select></div>
+      <div class="form-group"><label class="form-label">Description</label><select id="f-desc"><option value="">— Choisir un type d'abord —</option></select></div>
       <div class="form-row-2">
         <div class="form-group"><label class="form-label">Date règlement</label><input type="date" id="f-date-reg"></div>
         <div class="form-group"><label class="form-label">Mode règlement</label><input type="text" id="f-mode-reg" placeholder="Virement, CB…"></div>
@@ -177,6 +177,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
+<script src="compta-commun.js"></script>
 <script>
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -207,23 +208,17 @@ async function demarrerApp(user) {
 }
 (async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(data.session.user); })();
 
-async function chargerPeriodes() {
-  let periodes = null;
-  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'periodes').maybeSingle();
-  if (data && Array.isArray(data.valeur) && data.valeur.length) periodes = data.valeur;
-  if (!periodes) { const y=new Date().getFullYear(), m=new Date().getMonth()+1, start=m>=11?y:y-1; periodes=[]; for(let i=2024;i<=start;i++) periodes.push(`${i} - ${i+1}`); }
-  const actuelle = periodes[periodes.length-1];
-  ['f-per','fl-per'].forEach(id => { const s=document.getElementById(id); s.innerHTML=''; periodes.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;if(p===actuelle)o.selected=true;s.appendChild(o);}); });
-}
+// Période par défaut : définie une seule fois dans Configuration
+async function chargerPeriodes() { await initPeriodes(supabaseClient, ['f-per','fl-per']); }
 async function chargerTypesEtDescriptions() {
   const { data: types } = await supabaseClient.from('types_mouvement').select('id, valeur, ordre').order('ordre');
   const { data: descs } = await supabaseClient.from('descriptions_mouvement').select('id, type_mouvement_id, valeur, ordre').order('ordre');
   typesEtDescriptions = (types||[]).map(t => ({...t, descriptions:(descs||[]).filter(d=>d.type_mouvement_id===t.id)}));
   const sc = document.getElementById('f-cat');
   sc.innerHTML = '<option value="">— Choisir —</option>' + typesEtDescriptions.map(t=>`<option>${escH(t.valeur)}</option>`).join('');
-  document.getElementById('fl-cat').innerHTML = '<option value="">Toutes catégories</option>' + typesEtDescriptions.map(t=>`<option>${escH(t.valeur)}</option>`).join('');
+  document.getElementById('fl-cat').innerHTML = '<option value="">Tous les types de mouvement</option>' + typesEtDescriptions.map(t=>`<option>${escH(t.valeur)}</option>`).join('');
   const toutesDesc = [...new Set((descs||[]).map(d=>d.valeur))].sort((a,b)=>a.localeCompare(b,'fr'));
-  document.getElementById('fl-desc').innerHTML = '<option value="">Tous mouvements</option>' + toutesDesc.map(d=>`<option>${escH(d)}</option>`).join('');
+  document.getElementById('fl-desc').innerHTML = '<option value="">Toutes les descriptions</option>' + toutesDesc.map(d=>`<option>${escH(d)}</option>`).join('');
 }
 function onCatChange() {
   const t = typesEtDescriptions.find(x => x.valeur === document.getElementById('f-cat').value);
@@ -284,8 +279,8 @@ function renderTable() {
       <td>${formatDateFR(r.date_facture)}</td>
       <td style="font-weight:500;">${r.fournisseur||'—'}</td>
       <td style="font-size:10px;color:var(--text-3);">${r.numero_facture||'—'}</td>
-      <td><span class="chip">${r.categorie||'—'}</span></td>
-      <td style="font-size:10px;color:var(--text-3);">${r.description||'—'}</td>
+      <td>${puceType(r.categorie,'—')}</td>
+      <td>${puceDescription(r.description,'—')}</td>
       <td class="r" style="font-weight:500;">${fmt(r.montant_ttc)}</td>
       <td class="${payee?'statut-payee':'statut-attente'}" onclick="${roleActuel==='admin'?`togglePayee('${r.id}')`:''}" title="${roleActuel==='admin'?'Cliquer pour basculer':''}">${payee?'Payée':'En attente'}</td>
       <td style="font-size:10px;color:var(--text-3);">${formatDateFR(r.date_reglement)}</td>
@@ -298,7 +293,7 @@ function renderTable() {
   }).join('');
 
   document.getElementById('table-wrap').innerHTML = `<table><thead><tr>
-    <th>Date</th><th>Fournisseur</th><th>N° facture</th><th>Catégorie</th><th>Description</th><th class="r">Montant TTC</th>
+    <th>Date</th><th>Fournisseur</th><th>N° facture</th><th>Type de mouvement</th><th>Description</th><th class="r">Montant TTC</th>
     <th>Statut</th><th>Réglée le</th><th>PDF</th><th>Chat</th><th class="r">Actions</th>
   </tr></thead><tbody>${trs}</tbody></table>`;
 }
@@ -321,7 +316,7 @@ function reset() {
   document.getElementById('f-fourn').selectedIndex = 0;
   document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('f-cat').selectedIndex = 0;
-  document.getElementById('f-desc').innerHTML = '<option value="">— Choisir une catégorie d\'abord —</option>';
+  document.getElementById('f-desc').innerHTML = '<option value="">— Choisir un type d\'abord —</option>';
   document.getElementById('f-mode-reg').value = '';
   document.getElementById('form-err').classList.add('hidden');
   document.getElementById('form-mode-lbl').textContent = 'Nouvelle facture';
