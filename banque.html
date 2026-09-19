@@ -118,13 +118,14 @@
       <div class="list-head">
         <div class="list-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
           <span>Opérations bancaires</span>
-          <button class="btn btn-primary btn-sm" id="btn-new" onclick="openNewOp()"><i class="ti ti-plus"></i> Nouvelle opération</button>
+          <a class="btn btn-secondary btn-sm" href="import_rapprochement.html" style="text-decoration:none;"><i class="ti ti-arrows-exchange"></i> Import banque</a>
         </div>
+        <div class="info-box" style="margin:8px 0 10px;"><i class="ti ti-info-circle"></i> Les opérations bancaires ne se saisissent pas à la main : elles arrivent uniquement par <a href="import_rapprochement.html" style="color:inherit;text-decoration:underline;">Import / rapprochement</a>. Les lignes existantes restent modifiables ici.</div>
         <div class="filters-bar">
           <select class="f-select" id="fl-per" onchange="onFilterChange()"></select>
           <input class="f-input" type="text" id="fl-search" placeholder="Rechercher…" oninput="renderTable()">
-          <select class="f-select" id="fl-type" onchange="renderTable()"><option value="">Tous types</option></select>
-          <select class="f-select" id="fl-desc" onchange="renderTable()"><option value="">Tous mouvements</option></select>
+          <select class="f-select" id="fl-type" onchange="renderTable()"><option value="">Tous les types de mouvement</option></select>
+          <select class="f-select" id="fl-desc" onchange="renderTable()"><option value="">Toutes les descriptions</option></select>
           <select class="f-select" id="fl-sens" onchange="renderTable()">
             <option value="">Débits + Crédits</option><option value="credit">Crédits</option><option value="debit">Débits</option>
           </select>
@@ -149,10 +150,12 @@
 </div>
 </div>
 
-<!-- MODAL NOUVELLE OPÉRATION / MODIFIER -->
+<!-- MODAL MODIFIER UNE OPÉRATION
+     (la création manuelle a été retirée : en Banque, les nouvelles lignes
+     arrivent uniquement via Import / rapprochement) -->
 <div class="modal-overlay hidden" id="modal-newop">
   <div class="modal">
-    <div class="modal-header"><span class="modal-title" id="form-mode-lbl">Nouvelle opération</span><button class="modal-close" onclick="closeNewOp()">×</button></div>
+    <div class="modal-header"><span class="modal-title" id="form-mode-lbl">Modifier l'opération</span><button class="modal-close" onclick="closeNewOp()">×</button></div>
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">Sens</label>
@@ -167,7 +170,7 @@
         <div class="form-group"><label class="form-label req">Montant (€)</label><input type="number" id="f-montant" step="0.01" min="0"></div>
       </div>
       <div class="form-group"><label class="form-label req">Libellé</label><input type="text" id="f-libelle" placeholder="Nom, description courte"></div>
-      <div class="form-group"><label class="form-label req">Type mouvement</label><select id="f-type" onchange="onTypeChange()"></select></div>
+      <div class="form-group"><label class="form-label req">Type de mouvement</label><select id="f-type" onchange="onTypeChange()"></select></div>
       <div class="form-group"><label class="form-label">Description</label><select id="f-desc"><option value="">— Choisir un type d'abord —</option></select></div>
       <div class="form-row-2">
         <div class="form-group"><label class="form-label">Fournisseur</label><select id="f-fourn"></select></div>
@@ -180,15 +183,10 @@
       </div>
       <div class="form-group"><label class="form-label">N° reçu fiscal don</label><input type="text" id="f-recu-fiscal"></div>
 
-      <div class="form-row-2" id="encaissement-fields">
-        <div class="form-group"><label class="form-label"><i class="ti ti-writing" style="font-size:11px;"></i> Encaisser un chèque</label><select id="f-ref-cheque"><option value="">—</option></select></div>
-        <div class="form-group"><label class="form-label"><i class="ti ti-file-invoice" style="font-size:11px;"></i> Encaisser une remise</label><select id="f-ref-remise"><option value="">—</option></select></div>
-      </div>
-
       <div id="form-err" class="hidden" style="color:var(--red);font-size:11px;padding:6px 0;margin-top:4px;"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="resetForm()"><i class="ti ti-refresh"></i> Vider</button>
+      <button class="btn btn-secondary" onclick="closeNewOp()">Annuler</button>
       <button class="btn btn-primary" id="btn-submit" onclick="submitForm()"><i class="ti ti-device-floppy"></i> Enregistrer</button>
     </div>
   </div>
@@ -251,6 +249,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
+<script src="compta-commun.js"></script>
 <script>
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -277,21 +276,14 @@ async function demarrerApp(user) {
   document.getElementById('topbar-user').textContent = profil.email + (roleActuel==='lecteur' ? ' (lecture seule)' : '');
   document.getElementById('sidebar-username').textContent = profil.email + (roleActuel==='lecteur' ? ' (lecture seule)' : '');
   document.getElementById('sidebar-avatar').textContent = (profil.email||'?').charAt(0).toUpperCase();
-  if (roleActuel === 'lecteur') document.getElementById('btn-new').style.display = 'none';
   await chargerPeriodes(); await chargerTypesEtDescriptions(); await chargerFournisseurs();
   document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
   await loadData();
 }
 (async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(data.session.user); })();
 
-async function chargerPeriodes() {
-  let periodes = null;
-  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'periodes').maybeSingle();
-  if (data && Array.isArray(data.valeur) && data.valeur.length) periodes = data.valeur;
-  if (!periodes) { const y=new Date().getFullYear(), m=new Date().getMonth()+1, start=m>=11?y:y-1; periodes=[]; for(let i=2024;i<=start;i++) periodes.push(`${i} - ${i+1}`); }
-  const actuelle = periodes[periodes.length-1];
-  ['f-per','fl-per'].forEach(id => { const s=document.getElementById(id); s.innerHTML=''; periodes.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;if(p===actuelle)o.selected=true;s.appendChild(o);}); });
-}
+// Période par défaut : définie une seule fois dans Configuration
+async function chargerPeriodes() { await initPeriodes(supabaseClient, ['f-per','fl-per']); }
 async function chargerTypesEtDescriptions() {
   const { data: types } = await supabaseClient.from('types_mouvement').select('id, valeur, ordre').order('ordre');
   const { data: descs } = await supabaseClient.from('descriptions_mouvement').select('id, type_mouvement_id, valeur, ordre').order('ordre');
@@ -305,13 +297,6 @@ function onTypeChange() {
 async function chargerFournisseurs() {
   const { data } = await supabaseClient.from('fournisseurs').select('nom').eq('actif', true).order('nom');
   document.getElementById('f-fourn').innerHTML = '<option value="">—</option>' + (data||[]).map(f=>`<option>${escH(f.nom)}</option>`).join('');
-}
-// Chèques/remises pas encore encaissés, proposés pour rattachement direct à une nouvelle opération
-async function chargerEncaissables() {
-  const { data: chq } = await supabaseClient.from('cheques').select('id, numero_cheque, beneficiaire, montant').eq('statut', 'en_attente').order('date_emission');
-  const { data: rem } = await supabaseClient.from('remises_cheques').select('id, numero_bordereau, montant_total').eq('statut', 'en_attente').order('date_remise');
-  document.getElementById('f-ref-cheque').innerHTML = '<option value="">—</option>' + (chq||[]).map(c=>`<option value="${c.id}">${escH(c.numero_cheque||'?')} — ${escH(c.beneficiaire||'')} (${fmt(c.montant)})</option>`).join('');
-  document.getElementById('f-ref-remise').innerHTML = '<option value="">—</option>' + (rem||[]).map(r=>`<option value="${r.id}">${escH(r.numero_bordereau||'sans bordereau')} (${fmt(r.montant_total)})</option>`).join('');
 }
 function onFilterChange() { renderKPIs(); }
 
@@ -399,8 +384,8 @@ function renderTable() {
     const cur = el.value;
     el.innerHTML = `<option value="">${placeholder}</option>` + valeurs.map(v => `<option ${v===cur?'selected':''}>${escH(v)}</option>`).join('');
   };
-  remplirSelect('fl-type', [...new Set(perRows.map(r => r.type_mouvement).filter(Boolean))].sort(), 'Tous types');
-  remplirSelect('fl-desc', [...new Set(perRows.map(r => r.description).filter(Boolean))].sort(), 'Tous mouvements');
+  remplirSelect('fl-type', [...new Set(perRows.map(r => r.type_mouvement).filter(Boolean))].sort(), 'Tous les types de mouvement');
+  remplirSelect('fl-desc', [...new Set(perRows.map(r => r.description).filter(Boolean))].sort(), 'Toutes les descriptions');
   remplirSelect('fl-chat', [...new Set(perRows.map(r => r.nom_chat).filter(Boolean))].sort(), 'Tous chats');
   remplirSelect('fl-recu', [...new Set(perRows.map(r => r.numero_don_fiscal).filter(Boolean))].sort(), 'Tous reçus');
   remplirSelect('fl-bordereau', [...new Set(perRows.map(bordereauDe).filter(Boolean))].sort(), 'Tous bordereaux');
@@ -435,9 +420,9 @@ function renderTable() {
       <td class="r amount-d">${r.debit?fmt(r.debit):''}</td>
       <td class="r amount-c">${r.credit?fmt(r.credit):''}</td>
       <td class="r" style="font-size:10px;">${fmt(soldeMap.get(r.id))}</td>
+      <td>${puceType(r.type_mouvement)}</td>
+      <td>${puceDescription(r.description)}</td>
       <td style="font-size:10px;">${escH(r.fournisseur||'')||'—'}</td>
-      <td><span class="chip">${r.type_mouvement||''}</span></td>
-      <td style="font-size:10px;">${r.description||''}</td>
       <td style="font-size:10px;">${r.nom_chat||''}</td>
       <td class="r" style="white-space:nowrap;">
         ${roleActuel==='admin' ? `
@@ -461,7 +446,7 @@ function renderTable() {
   document.getElementById('table-wrap').innerHTML = `<table><thead><tr>
     <th style="width:36px;">✓</th>
     ${mkTh('Date','date_mouvement')}${mkTh('Libellé','libelle')}${mkTh('Débit','debit')}${mkTh('Crédit','credit')}
-    <th class="r">Solde</th>${mkTh('Fournisseur','fournisseur')}${mkTh('Type','type_mouvement')}${mkTh('Mouvement','description')}
+    <th class="r">Solde</th>${mkTh('Type de mouvement','type_mouvement')}${mkTh('Description','description')}${mkTh('Fournisseur','fournisseur')}
     <th>Chat</th><th class="r">Annoter</th><th class="r">Actions</th>
   </tr></thead><tbody>${trs}</tbody></table>`;
 }
@@ -479,20 +464,7 @@ async function toggleVerified(id, checked) {
 }
 
 function setSens(s) { activeSens = s; document.getElementById('btn-credit').classList.toggle('active', s==='credit'); document.getElementById('btn-debit').classList.toggle('active', s==='debit'); }
-async function openNewOp() { resetForm(); await chargerEncaissables(); document.getElementById('modal-newop').classList.remove('hidden'); }
 function closeNewOp() { document.getElementById('modal-newop').classList.add('hidden'); editId = null; }
-function resetForm() {
-  ['f-date','f-montant','f-libelle','f-libelle-comp','f-chat','f-facture','f-recu-fiscal','f-mode-reglement'].forEach(id => { const e=document.getElementById(id); e.value = id==='f-date' ? new Date().toISOString().split('T')[0] : ''; });
-  document.getElementById('f-type').selectedIndex = 0;
-  document.getElementById('f-desc').innerHTML = '<option value="">— Choisir un type d\'abord —</option>';
-  document.getElementById('f-fourn').selectedIndex = 0;
-  document.getElementById('f-ref-cheque').innerHTML = '<option value="">—</option>';
-  document.getElementById('f-ref-remise').innerHTML = '<option value="">—</option>';
-  document.getElementById('encaissement-fields').style.display = '';
-  document.getElementById('form-err').classList.add('hidden');
-  document.getElementById('form-mode-lbl').textContent = 'Nouvelle opération';
-  setSens('credit'); editId = null;
-}
 
 async function submitForm() {
   document.getElementById('form-err').classList.add('hidden');
@@ -520,19 +492,15 @@ async function submitForm() {
     p_mode_reglement: document.getElementById('f-mode-reglement').value.trim() || null,
   };
 
+  // En Banque, on ne crée plus de ligne à la main : ce formulaire ne sert
+  // qu'à modifier une opération existante (importée via Import / rapprochement).
+  if (!editId) { showErr("Les nouvelles opérations bancaires s'ajoutent uniquement via Import / rapprochement."); return; }
+
   const btn = document.getElementById('btn-submit'); btn.disabled = true;
   try {
-    if (editId) {
-      const { error } = await supabaseClient.rpc('modifier_operation_banque', { p_id: editId, ...params });
-      if (error) throw error;
-      showToast('Opération modifiée !');
-    } else {
-      params.p_ref_cheque = document.getElementById('f-ref-cheque').value || null;
-      params.p_ref_remise = document.getElementById('f-ref-remise').value || null;
-      const { error } = await supabaseClient.rpc('creer_operation_banque', params);
-      if (error) throw error;
-      showToast('Opération enregistrée !');
-    }
+    const { error } = await supabaseClient.rpc('modifier_operation_banque', { p_id: editId, ...params });
+    if (error) throw error;
+    showToast('Opération modifiée !');
     closeNewOp(); await loadData();
   } catch(e) { showErr('Erreur : ' + (e.message || '?')); }
   finally { btn.disabled = false; }
@@ -554,7 +522,7 @@ function openEdit(id) {
   document.getElementById('f-facture').value = r.numero_facture || '';
   document.getElementById('f-recu-fiscal').value = r.numero_don_fiscal || '';
   document.getElementById('f-mode-reglement').value = r.mode_reglement || '';
-  document.getElementById('encaissement-fields').style.display = 'none'; // pas de ré-encaissement depuis la modif
+  document.getElementById('f-per').value = r.periode || document.getElementById('f-per').value;
   setSens(parseFloat(r.credit) > 0 ? 'credit' : 'debit');
   document.getElementById('form-mode-lbl').textContent = "Modifier l'opération";
   document.getElementById('modal-newop').classList.remove('hidden');
