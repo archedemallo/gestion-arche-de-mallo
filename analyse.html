@@ -249,6 +249,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
+<script src="compta-commun.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -283,13 +284,11 @@ async function demarrerApp() {
 }
 (async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(); })();
 
+// Période par défaut : définie une seule fois dans Configuration
 async function chargerPeriodes() {
-  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'periodes').maybeSingle();
-  periodes = (data && Array.isArray(data.valeur) && data.valeur.length) ? data.valeur : [];
-  if (!periodes.length) { const y=new Date().getFullYear(), m=new Date().getMonth()+1, start=m>=11?y:y-1; periodes=[]; for(let i=2024;i<=start;i++) periodes.push(`${i} - ${i+1}`); }
-  activePer = periodes[periodes.length-1];
-  const sel = document.getElementById('periode-select');
-  sel.innerHTML = periodes.map(p => `<option value="${p}" ${p===activePer?'selected':''}>${p}</option>`).join('');
+  const ctx = await initPeriodes(supabaseClient, ['periode-select']);
+  periodes = ctx.periodes;
+  activePer = ctx.courante;
 }
 function onPeriodeChange(p) { activePer = p; renderAll(); }
 
@@ -636,14 +635,14 @@ function renderAG() {
     const isOpen = agOpenCats.has(r.cat);
     const detailRows = r.ops.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(o => `<tr>
       <td style="font-size:10px;color:var(--text-3);">${o.date||'—'}</td><td style="font-size:10px;">${escH(o.src)}</td>
-      <td style="font-size:11px;">${escH(o.libelle||'')}</td><td style="font-size:10px;color:var(--text-3);">${escH(o.type||'')}</td>
+      <td style="font-size:11px;">${escH(o.libelle||'')}</td><td>${puceType(o.type)}</td>
       <td class="r ${o.montant>=0?'amount-c':'amount-d'}">${fmt(o.montant)}</td></tr>`).join('');
     return `<tr class="accordion-row" onclick="toggleAgCat('${escH(r.cat).replace(/'/g,"\\'")}')">
         <td>${escH(r.cat)}</td><td><span class="badge ${r.sens==='recette'?'badge-green':'badge-red'}">${r.sens==='recette'?'Recette':'Dépense'}</span></td>
         <td class="r" style="font-weight:600;color:${r.total>=0?'var(--green)':'var(--red)'};">${fmt(r.total)}</td>
         <td class="r" style="color:var(--text-3);">${r.ops.length}</td></tr>
       <tr style="${isOpen?'':'display:none;'}"><td colspan="4" style="padding:0;"><div class="accordion-detail">
-        ${r.ops.length ? `<table><thead><tr><th>Date</th><th>Source</th><th>Libellé</th><th>Type</th><th class="r">Montant</th></tr></thead><tbody>${detailRows}</tbody></table>` : '<span style="color:var(--text-3);font-size:11px;">Aucune opération</span>'}
+        ${r.ops.length ? `<table><thead><tr><th>Date</th><th>Source</th><th>Libellé</th><th>Type de mouvement</th><th class="r">Montant</th></tr></thead><tbody>${detailRows}</tbody></table>` : '<span style="color:var(--text-3);font-size:11px;">Aucune opération</span>'}
       </div></td></tr>`;
   }).join('');
   document.getElementById('ag-table-wrap').innerHTML = `<table><thead><tr><th>Catégorie</th><th>Sens</th><th class="r">Total</th><th class="r">Opér.</th></tr></thead><tbody>${rows}</tbody></table>`;
@@ -943,8 +942,8 @@ function renderFourFiche() {
   if (!rows.length) { wrap.innerHTML = '<div class="empty-state">Aucune opération</div>'; return; }
   const totalDep=rows.reduce((s,r)=>s+r.debit,0), totalRec=rows.reduce((s,r)=>s+r.credit,0);
   wrap.innerHTML = `<div class="kpi-top" style="margin-bottom:10px;"><div class="kpi"><div class="kpi-label">Dépenses</div><div class="kpi-value v-red">${fmt(totalDep)}</div></div><div class="kpi"><div class="kpi-label">Recettes</div><div class="kpi-value v-green">${fmt(totalRec)}</div></div><div class="kpi"><div class="kpi-label">Opérations</div><div class="kpi-value">${rows.length}</div></div></div>
-    <table><thead><tr><th>Date</th><th>Libellé</th><th>Type</th><th>Source</th><th class="r">Dépense</th><th class="r">Recette</th></tr></thead><tbody>
-    ${rows.map(r=>`<tr><td style="font-size:10px;color:var(--text-3);">${r.date||'—'}</td><td>${escH(r.libelle)||'—'}</td><td style="font-size:10px;color:var(--text-3);">${escH(r.type_mvt)}</td><td>${fourSourceChip(r.source)}</td><td class="r amount-d">${r.debit>0?fmt(r.debit):'—'}</td><td class="r amount-c">${r.credit>0?fmt(r.credit):'—'}</td></tr>`).join('')}
+    <table><thead><tr><th>Date</th><th>Libellé</th><th>Type de mouvement</th><th>Source</th><th class="r">Dépense</th><th class="r">Recette</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td style="font-size:10px;color:var(--text-3);">${r.date||'—'}</td><td>${escH(r.libelle)||'—'}</td><td>${puceType(r.type_mvt)}</td><td>${fourSourceChip(r.source)}</td><td class="r amount-d">${r.debit>0?fmt(r.debit):'—'}</td><td class="r amount-c">${r.credit>0?fmt(r.credit):'—'}</td></tr>`).join('')}
     </tbody></table>`;
 }
 
