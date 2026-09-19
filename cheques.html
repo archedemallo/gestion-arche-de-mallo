@@ -106,8 +106,8 @@
         <div style="display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;align-items:center;">
           <select class="f-select" id="fl-per" onchange="onFilterChange()"></select>
           <input class="f-input" type="text" id="fl-search" placeholder="Rechercher…" oninput="renderTable()">
-          <select class="f-select" id="fl-type" onchange="renderTable()"><option value="">Tous types</option></select>
-          <select class="f-select" id="fl-desc" onchange="renderTable()"><option value="">Tous mouvements</option></select>
+          <select class="f-select" id="fl-type" onchange="renderTable()"><option value="">Tous les types de mouvement</option></select>
+          <select class="f-select" id="fl-desc" onchange="renderTable()"><option value="">Toutes les descriptions</option></select>
           <select class="f-select" id="fl-statut" onchange="renderTable()">
             <option value="">Tous statuts</option><option value="en_attente">En attente</option><option value="encaisse">Encaissés</option><option value="annule">Annulés</option>
           </select>
@@ -167,6 +167,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
+<script src="compta-commun.js"></script>
 <script>
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -201,14 +202,8 @@ async function demarrerApp(user) {
 }
 (async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(data.session.user); })();
 
-async function chargerPeriodes() {
-  let periodes = null;
-  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'periodes').maybeSingle();
-  if (data && Array.isArray(data.valeur) && data.valeur.length) periodes = data.valeur;
-  if (!periodes) { const y=new Date().getFullYear(), m=new Date().getMonth()+1, start=m>=11?y:y-1; periodes=[]; for(let i=2024;i<=start;i++) periodes.push(`${i} - ${i+1}`); }
-  const actuelle = periodes[periodes.length-1];
-  ['chq-per','fl-per'].forEach(id => { const s=document.getElementById(id); s.innerHTML=''; periodes.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;if(p===actuelle)o.selected=true;s.appendChild(o);}); });
-}
+// Période par défaut : définie une seule fois dans Configuration
+async function chargerPeriodes() { await initPeriodes(supabaseClient, ['chq-per','fl-per']); }
 async function chargerTypesEtDescriptions() {
   const { data: types } = await supabaseClient.from('types_mouvement').select('id, valeur, ordre').order('ordre');
   const { data: descs } = await supabaseClient.from('descriptions_mouvement').select('id, type_mouvement_id, valeur, ordre').order('ordre');
@@ -270,8 +265,8 @@ function renderTable() {
     const el = document.getElementById(id); const cur = el.value;
     el.innerHTML = `<option value="">${placeholder}</option>` + valeurs.map(v=>`<option ${v===cur?'selected':''}>${escH(v)}</option>`).join('');
   };
-  remplirSelect('fl-type', [...new Set(perRows.map(r=>r.type_mouvement).filter(Boolean))].sort(), 'Tous types');
-  remplirSelect('fl-desc', [...new Set(perRows.map(r=>r.description).filter(Boolean))].sort(), 'Tous mouvements');
+  remplirSelect('fl-type', [...new Set(perRows.map(r=>r.type_mouvement).filter(Boolean))].sort(), 'Tous les types de mouvement');
+  remplirSelect('fl-desc', [...new Set(perRows.map(r=>r.description).filter(Boolean))].sort(), 'Toutes les descriptions');
   remplirSelect('fl-chat', [...new Set(perRows.map(r=>r.nom_chat).filter(Boolean))].sort(), 'Tous chats');
 
   if (!rows.length) { document.getElementById('table-wrap').innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-3);font-size:12px;">Aucun chèque</div>'; return; }
@@ -286,9 +281,9 @@ function renderTable() {
       <td>${formatDateFR(r.date_emission)}</td>
       <td style="font-weight:500;">${r.numero_cheque||'—'}</td>
       <td>${r.beneficiaire||'—'}</td>
+      <td>${puceType(r.type_mouvement,'—')}</td>
+      <td>${puceDescription(r.description,'—')}</td>
       <td style="font-size:10px;color:var(--text-3);">${r.fournisseur||'—'}</td>
-      <td><span class="chip">${r.type_mouvement||'—'}</span></td>
-      <td style="font-size:10px;color:var(--text-3);">${r.description||'—'}</td>
       <td style="font-size:10px;color:var(--text-3);">${r.libelle_complementaire||'—'}</td>
       <td style="font-size:10px;color:var(--text-3);">${r.nom_chat||'—'}</td>
       <td class="r" style="font-weight:500;">${fmt(r.montant)}</td>
@@ -303,8 +298,8 @@ function renderTable() {
   }).join('');
 
   document.getElementById('table-wrap').innerHTML = `<table><thead><tr>
-    <th style="width:36px;"></th><th>Date</th><th>N° chèque</th><th>Bénéficiaire</th><th>Fournisseur</th><th>Type</th>
-    <th>Description</th><th>Libellé comp.</th><th>Chat</th><th class="r">Montant</th><th>Statut</th><th>Encaissé le</th><th class="r">Actions</th>
+    <th style="width:36px;"></th><th>Date</th><th>N° chèque</th><th>Bénéficiaire</th><th>Type de mouvement</th>
+    <th>Description</th><th>Fournisseur</th><th>Libellé comp.</th><th>Chat</th><th class="r">Montant</th><th>Statut</th><th>Encaissé le</th><th class="r">Actions</th>
   </tr></thead><tbody>${trs}</tbody></table>`;
 }
 
