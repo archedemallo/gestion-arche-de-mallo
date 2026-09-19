@@ -104,6 +104,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
+<script src="compta-commun.js"></script>
 <script>
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -131,12 +132,11 @@ async function demarrerApp() {
 }
 (async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(); })();
 
+// Période par défaut = celle définie dans Configuration (parametres.periode_courante)
 async function chargerPeriodes() {
-  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle','periodes').maybeSingle();
-  periodes = (data && Array.isArray(data.valeur) && data.valeur.length) ? data.valeur : [];
-  if (!periodes.length) { const y=new Date().getFullYear(), m=new Date().getMonth()+1, start=m>=11?y:y-1; periodes=[]; for(let i=2024;i<=start;i++) periodes.push(`${i} - ${i+1}`); }
-  activePer = periodes[periodes.length-1];
-  document.getElementById('periode-select').innerHTML = periodes.map(p=>`<option value="${p}" ${p===activePer?'selected':''}>${p}</option>`).join('');
+  const ctx = await initPeriodes(supabaseClient, ['periode-select']);
+  periodes = ctx.periodes;
+  activePer = ctx.courante;
 }
 function onPeriodeChange(p) { activePer = p; renderDashboard(); }
 
@@ -172,14 +172,7 @@ function calcFlux(rows, moisLabel) {
   const inMonth = rows.filter(r=>rowInMonth(r.date_mouvement, moisLabel));
   return { entrees: inMonth.reduce((s,r)=>s+(parseFloat(r.credit)||0),0), sorties: inMonth.reduce((s,r)=>s+(parseFloat(r.debit)||0),0) };
 }
-function chipType(type) {
-  const t=(type||'').toLowerCase();
-  if (t.includes('adopt')) return {cls:'adoption',color:'#c96b2a'};
-  if (t.includes('don')) return {cls:'don',color:'#3b6d11'};
-  if (t.includes('adh')) return {cls:'adhesion',color:'#10a37f'};
-  if (t.includes('event')||t.includes('évén')) return {cls:'evenement',color:'#534ab7'};
-  return {cls:'depense',color:'#8a7968'};
-}
+// Les couleurs des puces Type/Description sont centralisees dans compta-commun.js
 
 async function renderDashboard() {
   const content = document.getElementById('page-content');
@@ -225,7 +218,7 @@ async function renderDashboard() {
         <div class="ops-title">Dernières opérations</div>
         <div class="ops-filters">
           <select class="filter-select" id="filter-source" onchange="filterOps()"><option value="">Toutes les sources</option><option value="banque">Banque</option><option value="caisse1">Caisse 1</option><option value="caisse2">Caisse 2</option></select>
-          <select class="filter-select" id="filter-type" onchange="filterOps()"><option value="">Tous les types</option><option value="adopt">Adoption</option><option value="don">Don</option><option value="adh">Adhésion</option><option value="event">Événement</option></select>
+          <select class="filter-select" id="filter-type" onchange="filterOps()"><option value="">Tous les types de mouvement</option><option value="adopt">Adoption</option><option value="don">Don</option><option value="adh">Adhésion</option><option value="event">Événement</option></select>
         </div>
       </div>
       <div id="ops-table-wrap">${renderOpsTable(recent)}</div>
@@ -243,16 +236,17 @@ function renderFluxCard(name, flux) {
 }
 function renderOpsTable(rows) {
   if (!rows.length) return `<div class="ops-empty"><i class="ti ti-inbox"></i><br>Aucune opération pour cette période</div>`;
-  const trs = rows.map(r => { const ct=chipType(r.type_mouvement); const srcLabel = r._src==='banque'?'Banque':r._src==='caisse1'?'Caisse 1':'Caisse 2';
+  const trs = rows.map(r => { const srcLabel = r._src==='banque'?'Banque':r._src==='caisse1'?'Caisse 1':'Caisse 2';
     return `<tr data-source="${r._src}" data-type="${(r.type_mouvement||'').toLowerCase()}">
       <td style="font-size:10px;color:var(--text-3);white-space:nowrap;">${formatDateFR(r.date_mouvement)}</td>
       <td>${escH(r.libelle||'')}</td>
-      <td><span class="chip" style="color:${ct.color};border-color:${ct.color};">${escH(r.type_mouvement||'')}</span></td>
+      <td>${puceType(r.type_mouvement)}</td>
+      <td>${puceDescription(r.description)}</td>
       <td style="font-size:10px;color:var(--text-3);">${srcLabel}</td>
       <td class="r amount-d">${r.debit?fmt(r.debit):''}</td>
       <td class="r amount-c">${r.credit?fmt(r.credit):''}</td>
     </tr>`; }).join('');
-  return `<table><thead><tr><th>Date</th><th>Libellé</th><th>Type</th><th>Source</th><th class="r">Débit</th><th class="r">Crédit</th></tr></thead><tbody>${trs}</tbody></table>`;
+  return `<table><thead><tr><th>Date</th><th>Libellé</th><th>Type de mouvement</th><th>Description</th><th>Source</th><th class="r">Débit</th><th class="r">Crédit</th></tr></thead><tbody>${trs}</tbody></table>`;
 }
 function filterOps() {
   const src = document.getElementById('filter-source').value;
