@@ -432,7 +432,7 @@ AVEC <input type="text" class="editable editable-medium" id="produitAntiPuces" d
         notre démarche de protection et vous nous aidez à sauver toujours plus de chats dans le besoin.
     </p>
     <p>
-        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox"></span></span>
+        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox" id="repriseAcompte_check"></span></span>
         Reprise d'acompte de <span class="red bold">50 €</span> pour la réservation
     </p>
     <p>Reste à payer <input type="number" class="editable editable-num" id="resteAPayer"><span class="red"> €</span></p>
@@ -1072,6 +1072,53 @@ async function _saveFormOriginal() {
     if (missing.length > 0) {
         afficherMessage('⚠️ Veuillez remplir les champs obligatoires :<br><br>• ' + missing.join('<br>• '), 'erreur');
         return;
+    }
+    if (!selecteurAnimal || !selecteurAnimal.getAnimalId()) {
+        afficherMessage('⚠️ Sélectionnez un animal existant dans la liste (tapez son nom ou son numéro).', 'erreur');
+        return;
+    }
+
+    // Reste à payer = Total de la participation - 50€ si reprise d'acompte cochée
+    var totalParticipationVal = parseFloat(document.getElementById('totalParticipation').value) || 0;
+    var resteAPayerVal = parseFloat(document.getElementById('resteAPayer').value) || 0;
+    var repriseCoche = document.getElementById('repriseAcompte_check') &&
+        document.getElementById('repriseAcompte_check').classList.contains('checked');
+    var resteAttendu = totalParticipationVal - (repriseCoche ? 50 : 0);
+    if (Math.abs(resteAPayerVal - resteAttendu) > 0.01) {
+        afficherMessage('⚠️ « Reste à payer » (' + resteAPayerVal.toFixed(2) + ' €) ne correspond pas au total de la participation' +
+            (repriseCoche ? ' moins la reprise de 50 €' : '') + ' (attendu : ' + resteAttendu.toFixed(2) + ' €).', 'erreur');
+        return;
+    }
+
+    // Répartition du paiement : la somme des modes cochés doit correspondre au reste à payer
+    var allPayIdsAdoption = ['pay_cb', 'pay_espece', 'pay_virement', 'pay_cheque', 'pay_plusieurs_cheques'];
+    var paiementCocheAdoption = allPayIdsAdoption.some(function(id) {
+        var el = document.getElementById(id);
+        return el && el.classList.contains('checked');
+    });
+    if (paiementCocheAdoption) {
+        var totalPayeAdoption = 0;
+        if (document.getElementById('pay_cb').classList.contains('checked')) {
+            totalPayeAdoption += parseFloat(document.getElementById('montant_cb').value) || 0;
+        }
+        if (document.getElementById('pay_espece').classList.contains('checked')) {
+            totalPayeAdoption += parseFloat(document.getElementById('montant_espece').value) || 0;
+        }
+        if (document.getElementById('pay_virement').classList.contains('checked')) {
+            totalPayeAdoption += parseFloat(document.getElementById('montant_virement').value) || 0;
+        }
+        if (document.getElementById('pay_cheque').classList.contains('checked')) {
+            totalPayeAdoption += parseFloat(document.getElementById('montant_cheque').value) || 0;
+        }
+        if (document.getElementById('pay_plusieurs_cheques').classList.contains('checked')) {
+            [1, 2, 3, 4].forEach(function(n) {
+                totalPayeAdoption += parseFloat(document.getElementById('montant_cheque' + n).value) || 0;
+            });
+        }
+        if (Math.abs(totalPayeAdoption - resteAPayerVal) > 0.01) {
+            afficherMessage('⚠️ La répartition du paiement (' + totalPayeAdoption.toFixed(2) + ' €) ne correspond pas au reste à payer (' + resteAPayerVal.toFixed(2) + ' €).', 'erreur');
+            return;
+        }
     }
 
     var data = collectFormData();
