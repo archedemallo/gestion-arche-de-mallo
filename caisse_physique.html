@@ -252,6 +252,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
+<script src="compta-commun.js"></script>
 <script>
 // SUPABASE
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -339,26 +340,10 @@ async function demarrerApp(user) {
 })();
 
 // ============================================================
-// PÉRIODES — stockées dans config_compta (clé 'periodes'), comme dans
-// l'ancien système (Config sheet). Même règle de calcul par défaut.
+// PÉRIODES — liste dans config_compta (clé 'periodes'), période par
+// défaut dans parametres (clé 'periode_courante'), réglée en Configuration.
 // ============================================================
-async function chargerPeriodes() {
-  let periodes = null;
-  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'periodes').maybeSingle();
-  if (data && Array.isArray(data.valeur) && data.valeur.length) periodes = data.valeur;
-  if (!periodes) {
-    const y = new Date().getFullYear(), m = new Date().getMonth() + 1;
-    const start = m >= 11 ? y : y - 1;
-    periodes = [];
-    for (let i = 2024; i <= start; i++) periodes.push(`${i} - ${i+1}`);
-  }
-  const actuelle = periodes[periodes.length - 1];
-  ['f-per','fl-per'].forEach(id => {
-    const s = document.getElementById(id);
-    s.innerHTML = '';
-    periodes.forEach(p => { const o = document.createElement('option'); o.value=p; o.textContent=p; if(p===actuelle)o.selected=true; s.appendChild(o); });
-  });
-}
+async function chargerPeriodes() { await initPeriodes(supabaseClient, ['f-per','fl-per']); }
 
 function onCaisseChange() {
   const caisse = document.getElementById('f-caisse').value;
