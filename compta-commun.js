@@ -33,19 +33,34 @@ function periodesParDefaut() {
  * Lit la liste des périodes + la période par défaut définie en Configuration.
  * @returns {Promise<{periodes: string[], courante: string}>}
  */
+function periodeNormaliser(p) { return String(p || '').trim().replace(/\s*[-–]\s*/, ' - '); }
+
 async function chargerContextePeriodes(client) {
   let periodes = null;
   try {
     const { data } = await client.from('config_compta').select('valeur').eq('cle', 'periodes').maybeSingle();
     if (data && Array.isArray(data.valeur) && data.valeur.length) periodes = data.valeur;
-  } catch (e) { /* on retombe sur le calcul par défaut */ }
+  } catch (e) { console.warn('[compta] lecture config_compta.periodes impossible :', e); }
   if (!periodes || !periodes.length) periodes = periodesParDefaut();
 
   let courante = null;
   try {
-    const { data } = await client.from('parametres').select('valeur').eq('cle', 'periode_courante').maybeSingle();
-    if (data && data.valeur && periodes.includes(data.valeur)) courante = data.valeur;
-  } catch (e) { /* paramètre absent : on prend la dernière période */ }
+    const { data, error } = await client.from('parametres').select('valeur').eq('cle', 'periode_courante').maybeSingle();
+    if (error) {
+      // Erreur explicite (le plus souvent une RLS qui bloque la lecture,
+      // par ex. si 028_rls_config_compta_manquantes.sql n'a pas été
+      // exécuté) : on le signale en console plutôt que de retomber
+      // silencieusement sur la dernière période, pour rester diagnosticable.
+      console.warn('[compta] lecture parametres.periode_courante refusée (RLS ?) :', error);
+    } else if (data && data.valeur) {
+      const norm = periodeNormaliser(data.valeur);
+      const trouvee = periodes.find(p => periodeNormaliser(p) === norm);
+      if (trouvee) courante = trouvee;
+      else console.warn('[compta] periode_courante="' + data.valeur + '" ne correspond à aucune période de la liste :', periodes);
+    } else {
+      console.warn('[compta] aucune valeur enregistrée pour parametres.periode_courante — définissez-la dans Configuration.');
+    }
+  } catch (e) { console.warn('[compta] lecture parametres.periode_courante impossible :', e); }
   if (!courante) courante = periodes[periodes.length - 1];
 
   return { periodes, courante };
