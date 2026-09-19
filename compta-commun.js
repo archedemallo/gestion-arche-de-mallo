@@ -196,3 +196,89 @@ function puceType(valeur, vide) { return chipHTML(valeur, couleurType(valeur), v
 
 /** Puce colorée "Description". */
 function puceDescription(valeur, vide) { return chipHTML(valeur, couleurDescription(valeur), vide); }
+
+// ============================================================
+// 3. COLONNES REDIMENSIONNABLES
+// ============================================================
+// S'applique automatiquement à TOUS les tableaux de toutes les pages qui
+// chargent ce fichier — même ceux reconstruits dynamiquement à chaque
+// rendu (innerHTML). Les largeurs choisies sont mémorisées par page +
+// position de colonne (localStorage) et réappliquées aux rendus suivants.
+(function () {
+  const LS_PREFIX = 'colw::';
+
+  function widthKey(container, index) {
+    const cid = (container && (container.id || container.className)) || 'tbl';
+    return LS_PREFIX + location.pathname + '::' + cid + '::' + index;
+  }
+
+  function applyStoredWidths(table, container) {
+    const ths = table.querySelectorAll(':scope > thead > tr > th');
+    let any = false;
+    ths.forEach((th, i) => {
+      let saved;
+      try { saved = localStorage.getItem(widthKey(container, i)); } catch (e) {}
+      if (saved) { th.style.width = saved + 'px'; any = true; }
+    });
+    if (any) table.style.tableLayout = 'fixed';
+  }
+
+  function makeResizable(table, container) {
+    if (!table || table.dataset.colResizeInit) return;
+    table.dataset.colResizeInit = '1';
+    // Permet le défilement horizontal si les colonnes élargies dépassent le conteneur.
+    if (container && container.style && !container.style.overflowX) {
+      const cs = getComputedStyle(container);
+      if (cs.overflowX === 'visible') container.style.overflowX = 'auto';
+    }
+    applyStoredWidths(table, container);
+    const ths = table.querySelectorAll(':scope > thead > tr > th');
+    ths.forEach((th, i) => {
+      if (th.querySelector('.col-resizer')) return;
+      const handle = document.createElement('div');
+      handle.className = 'col-resizer';
+      th.appendChild(handle);
+      handle.addEventListener('mousedown', function (e) {
+        e.preventDefault(); e.stopPropagation();
+        if (table.style.tableLayout !== 'fixed') {
+          ths.forEach(t => { t.style.width = t.offsetWidth + 'px'; });
+          table.style.tableLayout = 'fixed';
+        }
+        const startX = e.pageX, startW = th.offsetWidth;
+        handle.classList.add('resizing');
+        function onMove(ev) {
+          th.style.width = Math.max(36, startW + (ev.pageX - startX)) + 'px';
+        }
+        function onUp() {
+          handle.classList.remove('resizing');
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          try { localStorage.setItem(widthKey(container, i), Math.round(th.offsetWidth)); } catch (e) {}
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    });
+  }
+
+  function scan(root) {
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll('table').forEach(table => {
+      const container = table.closest('[id]') || table.parentElement;
+      makeResizable(table, container);
+    });
+  }
+
+  function boot() {
+    scan(document);
+    const mo = new MutationObserver(muts => {
+      muts.forEach(m => m.addedNodes.forEach(node => {
+        if (node.nodeType !== 1) return;
+        if (node.tagName === 'TABLE') makeResizable(node, node.closest('[id]') || node.parentElement);
+        else scan(node);
+      }));
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+  }
+  if (document.body) boot(); else document.addEventListener('DOMContentLoaded', boot);
+})();
