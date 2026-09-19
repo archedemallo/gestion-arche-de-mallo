@@ -45,6 +45,16 @@
   .success-toast{position:fixed;bottom:20px;right:20px;background:var(--green);color:white;padding:10px 18px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;z-index:999;}
   .lock-icon{font-size:12px;color:var(--green);}
   .hidden{display:none!important;}
+  input[type="checkbox"].verif-cb{width:14px;height:14px;accent-color:var(--green);cursor:pointer;}
+  tbody tr.verified-row{background:rgba(59,109,17,0.04);}
+  .f-input{font-size:11px;padding:4px 10px;border-radius:var(--radius-sm);border:0.5px solid var(--border-mid);background:var(--surface);}
+  /* Onglets principaux : Remises / Détail chèques */
+  .main-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:14px;}
+  .main-tab{display:flex;align-items:center;gap:7px;padding:9px 18px;font-size:12px;font-weight:500;color:var(--text-3);background:transparent;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;transition:all 0.15s;border-radius:8px 8px 0 0;}
+  .main-tab:hover{color:var(--text-2);background:var(--surface-2);}
+  .main-tab.active{color:var(--orange);border-bottom-color:var(--orange);background:rgba(201,107,42,0.07);}
+  .main-tab .tab-badge{font-size:10px;padding:2px 7px;border-radius:10px;background:var(--warm);color:var(--text-3);font-weight:600;}
+  .main-tab.active .tab-badge{background:var(--orange);color:white;}
   #login-screen{max-width:340px;margin:80px auto;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:28px;}
   #login-screen input{width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-size:13px;}
   #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
@@ -105,32 +115,69 @@
     </div>
   </div>
   <div class="page-content">
-    <div class="kpi-row" id="kpi-bar"></div>
 
-    <div class="list-card">
-      <div class="list-head">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-          <span style="font-size:13px;font-weight:600;">Remises</span>
-          <button class="btn btn-primary btn-sm" id="btn-new" onclick="openNewRemise()"><i class="ti ti-plus"></i> Nouvelle remise</button>
+    <div class="main-tabs">
+      <button class="main-tab active" id="tab-remises" onclick="switchMainTab('remises')">
+        <i class="ti ti-stack" style="font-size:15px;" aria-hidden="true"></i> Remises
+        <span class="tab-badge" id="badge-tab-remises">…</span>
+      </button>
+      <button class="main-tab" id="tab-cheques" onclick="switchMainTab('cheques')">
+        <i class="ti ti-checks" style="font-size:15px;" aria-hidden="true"></i> Détail chèques
+        <span class="tab-badge" id="badge-tab-cheques">…</span>
+      </button>
+    </div>
+
+    <div id="panel-remises">
+      <div class="kpi-row" id="kpi-bar"></div>
+
+      <div class="list-card">
+        <div class="list-head">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <span style="font-size:13px;font-weight:600;">Remises</span>
+            <button class="btn btn-primary btn-sm" id="btn-new" onclick="openNewRemise()"><i class="ti ti-plus"></i> Nouvelle remise</button>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;align-items:center;margin-top:8px;">
+            <select class="f-select" id="fl-per" onchange="onFilterChange()"></select>
+            <input class="f-input" type="text" id="fl-search" placeholder="Rechercher…" oninput="renderTable()">
+            <select class="f-select" id="fl-statut" onchange="renderTable()">
+              <option value="">Tous statuts</option><option value="en_attente">En attente</option><option value="encaissee">Encaissées</option>
+            </select>
+            <select class="f-select" id="fl-type" onchange="renderTable()"><option value="">Tous types</option></select>
+            <select class="f-select" id="fl-chat" onchange="renderTable()"><option value="">Tous chats</option></select>
+            <input class="f-input" type="date" id="fl-date-from" onchange="renderTable()" title="Du">
+            <input class="f-input" type="date" id="fl-date-to" onchange="renderTable()" title="Au">
+            <input class="f-input" type="number" step="0.01" id="fl-montant-min" placeholder="Montant min" style="width:90px;" oninput="renderTable()">
+            <input class="f-input" type="number" step="0.01" id="fl-montant-max" placeholder="Montant max" style="width:90px;" oninput="renderTable()">
+          </div>
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;align-items:center;margin-top:8px;">
-          <select class="f-select" id="fl-per" onchange="onFilterChange()"></select>
-          <input class="f-input" type="text" id="fl-search" placeholder="Rechercher…" oninput="renderTable()">
-          <select class="f-select" id="fl-statut" onchange="renderTable()">
-            <option value="">Tous statuts</option><option value="en_attente">En attente</option><option value="encaissee">Encaissées</option>
-          </select>
-          <select class="f-select" id="fl-type" onchange="renderTable()"><option value="">Tous types</option></select>
-          <select class="f-select" id="fl-chat" onchange="renderTable()"><option value="">Tous chats</option></select>
-          <input class="f-input" type="date" id="fl-date-from" onchange="renderTable()" title="Du">
-          <input class="f-input" type="date" id="fl-date-to" onchange="renderTable()" title="Au">
-          <input class="f-input" type="number" step="0.01" id="fl-montant-min" placeholder="Montant min" style="width:90px;" oninput="renderTable()">
-          <input class="f-input" type="number" step="0.01" id="fl-montant-max" placeholder="Montant max" style="width:90px;" oninput="renderTable()">
+        <div style="overflow-x:auto;max-height:600px;overflow-y:auto;" id="table-wrap">
+          <div style="padding:24px;text-align:center;color:var(--text-3);">Chargement…</div>
         </div>
-      </div>
-      <div style="overflow-x:auto;max-height:600px;overflow-y:auto;" id="table-wrap">
-        <div style="padding:24px;text-align:center;color:var(--text-3);">Chargement…</div>
       </div>
     </div>
+
+    <div id="panel-cheques" style="display:none;">
+      <div class="list-card">
+        <div class="list-head">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <span style="font-size:13px;font-weight:600;">Tous les chèques remis en banque</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;align-items:center;margin-top:8px;">
+            <input class="f-input" type="text" id="dc-nom" placeholder="Nom…" oninput="renderDetailCheques()" style="width:130px;">
+            <input class="f-input" type="text" id="dc-cheque" placeholder="N° chèque…" oninput="renderDetailCheques()" style="width:110px;">
+            <input class="f-input" type="number" step="0.01" id="dc-min" placeholder="Montant min" oninput="renderDetailCheques()" style="width:90px;">
+            <input class="f-input" type="number" step="0.01" id="dc-max" placeholder="Montant max" oninput="renderDetailCheques()" style="width:90px;">
+            <input class="f-input" type="date" id="dc-date-from" onchange="renderDetailCheques()" title="Du">
+            <input class="f-input" type="date" id="dc-date-to" onchange="renderDetailCheques()" title="Au">
+            <button class="btn btn-secondary btn-sm" onclick="clearDetailFilters()"><i class="ti ti-x"></i> Effacer</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;max-height:600px;overflow-y:auto;" id="detail-cheques-wrap">
+          <div style="padding:24px;text-align:center;color:var(--text-3);">Chargement…</div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 </div>
@@ -214,7 +261,7 @@ async function chargerTypesEtDescriptions() {
   const { data: descs } = await supabaseClient.from('descriptions_mouvement').select('id, type_mouvement_id, valeur, ordre').order('ordre');
   typesEtDescriptions = (types||[]).map(t => ({...t, descriptions:(descs||[]).filter(d=>d.type_mouvement_id===t.id)}));
 }
-function onFilterChange() { renderKPIs(); renderTable(); }
+function onFilterChange() { renderKPIs(); renderTable(); if (activeMainTab === 'cheques') renderDetailCheques(); }
 
 // ============================================================
 // LIGNES DE CHÈQUES DANS LE FORMULAIRE
@@ -274,7 +321,7 @@ function resetRemise() {
 // CHARGEMENT / KPI / TABLEAU
 // ============================================================
 async function loadData() {
-  const { data: remises, error: e1 } = await supabaseClient.from('remises_cheques').select('*').order('date_remise', { ascending: false });
+  const { data: remises, error: e1 } = await supabaseClient.from('remises_cheques').select('*').order('date_remise', { ascending: false }).order('id');
   const { data: details, error: e2 } = await supabaseClient.from('remise_cheques_details').select('*').order('numero_ordre');
   if (e1 || e2) { showToast('Erreur de chargement'); return; }
   allRemises = remises || []; allDetails = details || [];
@@ -325,10 +372,14 @@ function renderTable() {
 
   const trs = rows.map(r => {
     const isOpen = openRows.has(r.id);
+    const isVerified = !!r.verifie;
     const details = detailsDe(r);
     const detailRows = details.map(d => `<tr><td>${escH(d.donateur||'')}</td><td>${escH(d.cheque_ref||'')}</td><td>${puceType(d.type_mouvement)}</td><td>${puceDescription(d.description)}</td><td>${escH(d.nom_chat||'')}</td><td class="r">${fmt(d.montant)}</td></tr>`).join('');
-    return `<tr>
-      <td><button class="expand-btn ${isOpen?'open':''}" onclick="toggleRow('${r.id}')">${isOpen?'−':'+'}</button></td>
+    return `<tr class="${isVerified?'verified-row':''}">
+      <td style="display:flex;align-items:center;gap:5px;">
+        <button class="expand-btn ${isOpen?'open':''}" onclick="toggleRow('${r.id}')">${isOpen?'−':'+'}</button>
+        <input type="checkbox" class="verif-cb" ${isVerified?'checked':''} ${roleActuel!=='admin'?'disabled':''} title="${isVerified?'Décocher pour modifier':'Cocher pour verrouiller'}" onchange="toggleVerified('${r.id}',this.checked)">
+      </td>
       <td>${formatDateFR(r.date_remise)}</td>
       <td style="font-weight:500;">${r.numero_bordereau||'—'}</td>
       <td class="r">${details.length}</td>
@@ -346,8 +397,108 @@ function renderTable() {
   }).join('');
 
   document.getElementById('table-wrap').innerHTML = `<table><thead><tr>
-    <th style="width:36px;"></th><th>Date</th><th>N° bordereau</th><th class="r">Nb chèques</th><th class="r">Montant</th><th>Statut</th><th class="r">Actions</th>
+    <th style="width:60px;"></th><th>Date</th><th>N° bordereau</th><th class="r">Nb chèques</th><th class="r">Montant</th><th>Statut</th><th class="r">Actions</th>
   </tr></thead><tbody>${trs}</tbody></table>`;
+  updateTabBadges();
+}
+
+// ============================================================
+// VÉRIFICATION (case à cocher)
+// ============================================================
+async function toggleVerified(id, checked) {
+  const r = allRemises.find(x => x.id === id);
+  if (!r) return;
+  const prev = r.verifie;
+  r.verifie = checked; // mise à jour optimiste — évite tout ré-ordonnancement visuel
+  renderTable();
+  try {
+    const { error } = await supabaseClient.rpc('verrouiller_remise_cheques', { p_id: id, p_verrouiller: checked });
+    if (error) throw error;
+    showToast(checked ? 'Remise verrouillée' : 'Remise déverrouillée');
+  } catch (e) {
+    r.verifie = prev; renderTable();
+    alert('Erreur : ' + (e.message || e));
+  }
+}
+
+// ============================================================
+// ONGLETS PRINCIPAUX
+// ============================================================
+let activeMainTab = 'remises';
+function switchMainTab(tab) {
+  activeMainTab = tab;
+  document.getElementById('panel-remises').style.display = tab === 'remises' ? '' : 'none';
+  document.getElementById('panel-cheques').style.display = tab === 'cheques' ? '' : 'none';
+  document.getElementById('tab-remises').classList.toggle('active', tab === 'remises');
+  document.getElementById('tab-cheques').classList.toggle('active', tab === 'cheques');
+  if (tab === 'cheques') renderDetailCheques();
+}
+function updateTabBadges() {
+  const per = document.getElementById('fl-per')?.value;
+  const remisesPer = allRemises.filter(r => r.periode === per);
+  const chequesPer = remisesPer.reduce((s, r) => s + allDetails.filter(d => d.remise_id === r.id).length, 0);
+  const b1 = document.getElementById('badge-tab-remises'); if (b1) b1.textContent = remisesPer.length;
+  const b2 = document.getElementById('badge-tab-cheques'); if (b2) b2.textContent = chequesPer;
+}
+
+// ============================================================
+// ONGLET « DÉTAIL CHÈQUES » — vue à plat de tous les chèques remis
+// ============================================================
+function clearDetailFilters() {
+  ['dc-nom','dc-cheque','dc-min','dc-max','dc-date-from','dc-date-to'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  renderDetailCheques();
+}
+function renderDetailCheques() {
+  const per = document.getElementById('fl-per')?.value;
+  const nomF = (document.getElementById('dc-nom')?.value || '').toLowerCase();
+  const chqF = (document.getElementById('dc-cheque')?.value || '').toLowerCase();
+  const minF = parseFloat(document.getElementById('dc-min')?.value);
+  const maxF = parseFloat(document.getElementById('dc-max')?.value);
+  const dFrom = document.getElementById('dc-date-from')?.value || '';
+  const dTo   = document.getElementById('dc-date-to')?.value || '';
+
+  const remisesPer = allRemises.filter(r => r.periode === per);
+  const remiseById = Object.fromEntries(remisesPer.map(r => [r.id, r]));
+  let lignes = allDetails.filter(d => remiseById[d.remise_id]);
+
+  if (nomF) lignes = lignes.filter(d => (d.donateur||'').toLowerCase().includes(nomF));
+  if (chqF) lignes = lignes.filter(d => (d.cheque_ref||'').toLowerCase().includes(chqF));
+  if (!isNaN(minF)) lignes = lignes.filter(d => (parseFloat(d.montant)||0) >= minF);
+  if (!isNaN(maxF)) lignes = lignes.filter(d => (parseFloat(d.montant)||0) <= maxF);
+  if (dFrom) lignes = lignes.filter(d => (remiseById[d.remise_id].date_remise||'') >= dFrom);
+  if (dTo)   lignes = lignes.filter(d => (remiseById[d.remise_id].date_remise||'') <= dTo);
+
+  lignes = [...lignes].sort((a,b) => {
+    const ra = remiseById[a.remise_id], rb = remiseById[b.remise_id];
+    const da = ra.date_remise||'', db = rb.date_remise||'';
+    if (da !== db) return da < db ? 1 : -1;
+    return (a.numero_ordre||0) - (b.numero_ordre||0);
+  });
+
+  const wrap = document.getElementById('detail-cheques-wrap');
+  if (!lignes.length) { wrap.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-3);font-size:12px;">Aucun chèque pour ces filtres</div>'; return; }
+
+  const totalMontant = lignes.reduce((s,d) => s + (parseFloat(d.montant)||0), 0);
+  const trs = lignes.map(d => {
+    const r = remiseById[d.remise_id];
+    return `<tr>
+      <td style="white-space:nowrap;">${formatDateFR(r.date_remise)}</td>
+      <td style="font-weight:500;">${escH(d.donateur||'—')}</td>
+      <td>${escH(d.cheque_ref||'—')}</td>
+      <td class="r" style="font-weight:500;">${fmt(d.montant)}</td>
+      <td>${puceType(d.type_mouvement,'—')}</td>
+      <td>${puceDescription(d.description,'—')}</td>
+      <td>${escH(d.nom_chat||'—')}</td>
+      <td>${escH(d.numero_recu||'—')}</td>
+      <td>${escH(r.numero_bordereau||'—')}</td>
+      <td>${r.statut==='encaissee'?'<span style="color:var(--green);">Encaissée</span>':'<span style="color:var(--amber);">En attente</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<table><thead><tr>
+    <th>Date remise</th><th>Nom</th><th>N° chèque</th><th class="r">Montant</th><th>Type de mouvement</th><th>Description</th><th>Chat</th><th>N° reçu fiscal</th><th>N° bordereau</th><th>Statut</th>
+  </tr></thead><tbody>${trs}</tbody>
+  <tfoot><tr><td colspan="3" style="font-weight:600;">${lignes.length} chèque(s)</td><td class="r" style="font-weight:600;">${fmt(totalMontant)}</td><td colspan="6"></td></tr></tfoot></table>`;
 }
 function toggleRow(id) { if (openRows.has(id)) openRows.delete(id); else openRows.add(id); renderTable(); }
 
