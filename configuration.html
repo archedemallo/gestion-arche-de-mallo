@@ -116,9 +116,10 @@
       <input type="text" id="nouvelle-periode" placeholder="Ex: 2026 - 2027">
       <button onclick="ajouterPeriode()">Ajouter</button>
     </div>
-    <p style="font-size:12.5px;color:#666;margin-top:12px;">Période courante :
+    <p style="font-size:12.5px;color:#666;margin-top:12px;"><strong>Période par défaut</strong> :
       <select id="select-periode-courante" onchange="definirPeriodeCourante()"></select>
     </p>
+    <p style="font-size:12px;color:#888;margin-top:4px;">C'est la période pré-sélectionnée au chargement de toutes les pages Compta (Tableau de bord, Analyse, Caisse, Caisse physique, Banque, Chèques, Remises, Factures, Import). Chaque page reste libre d'en changer ponctuellement via son propre menu déroulant.</p>
   </div>
 
   <!-- Soldes initiaux -->
@@ -173,6 +174,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
+<script src="compta-commun.js"></script>
 <script>
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -338,9 +340,13 @@ async function supprimerListe(id, categorie) {
 function chargerLibcomp() { chargerListeSimple('libelles_complementaires', 'liste-libcomp'); }
 
 // ---------------- Périodes (config_compta, pas config_listes — lu par toutes les pages Compta) ----------------
+var periodeCouranteActuelle = null;
+
 async function chargerPeriodes() {
+    const ctx = await chargerContextePeriodes(supabaseClient);
     const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'periodes').maybeSingle();
     const periodes = (data && Array.isArray(data.valeur)) ? data.valeur : [];
+    periodeCouranteActuelle = ctx.courante;
     var conteneur = document.getElementById('liste-periodes');
     conteneur.innerHTML = '';
     if (!periodes.length) { conteneur.innerHTML = '<div class="vide">Aucune période — la première page Compta ouverte en créera par défaut.</div>'; }
@@ -369,24 +375,32 @@ async function supprimerPeriode(p) {
 }
 
 function remplirSelectPeriodes(periodes) {
-    [document.getElementById('select-periode-courante'), document.getElementById('select-periode-soldes')].forEach(function(sel) {
-        var valeurActuelle = sel.value;
+    // "Période par défaut" reflète toujours la valeur enregistrée (parametres.periode_courante).
+    // "Soldes initiaux" garde la période que l'utilisateur consulte, et démarre sur la période par défaut.
+    var selCourante = document.getElementById('select-periode-courante');
+    var selSoldes = document.getElementById('select-periode-soldes');
+    var valeurSoldes = selSoldes.value;
+    [selCourante, selSoldes].forEach(function(sel) {
         sel.innerHTML = '';
         (periodes || []).forEach(function(p) {
             var opt = document.createElement('option');
             opt.value = p; opt.textContent = p;
             sel.appendChild(opt);
         });
-        if (valeurActuelle) sel.value = valeurActuelle;
-        else sel.selectedIndex = sel.options.length - 1;
     });
+    var defaut = (periodeCouranteActuelle && (periodes || []).indexOf(periodeCouranteActuelle) >= 0)
+        ? periodeCouranteActuelle
+        : ((periodes || []).length ? periodes[periodes.length - 1] : '');
+    selCourante.value = defaut;
+    selSoldes.value = (valeurSoldes && (periodes || []).indexOf(valeurSoldes) >= 0) ? valeurSoldes : defaut;
     chargerSoldes();
 }
 
 async function definirPeriodeCourante() {
     var valeur = document.getElementById('select-periode-courante').value;
     await appelerRpc('definir_parametre', { p_cle: 'periode_courante', p_valeur: valeur });
-    afficherMessage('Période courante mise à jour : ' + valeur);
+    periodeCouranteActuelle = valeur;
+    afficherMessage('Période par défaut mise à jour : ' + valeur + ' — appliquée à toutes les pages Compta.');
 }
 
 // ---------------- Fournisseurs ----------------
