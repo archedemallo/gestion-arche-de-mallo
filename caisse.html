@@ -134,8 +134,8 @@
         <div class="filters-bar">
           <select class="f-select" id="fl-per" onchange="onFilterChange()"></select>
           <input class="f-input" type="text" id="fl-search" placeholder="Rechercher…" oninput="renderTable()">
-          <select class="f-select" id="fl-type" onchange="renderTable()"><option value="">Tous types</option></select>
-          <select class="f-select" id="fl-desc" onchange="renderTable()"><option value="">Tous mouvements</option></select>
+          <select class="f-select" id="fl-type" onchange="renderTable()"><option value="">Tous les types de mouvement</option></select>
+          <select class="f-select" id="fl-desc" onchange="renderTable()"><option value="">Toutes les descriptions</option></select>
           <select class="f-select" id="fl-sens" onchange="renderTable()">
             <option value="">Débits + Crédits</option><option value="credit">Crédits</option><option value="debit">Débits</option>
           </select>
@@ -180,7 +180,7 @@
       </div>
       <div class="form-group"><label class="form-label req">Libellé</label><input type="text" id="f-libelle" placeholder="Nom, description courte"></div>
       <div class="form-group">
-        <label class="form-label req">Type mouvement</label>
+        <label class="form-label req">Type de mouvement</label>
         <select id="f-type" onchange="onTypeChange()"></select>
       </div>
       <div class="form-group">
@@ -254,6 +254,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
+<script src="compta-commun.js"></script>
 <script>
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -306,22 +307,8 @@ async function demarrerApp(user) {
 // ============================================================
 // PÉRIODES (config_compta, clé 'periodes')
 // ============================================================
-async function chargerPeriodes() {
-  let periodes = null;
-  const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'periodes').maybeSingle();
-  if (data && Array.isArray(data.valeur) && data.valeur.length) periodes = data.valeur;
-  if (!periodes) {
-    const y = new Date().getFullYear(), m = new Date().getMonth() + 1;
-    const start = m >= 11 ? y : y - 1;
-    periodes = [];
-    for (let i = 2024; i <= start; i++) periodes.push(`${i} - ${i+1}`);
-  }
-  const actuelle = periodes[periodes.length - 1];
-  ['f-per','fl-per'].forEach(id => {
-    const s = document.getElementById(id); s.innerHTML = '';
-    periodes.forEach(p => { const o = document.createElement('option'); o.value=p; o.textContent=p; if(p===actuelle)o.selected=true; s.appendChild(o); });
-  });
-}
+// Période par défaut : définie une seule fois dans Configuration
+async function chargerPeriodes() { await initPeriodes(supabaseClient, ['f-per','fl-per']); }
 
 // ============================================================
 // TYPES / DESCRIPTIONS — cascade : la description proposée dépend du
@@ -441,8 +428,8 @@ function renderTable() {
     const cur = el.value;
     el.innerHTML = `<option value="">${placeholder}</option>` + valeurs.map(v => `<option ${v===cur?'selected':''}>${escH(v)}</option>`).join('');
   };
-  remplirSelect('fl-type', [...new Set(perRows.map(r => r.type_mouvement).filter(Boolean))].sort(), 'Tous types');
-  remplirSelect('fl-desc', [...new Set(perRows.map(r => r.description).filter(Boolean))].sort(), 'Tous mouvements');
+  remplirSelect('fl-type', [...new Set(perRows.map(r => r.type_mouvement).filter(Boolean))].sort(), 'Tous les types de mouvement');
+  remplirSelect('fl-desc', [...new Set(perRows.map(r => r.description).filter(Boolean))].sort(), 'Toutes les descriptions');
   remplirSelect('fl-chat', [...new Set(perRows.map(r => r.nom_chat).filter(Boolean))].sort(), 'Tous chats');
   remplirSelect('fl-recu', [...new Set(perRows.map(r => r.numero_recu).filter(Boolean))].sort(), 'Tous reçus');
   remplirSelect('fl-bordereau', [...new Set(perRows.map(r => r.numero_bordereau).filter(Boolean))].sort(), 'Tous bordereaux');
@@ -478,8 +465,8 @@ function renderTable() {
       <td class="r amount-d">${r.debit?fmt(r.debit):''}</td>
       <td class="r amount-c">${r.credit?fmt(r.credit):''}</td>
       <td class="r" style="font-size:10px;">${fmt(soldeMap.get(r.id)||0)}</td>
-      <td><span class="chip">${r.type_mouvement||''}</span></td>
-      <td style="font-size:10px;">${r.description||''}</td>
+      <td>${puceType(r.type_mouvement)}</td>
+      <td>${puceDescription(r.description)}</td>
       <td style="font-size:10px;">${r.libelle_complementaire||''}</td>
       <td style="font-size:10px;">${r.nom_chat||''}</td>
       <td style="font-size:10px;">${r.numero_recu||''}</td>
@@ -510,8 +497,8 @@ function renderTable() {
         ${mkTh('Débit','debit')}
         ${mkTh('Crédit','credit')}
         <th class="r">Solde</th>
-        ${mkTh('Type mouvement','type_mouvement')}
-        ${mkTh('Mouvement','description')}
+        ${mkTh('Type de mouvement','type_mouvement')}
+        ${mkTh('Description','description')}
         <th>Libellé comp.</th>
         <th>Chat</th>
         <th>N° reçu</th>
