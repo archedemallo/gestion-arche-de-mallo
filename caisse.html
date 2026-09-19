@@ -414,10 +414,16 @@ function renderTable() {
     [r.libelle, r.type_mouvement, r.libelle_complementaire, r.description, r.numero_bordereau].join(' ').toLowerCase().includes(search)
   );
 
+  // Tri d'affichage — départage impérativement les égalités (même date)
+  // avec le même critère (cree_le) que le calcul du solde cumulé
+  // ci-dessous, sinon deux lignes de même date affichées côte à côte ne
+  // correspondent pas forcément à l'ordre chronologique réel, et le
+  // solde paraît incohérent d'une ligne à l'autre.
   rows = [...rows].sort((a,b) => {
     let va = a[sortCol], vb = b[sortCol];
     va = va===null||va===undefined ? '' : va; vb = vb===null||vb===undefined ? '' : vb;
-    const cmp = typeof va === 'number' ? va-vb : String(va).localeCompare(String(vb),'fr');
+    let cmp = typeof va === 'number' ? va-vb : String(va).localeCompare(String(vb),'fr');
+    if (cmp === 0) { const ca=a.cree_le||'', cb=b.cree_le||''; cmp = ca<cb ? -1 : ca>cb ? 1 : 0; }
     return sortAsc ? cmp : -cmp;
   });
 
