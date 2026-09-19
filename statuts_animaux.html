@@ -130,6 +130,7 @@ let animalSelectionneId = null;
 
 document.addEventListener('DOMContentLoaded', function() {
   creerEntete({ dateId: 'dateRef', dateLabel: 'Date :', titre: 'Statuts des animaux' });
+  chargerListeSaisisseurs();
   document.getElementById('arr-date').valueAsDate = new Date();
   initSelecteurAnimal({
     inputId: 'recherche-input',
