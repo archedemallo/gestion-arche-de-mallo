@@ -373,9 +373,17 @@ function renderTable() {
   if (mMax)   rows = rows.filter(r => (parseFloat(r.credit)||parseFloat(r.debit)||0) <= parseFloat(mMax));
   if (search) rows = rows.filter(r => [r.libelle, r.type_mouvement, r.description, r.libelle_complementaire, r.numero_facture, r.fournisseur].join(' ').toLowerCase().includes(search));
 
+  // Tri d'affichage — départage impérativement les égalités (même date)
+  // avec le même critère (cree_le) que le calcul du solde cumulé
+  // ci-dessous. Sans ce départage, deux lignes de même date pouvaient
+  // s'afficher dans un ordre différent de l'ordre chronologique réel
+  // utilisé pour le solde : deux lignes visuellement adjacentes à
+  // l'écran n'étaient alors pas forcément adjacentes dans le temps, ce
+  // qui rendait la colonne Solde incohérente d'une ligne à l'autre.
   rows = [...rows].sort((a,b) => {
     let va=a[sortCol], vb=b[sortCol]; va=va??''; vb=vb??'';
-    const cmp = typeof va === 'number' ? va-vb : String(va).localeCompare(String(vb),'fr');
+    let cmp = typeof va === 'number' ? va-vb : String(va).localeCompare(String(vb),'fr');
+    if (cmp === 0) { const ca=a.cree_le||'', cb=b.cree_le||''; cmp = ca<cb ? -1 : ca>cb ? 1 : 0; }
     return sortAsc ? cmp : -cmp;
   });
 
