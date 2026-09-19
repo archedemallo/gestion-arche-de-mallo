@@ -689,26 +689,30 @@ create index if not exists idx_animaux_statuts_historique_statut on animaux_stat
 
 -- Éléments Suivi qui n'ont encore aucune ligne de rapprochement
 -- bancaire (remplace l'écran 'Import Suivi' actuel).
+-- NB : mouvement_suivi_liens (table unique de l'ébauche) a été
+-- remplacée par caisse_mouvement_suivi_liens / banque_mouvement_suivi_liens
+-- (voir 017_liens_mouvement_suivi.sql) — un don/une adhésion/etc. peut
+-- être rapproché via l'une OU l'autre, d'où le double NOT EXISTS.
 create or replace view v_dons_non_rapproches as
 select d.*
 from dons d
-left join mouvement_suivi_liens l on l.don_id = d.id
-where l.id is null;
+where not exists (select 1 from caisse_mouvement_suivi_liens l where l.don_id = d.id)
+  and not exists (select 1 from banque_mouvement_suivi_liens l where l.don_id = d.id);
 
 create or replace view v_adhesions_non_rapprochees as
 select a.*
 from adhesions a
-left join mouvement_suivi_liens l on l.adhesion_id = a.id
-where l.id is null;
+where not exists (select 1 from caisse_mouvement_suivi_liens l where l.adhesion_id = a.id)
+  and not exists (select 1 from banque_mouvement_suivi_liens l where l.adhesion_id = a.id);
 
 create or replace view v_adoptions_non_rapprochees as
 select a.*
 from adoptions a
-left join mouvement_suivi_liens l on l.adoption_id = a.id
-where l.id is null;
+where not exists (select 1 from caisse_mouvement_suivi_liens l where l.adoption_id = a.id)
+  and not exists (select 1 from banque_mouvement_suivi_liens l where l.adoption_id = a.id);
 
 create or replace view v_reservations_non_rapprochees as
 select r.*
 from reservations r
-left join mouvement_suivi_liens l on l.reservation_id = r.id
-where l.id is null;
+where not exists (select 1 from caisse_mouvement_suivi_liens l where l.reservation_id = r.id)
+  and not exists (select 1 from banque_mouvement_suivi_liens l where l.reservation_id = r.id);
