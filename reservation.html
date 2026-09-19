@@ -477,6 +477,32 @@ chargerListeSaisisseurs();
             });
         }
 
+        // Répartition du paiement : la somme des modes cochés doit faire 50€
+        if (paiementCoche) {
+            var montantAcompte = 50;
+            var totalPaye = 0;
+            if (document.getElementById('pay_cb').classList.contains('checked')) {
+                totalPaye += parseFloat(document.getElementById('montant_cb').value) || 0;
+            }
+            if (document.getElementById('pay_espece').classList.contains('checked')) {
+                totalPaye += parseFloat(document.getElementById('montant_espece').value) || 0;
+            }
+            if (document.getElementById('pay_virement').classList.contains('checked')) {
+                totalPaye += parseFloat(document.getElementById('montant_virement').value) || 0;
+            }
+            if (document.getElementById('pay_cheque').classList.contains('checked')) {
+                totalPaye += parseFloat(document.getElementById('montant_cheque').value) || 0;
+            }
+            if (document.getElementById('pay_plusieurs_cheques').classList.contains('checked')) {
+                [1, 2, 3, 4].forEach(function(n) {
+                    totalPaye += parseFloat(document.getElementById('montant_cheque' + n).value) || 0;
+                });
+            }
+            if (Math.abs(totalPaye - montantAcompte) > 0.01) {
+                missing.push('Répartition du paiement (' + totalPaye.toFixed(2) + ' € au lieu de ' + montantAcompte.toFixed(2) + ' € attendus)');
+            }
+        }
+
         // Lu et approuvé
         ['luApprouve1_resa', 'luApprouve2_resa'].forEach(function(id) {
             var el = document.getElementById(id);
@@ -545,6 +571,10 @@ chargerListeSaisisseurs();
         var missing = validateRequiredFields();
         if (missing.length > 0) {
             afficherMessage('⚠️ Veuillez remplir les champs obligatoires :<br><br>• ' + missing.join('<br>• '), 'erreur');
+            return;
+        }
+        if (!selecteurAnimal || !selecteurAnimal.getAnimalId()) {
+            afficherMessage('⚠️ Sélectionnez un animal existant dans la liste (tapez son nom ou son numéro).', 'erreur');
             return;
         }
 
