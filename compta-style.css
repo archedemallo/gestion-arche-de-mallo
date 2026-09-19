@@ -73,6 +73,7 @@ body {
   width: var(--sidebar-w);
   background: var(--side-bg);
   height: 100vh;          /* fixe — permet à overflow-y:auto de fonctionner */
+  height: 100dvh;         /* viewport "dynamique" — évite le bandeau non couvert en bas sur certains navigateurs/fenêtres */
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -228,6 +229,7 @@ body {
   flex: 1;
   overflow-y: auto;
   height: calc(100vh - 48px); /* 48px = topbar — thead sticky fonctionne automatiquement */
+  height: calc(100dvh - 48px); /* viewport "dynamique" — la zone va bien jusqu'en bas de la fenêtre réelle */
 }
 
 /* ============================================================
@@ -329,6 +331,23 @@ thead th {
   padding: 8px 12px;
   border-bottom: 0.5px solid var(--border);
   background: var(--surface-2);
+  position: relative; /* point d'ancrage pour la poignée de redimensionnement — surchargé par position:sticky sur les pages qui en ont besoin */
+}
+
+/* ============================================================
+   COLONNES REDIMENSIONNABLES (toutes les pages, voir compta-commun.js)
+   ============================================================ */
+.col-resizer {
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 3;
+  touch-action: none;
+}
+.col-resizer:hover, .col-resizer.resizing {
+  background: var(--orange);
+  opacity: 0.45;
 }
 tbody td {
   padding: 8px 12px;
