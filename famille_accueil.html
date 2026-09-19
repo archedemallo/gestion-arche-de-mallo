@@ -195,11 +195,18 @@
 <script src="supabase-config.js"></script>
 <script src="config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
+<script src="selecteur-animal.js"></script>
 <script>
     creerEntete({ dateId: 'date_signature', dateLabel: 'Date :' });
     creerSignature('sig1');
     creerSignature('sig2');
     appliquerPrefill();
+
+    var selecteurAnimal = initSelecteurAnimal({
+        inputId: 'nom_animal',
+        contexte: 'recherche',
+        champsModifiables: { couleur: 'couleur', date_naissance: 'date_naissance' }
+    });
 
     var typeAccueilActuel = null;
     function typeAccueilChoisi() {
@@ -317,6 +324,10 @@ chargerListeSaisisseurs();
             afficherMessage('⚠️ Veuillez remplir les champs obligatoires :<br><br>• ' + missing.join('<br>• '), 'erreur');
             return;
         }
+        if (!selecteurAnimal || !selecteurAnimal.getAnimalId()) {
+            afficherMessage('⚠️ Sélectionnez un animal existant dans la liste (tapez son nom ou son numéro).', 'erreur');
+            return;
+        }
         var data = collectFormData();
         data.onglet = 'famille_accueil_' + typeAccueilActuel;
         data.signatureImage = getSignatureImage();
@@ -344,7 +355,8 @@ chargerListeSaisisseurs();
                 p_date_debut: typeAccueilActuel === 'adoption' ? (data.date_debut || null) : null,
                 p_date_fin: typeAccueilActuel === 'adoption' ? (data.date_fin || null) : null,
                 p_date_fait: data.date_fait || null,
-                p_saisi_par_id: data.saisiPar || null
+                p_saisi_par_id: data.saisiPar || null,
+                p_animal_id: selecteurAnimal.getAnimalId()
             });
 
             document.body.removeChild(overlay);
