@@ -249,11 +249,18 @@
 <script src="supabase-config.js"></script>
 <script src="config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
+<script src="selecteur-animal.js"></script>
 <script>
     creerEntete({ dateId: 'dateAdoption', dateLabel: 'Date abandon :' });
     creerSignature('sig1');
     creerSignature('sig2');
     appliquerPrefill();
+
+    var selecteurAnimal = initSelecteurAnimal({
+        inputId: 'nomAnimal',
+        contexte: 'recherche',
+        champsModifiables: { identification: 'puce' }
+    });
 
     var today = new Date().toISOString().split('T')[0];
     ['dateAdoption', 'dateFait'].forEach(function(id) {
@@ -344,6 +351,10 @@ chargerListeSaisisseurs();
             afficherMessage('⚠️ Veuillez remplir les champs obligatoires :<br><br>• ' + missing.join('<br>• '), 'erreur');
             return;
         }
+        if (!selecteurAnimal || !selecteurAnimal.getAnimalId()) {
+            afficherMessage('⚠️ Sélectionnez un animal existant dans la liste (tapez son nom ou son numéro).', 'erreur');
+            return;
+        }
         var data = collectFormData();
         data.onglet = 'abandon';
         data.signatureImage = getSignatureImage();
@@ -378,7 +389,8 @@ chargerListeSaisisseurs();
                 p_vaccins: data.vaccins,
                 p_nom_attestation: data.nomAttestation,
                 p_date_fait: data.dateFait || null,
-                p_saisi_par_id: data.saisiPar || null
+                p_saisi_par_id: data.saisiPar || null,
+                p_animal_id: selecteurAnimal.getAnimalId()
             });
 
             document.body.removeChild(overlay);
