@@ -222,7 +222,7 @@ async function chargerFournisseurs() {
 function onFilterChange() { renderKPIs(); renderTable(); }
 
 async function loadData() {
-  const { data, error } = await supabaseClient.from('cheques').select('*').order('date_emission', { ascending: false });
+  const { data, error } = await supabaseClient.from('cheques').select('*').order('date_emission', { ascending: false }).order('id');
   if (error) { showToast('Erreur : ' + error.message); return; }
   allCheques = data || [];
   renderKPIs(); renderTable();
@@ -304,8 +304,11 @@ function renderTable() {
 }
 
 async function toggleVerified(id, checked) {
-  try { const { error } = await supabaseClient.rpc('verrouiller_cheque', { p_id: id, p_verrouiller: checked }); if (error) throw error; await loadData(); showToast(checked?'Verrouillé':'Déverrouillé'); }
-  catch(e) { alert('Erreur : ' + e.message); await loadData(); }
+  const r = allCheques.find(x => x.id === id);
+  const prev = r ? r.verifie : undefined;
+  if (r) { r.verifie = checked; renderTable(); } // mise à jour optimiste — évite tout ré-ordonnancement visuel
+  try { const { error } = await supabaseClient.rpc('verrouiller_cheque', { p_id: id, p_verrouiller: checked }); if (error) throw error; showToast(checked?'Verrouillé':'Déverrouillé'); }
+  catch(e) { if (r) { r.verifie = prev; renderTable(); } alert('Erreur : ' + e.message); }
 }
 
 function openNewCheque() { resetCheque(); document.getElementById('modal-cheque').classList.remove('hidden'); }
