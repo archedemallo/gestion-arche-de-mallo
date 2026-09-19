@@ -99,7 +99,8 @@ function initSelecteurAnimal(config) {
             var ligne = document.createElement('div');
             ligne.style.cssText = 'padding:8px 12px;cursor:pointer;font-size:14px;border-bottom:1px solid #f0f0f0;';
             var badge = a.statut_actuel === 'reserve' ? ' <span style="color:#9a3412;font-size:11px;">(réservé)</span>' : '';
-            ligne.innerHTML = '<strong>' + a.nom_usuel + '</strong>' + badge +
+            var numero = a.numero_interne ? '<span style="color:#888;font-size:11px;">' + a.numero_interne + '</span> — ' : '';
+            ligne.innerHTML = numero + '<strong>' + a.nom_usuel + '</strong>' + badge +
                 (a.couleur ? ' — ' + a.couleur : '');
             ligne.addEventListener('mouseenter', function() { ligne.style.background = '#f5f5f5'; });
             ligne.addEventListener('mouseleave', function() { ligne.style.background = ''; });
