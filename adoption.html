@@ -674,6 +674,8 @@ celui de sa famille ou la renonciation de celui-ci.</p>
 <script src="selecteur-animal.js"></script>
 <script src="config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
+<script src="generer-pdf.js"></script>
+<script src="envoyer-mail.js"></script>
 <script>
 creerEntete({ dateId: 'dateAdoption', dateLabel: 'Date de cession à charge :' });
 	
@@ -1022,9 +1024,10 @@ function afficherLienFormulaireDon(url) {
 
 // ============================================================
 // SUPABASE — remplace l'envoi (sheet) vers Apps Script pour la partie
-// structurée. PDF + Drive (photos incluses) + mail restent sur Apps
-// Script (ENVOYER_PDF_MAIL=true), exactement comme avant.
-// ============================================================
+// structurée. PDF + mail passent maintenant par le nouveau système
+// (generer-pdf.js + envoyer-mail.js, Edge Function Supabase + Brevo) —
+// voir supabase/functions/envoyer-mail-formulaire/index.ts pour la
+// configuration serveur nécessaire (secrets Brevo).
 const ENVOYER_PDF_MAIL = true;
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1182,9 +1185,23 @@ async function _saveFormOriginal() {
 
         dernierAdoptionId = adoptionId;
 
+        var avertissementMail = '';
         if (ENVOYER_PDF_MAIL) {
             data.filename = buildFilename(data);
-            await sendToGoogle(data);
+            try {
+                const pdfBytes = await genererPdfFormulaire();
+                await envoyerMailFormulaire({
+                    sujet: 'Contrat de cession — ' + (data.nomAdoption || data.nomUsuel || ''),
+                    corps: "Bonjour,\n\nVeuillez trouver ci-joint le contrat de cession à charge.\n\nL'Arche de Mallo",
+                    pdfBytes: pdfBytes,
+                    pdfNomFichier: data.filename + '.pdf',
+                    emailClient: data.email,
+                    nomClient: ((data.prenom || '') + ' ' + (data.nom || '')).trim()
+                });
+            } catch (e) {
+                console.error('Erreur envoi PDF/mail :', e);
+                avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué (' + (e.message || e) + '). L\'adoption est bien enregistrée — vous pouvez imprimer le contrat avec le bouton "Imprimer" en attendant.';
+            }
         }
 
         formSaved = true;
@@ -1192,7 +1209,7 @@ async function _saveFormOriginal() {
         var btnPrint = document.querySelector('.btn-print');
         if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
         if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
-        afficherMessage('✅ Adoption enregistrée (id ' + adoptionId + ').');
+        afficherMessage('✅ Adoption enregistrée (id ' + adoptionId + ').' + avertissementMail);
     } catch (err) {
         document.body.removeChild(overlay);
         console.error(err);
