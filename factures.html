@@ -284,7 +284,7 @@ function renderTable() {
       <td class="r" style="font-weight:500;">${fmt(r.montant_ttc)}</td>
       <td class="${payee?'statut-payee':'statut-attente'}" onclick="${roleActuel==='admin'?`togglePayee('${r.id}')`:''}" title="${roleActuel==='admin'?'Cliquer pour basculer':''}">${payee?'Payée':'En attente'}</td>
       <td style="font-size:10px;color:var(--text-3);">${formatDateFR(r.date_reglement)}</td>
-      <td>${r.lien_pdf?`<a class="pdf-btn" href="${escH(r.lien_pdf)}" target="_blank"><i class="ti ti-file-type-pdf"></i></a>`:''}</td>
+      <td>${r.lien_pdf?`<a class="pdf-btn" href="${escH(pdfHref(r.lien_pdf))}" target="_blank"><i class="ti ti-file-type-pdf"></i></a>`:''}</td>
       <td style="font-size:10px;color:var(--text-3);">${r.nom_chat||''}</td>
       <td class="r" style="white-space:nowrap;">
         ${roleActuel==='admin' ? `<button class="edit-btn" onclick="openEdit('${r.id}')"><i class="ti ti-pencil"></i></button><button class="del-btn" onclick="openDel('${r.id}')"><i class="ti ti-trash"></i></button>` : ''}
@@ -389,6 +389,14 @@ async function confirmDel() {
 
 function fmt(v) { if (v===null||v===undefined||v==='') return '—'; return parseFloat(v).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
 function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+// lien_pdf contient parfois une URL complète (collée par l'utilisateur), parfois juste
+// un ID Google Drive nu (ex. ancien import) : dans ce 2e cas on reconstruit l'URL Drive.
+function pdfHref(v) {
+  const s = String(v || '').trim();
+  if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return s;
+  return `https://drive.google.com/file/d/${s}/view`;
+}
 function showErr(m) { const e=document.getElementById('form-err'); e.textContent=m; e.classList.remove('hidden'); }
 function showToast(m) { const t=document.createElement('div'); t.className='success-toast'; t.textContent=m; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
 function formatDateFR(d) { if (!d) return '—'; const s=String(d).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const p=s.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; } return s; }
