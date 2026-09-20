@@ -569,23 +569,115 @@ async function saveFlag() {
 async function delier(type, id) {
   const fn = type==='cheque' ? 'delier_banque_cheque' : type==='remise' ? 'delier_banque_remise' : 'delier_banque_suivi';
   if (!confirm('Supprimer ce rapprochement ?')) return;
-  try { const { error } = await supabaseClient.rpc(fn, { p_banque_mouvement_id: id }); if (error) throw error; showToast('Rapprochement supprimé'); closeRapprochement(); await loadData(); }
+  try { const { error } = await supabaseClient.rpc(fn, { p_banque_mouvement_id: id }); if (error) throw error; showToast('Rapprochement supprimé'); await loadData(); await voirRapprochement(id); }
   catch(e) { alert('Erreur : ' + e.message); }
 }
+
+let rapprBankId = null; // mouvement actuellement ouvert dans le panneau Rapprochement
 
 // Remplace l'ancienne colonne "Rapproché" (chips CHQ/BRD/Suivi toujours
 // visibles) par une icône dans Actions — la colonne prenait trop de
 // place pour une info qu'on ne consulte qu'occasionnellement.
-function voirRapprochement(id) {
+//
+// Rétablit ici les sections "Lier à un chèque" / "Lier à une facture"
+// du panneau Rapprochement de l'ancien système (perdues lors de la
+// simplification initiale de la Fusion) : sélection dans une liste
+// déroulante des chèques en attente / factures non réglées, application
+// immédiate (contrairement à l'ancien système qui les mettait en
+// attente jusqu'à l'enregistrement global du formulaire).
+async function voirRapprochement(id) {
   const r = allRows.find(x => x.id === id); if (!r) return;
+  rapprBankId = id;
   const lignes = [];
-  if (r.ref_cheque) lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);"><span>Chèque encaissé</span><button class="btn btn-danger btn-sm" onclick="delier('cheque','${r.id}')">Délier</button></div>`);
+  if (r.ref_cheque) {
+    lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);"><span>Chèque encaissé</span><button class="btn btn-danger btn-sm" onclick="delier('cheque','${r.id}')">Délier</button></div>`);
+  }
   if (r.ref_remise) lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);"><span>Remise de chèques ${remisesMap[r.ref_remise]?'— '+escH(remisesMap[r.ref_remise]):''}</span><button class="btn btn-danger btn-sm" onclick="delier('remise','${r.id}')">Délier</button></div>`);
-  if (r.suivi_ref) lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;"><span>Enregistrement(s) Suivi (ventilation)</span><button class="btn btn-danger btn-sm" onclick="delier('suivi','${r.id}')">Délier</button></div>`);
+  if (r.suivi_ref) lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);"><span>Enregistrement(s) Suivi (ventilation)</span><button class="btn btn-danger btn-sm" onclick="delier('suivi','${r.id}')">Délier</button></div>`);
+
   document.getElementById('rappr-body').innerHTML = lignes.join('') || '<div style="color:var(--text-3);font-size:12px;">Aucun rapprochement</div>';
   document.getElementById('modal-rappr').classList.remove('hidden');
+
+  // Sections "Lier à..." chargées à part (async) sans bloquer l'affichage du reste.
+  const extra = [];
+  if (!r.ref_cheque) {
+    const { data: cheques } = await supabaseClient.from('cheques').select('id, numero_cheque, beneficiaire, montant').eq('statut', 'en_attente').order('date_emission', { ascending: false });
+    extra.push(`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);">
+      <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;"><i class="ti ti-writing"></i> Lier à un chèque</div>
+      <div style="display:flex;gap:8px;">
+        <select id="rap-cheque-select" class="f-select" style="flex:1;">
+          <option value="">— Choisir un chèque en attente —</option>
+          ${(cheques||[]).map(c => `<option value="${c.id}">N°${escH(c.numero_cheque)} — ${escH(c.beneficiaire)} — ${fmt(c.montant)}</option>`).join('')}
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="lierChequeRapprochement()"><i class="ti ti-check"></i> Lier</button>
+      </div>
+    </div>`);
+  }
+
+  const { data: liens } = await supabaseClient.from('banque_mouvement_facture_liens').select('facture_id, factures(id, numero_facture, fournisseur, montant_ttc, date_facture)').eq('banque_mouvement_id', id);
+  const facturesLiees = (liens||[]).map(l => l.factures).filter(Boolean);
+  const { data: facturesDispo } = await supabaseClient.from('factures').select('id, numero_facture, fournisseur, montant_ttc, date_facture').neq('statut', 'payee').order('date_facture', { ascending: false });
+  extra.push(`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);">
+    <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;"><i class="ti ti-file-invoice"></i> Lier à une facture</div>
+    ${facturesLiees.map(f => `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid var(--border);font-size:11px;"><span>${escH(f.fournisseur||'?')} — ${escH(f.numero_facture||'')} — ${fmt(f.montant_ttc)}</span><button class="btn btn-danger btn-sm" onclick="delierFactureRapprochement('${f.id}')">Délier</button></div>`).join('')}
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <select id="rap-facture-select" class="f-select" style="flex:1;">
+        <option value="">— Choisir une facture non réglée —</option>
+        ${(facturesDispo||[]).filter(f => !facturesLiees.find(fl=>fl.id===f.id)).map(f => `<option value="${f.id}">${escH(f.fournisseur||'?')} — ${fmt(f.montant_ttc)} — ${f.date_facture||'?'}</option>`).join('')}
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="lierFactureRapprochement()"><i class="ti ti-check"></i> Lier</button>
+    </div>
+  </div>`);
+
+  const { data: caisseLiees } = await supabaseClient.from('caisse_mouvements').select('id, caisse, date_mouvement, libelle, debit').eq('ref_banque', id);
+  const { data: caisseDispo } = await supabaseClient.from('caisse_mouvements').select('id, caisse, date_mouvement, libelle, debit').is('ref_banque', null).gt('debit', 0).neq('flag_statut', 'verifie').order('date_mouvement', { ascending: false });
+  const labelCaisse = c => (c.caisse === 'caisse2' ? 'Caisse2' : 'Caisse1') + ' — ' + formatDateFR(c.date_mouvement) + ' — ' + (c.libelle||'') + ' — ' + fmt(c.debit);
+  extra.push(`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);">
+    <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;"><i class="ti ti-cash"></i> Lier à une sortie de caisse (dépôt espèces)</div>
+    ${(caisseLiees||[]).map(c => `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid var(--border);font-size:11px;"><span>${escH(labelCaisse(c))}</span><button class="btn btn-danger btn-sm" onclick="delierCaisseRapprochement('${c.id}')">Délier</button></div>`).join('')}
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <select id="rap-caisse-select" class="f-select" style="flex:1;">
+        <option value="">— Choisir une sortie caisse —</option>
+        ${(caisseDispo||[]).map(c => `<option value="${c.id}">${escH(labelCaisse(c))}</option>`).join('')}
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="lierCaisseRapprochement()"><i class="ti ti-check"></i> Lier</button>
+    </div>
+  </div>`);
+
+  if (rapprBankId === id) document.getElementById('rappr-body').innerHTML += extra.join('');
 }
-function closeRapprochement() { document.getElementById('modal-rappr').classList.add('hidden'); }
+function closeRapprochement() { document.getElementById('modal-rappr').classList.add('hidden'); rapprBankId = null; }
+
+async function lierChequeRapprochement() {
+  const chequeId = document.getElementById('rap-cheque-select')?.value;
+  if (!chequeId || !rapprBankId) return;
+  try { const { error } = await supabaseClient.rpc('lier_banque_cheque', { p_banque_mouvement_id: rapprBankId, p_cheque_id: chequeId }); if (error) throw error; showToast('Chèque lié'); await loadData(); await voirRapprochement(rapprBankId); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+async function lierFactureRapprochement() {
+  const factureId = document.getElementById('rap-facture-select')?.value;
+  if (!factureId || !rapprBankId) return;
+  try { const { error } = await supabaseClient.rpc('lier_banque_facture', { p_banque_mouvement_id: rapprBankId, p_facture_id: factureId }); if (error) throw error; showToast('Facture liée'); await loadData(); await voirRapprochement(rapprBankId); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+async function delierFactureRapprochement(factureId) {
+  if (!rapprBankId) return;
+  if (!confirm('Délier cette facture ?')) return;
+  try { const { error } = await supabaseClient.rpc('delier_banque_facture', { p_banque_mouvement_id: rapprBankId, p_facture_id: factureId }); if (error) throw error; showToast('Facture déliée'); await loadData(); await voirRapprochement(rapprBankId); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+async function lierCaisseRapprochement() {
+  const caisseId = document.getElementById('rap-caisse-select')?.value;
+  if (!caisseId || !rapprBankId) return;
+  try { const { error } = await supabaseClient.rpc('lier_banque_caisse', { p_banque_mouvement_id: rapprBankId, p_caisse_mouvement_id: caisseId }); if (error) throw error; showToast('Sortie de caisse liée'); await loadData(); await voirRapprochement(rapprBankId); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+async function delierCaisseRapprochement(caisseId) {
+  if (!rapprBankId) return;
+  if (!confirm('Délier cette sortie de caisse ?')) return;
+  try { const { error } = await supabaseClient.rpc('delier_banque_caisse', { p_banque_mouvement_id: rapprBankId, p_caisse_mouvement_id: caisseId }); if (error) throw error; showToast('Sortie de caisse déliée'); await loadData(); await voirRapprochement(rapprBankId); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
 
 // ============================================================
 // VENTILATION — lier un mouvement à un ou plusieurs enregistrements
