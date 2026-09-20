@@ -1,5 +1,5 @@
 -- ============================================================
--- 035_arrivee_animal_champs_supplementaires.sql
+-- 040_arrivee_animal_champs_supplementaires.sql
 -- ============================================================
 -- Étend creer_arrivee_animal() : le sexe et la date de naissance
 -- existaient déjà côté base (table animaux) mais n'étaient pas
