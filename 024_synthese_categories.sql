@@ -14,18 +14,14 @@
 -- (une fois comme chèque/remise, une fois comme mouvement bancaire une
 -- fois encaissé). Par défaut, aucune catégorie ne mélange les deux — la
 -- page ci-jointe avertit visuellement si on active cette combinaison.
-
-create or replace function enregistrer_ag_categories(p_categories jsonb)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-    if role_compta_courant() <> 'admin' then
-        raise exception 'Accès refusé : réservé aux comptes admin.';
-    end if;
-    insert into config_compta (cle, valeur) values ('ag_categories', p_categories)
-        on conflict (cle) do update set valeur = excluded.valeur, maj_le = now();
-end;
-$$;
+--
+-- NOTE : ce fichier ne contient plus que de la documentation. Il définissait
+-- à l'origine une fonction dédiée enregistrer_ag_categories(), qui n'a en
+-- fait jamais été utilisée par aucune page — analyse.html enregistre cette
+-- config via la fonction générique definir_config_compta() (voir
+-- 024_config_generique.sql), qui suffit. Fonction supprimée pour ne pas
+-- garder du code mort ; rien à exécuter dans ce fichier.
+--
+-- Si vous l'aviez déjà exécutée par le passé, cette ligne la retire
+-- proprement de la base (sans risque si elle n'existe pas) :
+drop function if exists enregistrer_ag_categories(jsonb);
