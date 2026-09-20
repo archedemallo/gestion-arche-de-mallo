@@ -714,7 +714,7 @@ function rechercherVentilation() {
           <span>${escH(labels[r.type])} — ${escH(r.nom_affiche)} <span style="color:var(--text-3);">${r.date_operation||''}</span></span>
           <span style="font-weight:500;">${fmt(r.montant_suggere)}</span>
         </div>`).join('') || '<div style="padding:8px;color:var(--text-3);font-size:11px;">Aucun résultat</div>';
-    } catch(e) { console.error(e); }
+    } catch(e) { console.error(e); document.getElementById('vent-resultats').innerHTML = '<div style="padding:8px;color:var(--red);font-size:11px;">Erreur de recherche : '+escH(e.message)+'</div>'; }
   }, 300);
 }
 function ajouterLigneVentilation(type, id, label, montantSuggere) {
