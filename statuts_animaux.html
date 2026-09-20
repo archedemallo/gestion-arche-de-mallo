@@ -58,7 +58,10 @@
     <h2>Déclarer une arrivée</h2>
     <div class="champ">
       <label>Nom de l'animal *</label>
-      <input type="text" id="arr-nom">
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="arr-nom" style="flex:1;">
+        <button type="button" class="btn" style="padding:8px 14px;white-space:nowrap;" onclick="suggererNomArrivee()">🎲 Nom aléatoire</button>
+      </div>
     </div>
     <div class="ligne2">
       <div class="champ">
@@ -70,7 +73,6 @@
           <option value="abandon">Abandon</option>
           <option value="saisie">Saisie</option>
           <option value="ne_a_association">Né à l'association</option>
-          <option value="transfert_autre_association">Transfert autre association</option>
         </select>
       </div>
       <div class="champ">
@@ -122,6 +124,7 @@
 <script src="supabase-config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
 <script src="selecteur-animal.js"></script>
+<script src="noms-chats.js"></script>
 <script>
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 initSessionSuivi();
@@ -146,6 +149,13 @@ document.addEventListener('DOMContentLoaded', function() {
 function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
 function fmtDate(d) { if (!d) return '—'; const s=String(d).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const p=s.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; } return s; }
 
+async function suggererNomArrivee() {
+  const champ = document.getElementById('arr-nom');
+  const nom = await proposerNomAleatoireChat(champ.value.trim());
+  if (nom) champ.value = nom;
+  else alert("Impossible de proposer un nom pour l'instant (réessayez, ou saisissez-en un vous-même).");
+}
+
 async function declarerArrivee() {
   const msg = document.getElementById('arr-msg');
   msg.textContent = ''; msg.className = 'msg';
@@ -168,6 +178,7 @@ async function declarerArrivee() {
   if (error) { msg.textContent = 'Erreur : ' + error.message; msg.className = 'msg err'; return; }
   msg.textContent = 'Arrivée enregistrée.';
   msg.className = 'msg ok';
+  invaliderCacheNomsAnimauxPresents();
   document.getElementById('arr-nom').value = '';
   document.getElementById('arr-origine').value = '';
   document.getElementById('arr-couleur').value = '';
@@ -187,7 +198,7 @@ async function chargerFiche(animalId) {
 
 function renderFiche(d) {
   const a = d.animal;
-  let html = `<div class="card"><h2>${escH(a.nom_usuel)} <span class="badge">${escH(a.statut_actuel||'—')}</span></h2>
+  let html = `<div class="card"><h2>${escH(a.nom_usuel)} <span class="badge">${escH(LABELS_STATUT[a.statut_actuel] || a.statut_actuel || '—')}</span></h2>
     <div class="grid2">
       <div><span class="lbl">Couleur :</span> ${escH(a.couleur||'—')}</div>
       <div><span class="lbl">Puce :</span> ${escH(a.puce||'—')}</div>
@@ -197,7 +208,7 @@ function renderFiche(d) {
 
     <h2>Historique de statut</h2>
     ${d.statuts && d.statuts.length ? `<table><thead><tr><th>Statut</th><th>Du</th><th>Au</th></tr></thead><tbody>
-      ${d.statuts.map(h=>`<tr><td>${escH(h.statut)}</td><td>${fmtDate(h.date_debut)}</td><td>${h.date_fin?fmtDate(h.date_fin):'en cours'}</td></tr>`).join('')}
+      ${d.statuts.map(h=>`<tr><td>${escH(LABELS_STATUT[h.statut] || h.statut)}</td><td>${fmtDate(h.date_debut)}</td><td>${h.date_fin?fmtDate(h.date_fin):'en cours'}</td></tr>`).join('')}
     </tbody></table>` : '<div class="empty">Aucun historique de statut</div>'}
 
     <h2 style="margin-top:16px;">Changer le statut</h2>
@@ -205,25 +216,7 @@ function renderFiche(d) {
       <div class="champ">
         <label>Nouveau statut *</label>
         <select id="chg-statut">
-          <option value="">— Choisir —</option>
-          <optgroup label="Arrivée">
-            <option value="arrive">Arrivé</option>
-            <option value="retour">Retour à l'association</option>
-          </optgroup>
-          <optgroup label="En cours">
-            <option value="en_observation">En observation</option>
-            <option value="au_veto">Au véto</option>
-            <option value="adoptable">Adoptable</option>
-            <option value="non_adoptable">Non adoptable</option>
-            <option value="famille_accueil">Famille d'accueil</option>
-            <option value="reserve">Réservé</option>
-          </optgroup>
-          <optgroup label="Départ">
-            <option value="adopte">Adopté</option>
-            <option value="decede">Décédé</option>
-            <option value="relache">Relâché</option>
-            <option value="transfere">Transféré</option>
-          </optgroup>
+          <option value="">Chargement…</option>
         </select>
       </div>
       <div class="champ">
@@ -241,6 +234,26 @@ function renderFiche(d) {
 
   document.getElementById('fiche').innerHTML = html;
   document.getElementById('chg-date').valueAsDate = new Date();
+  chargerTransitionsPossibles(a.statut_actuel);
+}
+
+// Libellés français des statuts internes (voir 030_transitions_statut_animal.sql).
+const LABELS_STATUT = {
+  en_observation: 'En observation', adoptable: 'Adoptable', non_adoptable: 'Non adoptable',
+  malade: 'Malade', decede: 'Décédé', relache: 'Relâché', reservation_annulee: 'Réservation annulée',
+  reserve: 'Réservé', au_veto: 'Au véto', famille_accueil: "Famille d'accueil", adopte: 'Adopté'
+};
+
+// Peuple "Nouveau statut" avec les seules transitions réellement autorisées
+// depuis le statut actuel (obtenir_transitions_possibles, voir 030) — évite
+// de proposer un statut qui ferait échouer l'enregistrement.
+async function chargerTransitionsPossibles(statutActuel) {
+  const sel = document.getElementById('chg-statut');
+  const { data, error } = await supabaseClient.rpc('obtenir_transitions_possibles', { p_statut_actuel: statutActuel });
+  if (error) { sel.innerHTML = '<option value="">Erreur de chargement</option>'; console.error(error); return; }
+  const options = (data || []).map(r => r.statut_arrivee).filter(Boolean);
+  sel.innerHTML = '<option value="">— Choisir —</option>' +
+    options.map(s => `<option value="${s}">${escH(LABELS_STATUT[s] || s)}</option>`).join('');
 }
 
 async function changerStatut(animalId) {
