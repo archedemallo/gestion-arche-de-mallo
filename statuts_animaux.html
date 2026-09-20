@@ -79,6 +79,7 @@ let animalSelectionneId = null;
 
 document.addEventListener('DOMContentLoaded', function() {
   creerEntete({ dateId: 'dateRef', dateLabel: 'Date :', titre: 'Statuts des animaux' });
+  chargerListeSaisisseurs();
   initSelecteurAnimal({
     inputId: 'recherche-input',
     contexte: 'recherche',
@@ -133,10 +134,6 @@ function renderFiche(d) {
       <label>Motif / précisions</label>
       <input type="text" id="chg-motif">
     </div>
-    <div class="champ">
-      <label>Saisi par *</label>
-      <select id="chg-saisi-par"><option value="">Chargement…</option></select>
-    </div>
     <button type="button" class="btn" onclick="changerStatut('${a.id}')">Enregistrer le statut</button>
     <div id="chg-msg" class="msg"></div>
   </div>`;
@@ -144,7 +141,6 @@ function renderFiche(d) {
   document.getElementById('fiche').innerHTML = html;
   document.getElementById('chg-date').valueAsDate = new Date();
   chargerTransitionsPossibles(a.statut_actuel);
-  chargerListeSaisisseurs('chg-saisi-par');
 }
 
 // Libellés français des statuts internes (voir 030_transitions_statut_animal.sql).
@@ -171,7 +167,7 @@ async function changerStatut(animalId) {
   msg.textContent = ''; msg.className = 'msg';
   const statut = document.getElementById('chg-statut').value;
   const date = document.getElementById('chg-date').value;
-  const saisiPar = document.getElementById('chg-saisi-par').value;
+  const saisiPar = document.getElementById('saisiPar').value;
   if (!statut) { msg.textContent = 'Choisissez un statut.'; msg.className = 'msg err'; return; }
   if (!saisiPar) { msg.textContent = '"Saisi par" est obligatoire.'; msg.className = 'msg err'; return; }
   const { error } = await supabaseClient.rpc('changer_statut_animal', {
