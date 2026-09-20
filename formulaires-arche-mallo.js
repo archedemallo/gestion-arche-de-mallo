@@ -399,7 +399,7 @@ function validateRequiredFields() {
     // Champs input avec data-required
     document.querySelectorAll('[data-required="true"]').forEach(function(el) {
         var label = el.getAttribute('data-label') || el.id || 'Champ inconnu';
-        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
             if (!el.value || el.value.trim() === '') {
                 missing.push(label);
                 el.style.borderBottom = '2px solid red';
