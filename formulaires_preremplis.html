@@ -31,6 +31,8 @@
   .forms-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;}
   .forms-grid a{display:block;padding:10px 12px;border:1px solid var(--warm);border-radius:8px;color:var(--brown);text-decoration:none;font-size:12.5px;background:var(--cream);}
   .forms-grid a:hover{border-color:var(--orange);}
+  .forms-grid a.disabled{opacity:0.4;pointer-events:none;cursor:not-allowed;}
+  .forms-hint{font-size:11px;color:var(--grey);margin:-4px 0 10px;}
   .note{background:#fff4e5;border:1px solid #ffd699;color:#7a4a00;font-size:11.5px;padding:8px 12px;border-radius:8px;margin-bottom:16px;}
   #login-err{color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;}
 </style>
@@ -76,19 +78,20 @@
 
   <div class="forms-card">
     <h2 style="color:var(--orange);font-size:13px;margin:0 0 10px;">Ouvrir un formulaire vierge</h2>
-    <div class="forms-grid">
-      <a href="adoption.html" target="_blank">🏠 Contrat de cession</a>
-      <a href="certificat_engagement.html" target="_blank">📜 Certificat d'engagement</a>
-      <a href="decharge_vaccin.html" target="_blank">💉 Décharge vaccin</a>
-      <a href="attestation_cbs_absent.html" target="_blank">🩺 Attestation CBS absent</a>
-      <a href="reservation.html" target="_blank">📅 Réservation</a>
-      <a href="adhesion.html" target="_blank">🎫 Adhésion</a>
-      <a href="don.html" target="_blank">💝 Don</a>
-      <a href="depot_chat.html" target="_blank">🏠 Dépôt chat</a>
-      <a href="abandon.html" target="_blank">💔 Abandon</a>
-      <a href="famille_accueil.html" target="_blank">🤝 Famille d'accueil</a>
-      <a href="pret_materiel.html" target="_blank">🪤 Prêt matériel</a>
-      <a href="retour_materiel.html" target="_blank">↩️ Retour matériel</a>
+    <div class="forms-hint" id="forms-hint">Choisissez d'abord une personne et/ou un animal ci-dessus pour activer les formulaires.</div>
+    <div class="forms-grid" id="forms-grid">
+      <a href="adoption.html" target="_blank" class="disabled">🏠 Contrat de cession</a>
+      <a href="certificat_engagement.html" target="_blank" class="disabled">📜 Certificat d'engagement</a>
+      <a href="decharge_vaccin.html" target="_blank" class="disabled">💉 Décharge vaccin</a>
+      <a href="attestation_cbs_absent.html" target="_blank" class="disabled">🩺 Attestation CBS absent</a>
+      <a href="reservation.html" target="_blank" class="disabled">📅 Réservation</a>
+      <a href="adhesion.html" target="_blank" class="disabled">🎫 Adhésion</a>
+      <a href="don.html" target="_blank" class="disabled">💝 Don</a>
+      <a href="depot_chat.html" target="_blank" class="disabled">🏠 Dépôt chat</a>
+      <a href="abandon.html" target="_blank" class="disabled">💔 Abandon</a>
+      <a href="famille_accueil.html" target="_blank" class="disabled">🤝 Famille d'accueil</a>
+      <a href="pret_materiel.html" target="_blank" class="disabled">🪤 Prêt matériel</a>
+      <a href="retour_materiel.html" target="_blank" class="disabled">↩️ Retour matériel</a>
     </div>
   </div>
 </div>
@@ -102,6 +105,13 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 initSessionSuivi();
 
 function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+
+// ---------- Activation des formulaires uniquement après sélection ----------
+function majAccesFormulaires() {
+  const actif = !!(personneChoisie || animalChoisi);
+  document.querySelectorAll('#forms-grid a').forEach(a => a.classList.toggle('disabled', !actif));
+  document.getElementById('forms-hint').style.display = actif ? 'none' : '';
+}
 
 // ---------- Personne ----------
 let personneChoisie = null;
@@ -137,8 +147,9 @@ function choisirPersonne(i) {
     <div><span class="lbl">Téléphone :</span> ${escH(personneChoisie.telephone||'—')}</div>
     <button type="button" class="btn" onclick="copierPersonne()">📋 Copier</button>
     <button type="button" class="btn secondaire" onclick="viderPersonne()">Changer</button>`;
+  majAccesFormulaires();
 }
-function viderPersonne() { personneChoisie = null; document.getElementById('recherche-personne').value=''; document.getElementById('fiche-personne').innerHTML = '<div class="empty">Aucune personne sélectionnée</div>'; }
+function viderPersonne() { personneChoisie = null; document.getElementById('recherche-personne').value=''; document.getElementById('fiche-personne').innerHTML = '<div class="empty">Aucune personne sélectionnée</div>'; majAccesFormulaires(); }
 function copierPersonne() {
   if (!personneChoisie) return;
   const p = personneChoisie;
@@ -157,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
     inputId: 'recherche-animal',
     contexte: 'recherche',
     onSelect: async function(animalId) {
-      if (!animalId) { animalChoisi = null; document.getElementById('fiche-animal').innerHTML = '<div class="empty">Aucun animal sélectionné</div>'; return; }
+      if (!animalId) { animalChoisi = null; document.getElementById('fiche-animal').innerHTML = '<div class="empty">Aucun animal sélectionné</div>'; majAccesFormulaires(); return; }
       const { data, error } = await supabaseClient.rpc('obtenir_animal_pour_formulaire', { p_animal_id: animalId });
       if (error || !data) { console.error(error); return; }
       animalChoisi = data.animal;
@@ -169,6 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <div><span class="lbl">Puce :</span> ${escH(a.puce||'—')}</div>
         <div><span class="lbl">N° carnet de santé :</span> ${escH(a.numero_carnet_sante||'—')}</div>
         <button type="button" class="btn" onclick="copierAnimal()">📋 Copier</button>`;
+      majAccesFormulaires();
     }
   });
 });
