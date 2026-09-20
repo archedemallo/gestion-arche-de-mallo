@@ -107,7 +107,7 @@
   </div>
   <div class="page-content">
 
-    <div class="info-box"><i class="ti ti-info-circle"></i> Cette page importe un relevé bancaire (CSV) puis vous laisse rapprocher chaque ligne avec un type de mouvement avant de l'envoyer en Caisse ou en Banque. Rien n'est créé tant que vous n'avez pas transféré la ligne.</div>
+    <div class="info-box"><i class="ti ti-info-circle"></i> Cette page importe un relevé bancaire (CSV ou Excel) puis vous laisse rapprocher chaque ligne avec un type de mouvement avant de l'envoyer en Caisse ou en Banque. Rien n'est créé tant que vous n'avez pas transféré la ligne.</div>
 
     <!-- ÉTAPE IMPORT -->
     <div class="steps">
@@ -127,8 +127,8 @@
       </div>
       <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
         <i class="ti ti-upload" style="font-size:24px;color:var(--text-3);"></i>
-        <div style="margin-top:8px;font-size:13px;">Cliquez ou glissez un fichier CSV ici</div>
-        <input type="file" id="file-input" accept=".csv" style="display:none;" onchange="onFileSelected(this.files[0])">
+        <div style="margin-top:8px;font-size:13px;">Cliquez ou glissez un fichier CSV ou Excel (.xlsx) ici</div>
+        <input type="file" id="file-input" accept=".csv,.xlsx,.xls" style="display:none;" onchange="onFileSelected(this.files[0])">
       </div>
     </div>
 
@@ -202,6 +202,7 @@
 <script src="supabase-config.js"></script>
 <script src="compta-commun.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -253,31 +254,70 @@ async function chargerFournisseurs() {
 // ============================================================
 // ÉTAPE 1-2 : UPLOAD + MAPPING
 // ============================================================
+// Un fichier .xlsx/.xls (export Excel de la banque) ne peut pas être
+// lu comme un CSV : c'est une archive zip (xlsx) ou un format binaire
+// (xls) — Papa.parse produirait alors des lignes de charabia illisible
+// ("PK...[Content_Types].xml..."). On détecte le vrai format du
+// fichier (pas seulement son extension, car un export Excel est parfois
+// renommé en .csv) et on route vers le bon lecteur.
 function onFileSelected(file) {
   if (!file) return;
+  const nom = (file.name || '').toLowerCase();
+  if (nom.endsWith('.xlsx') || nom.endsWith('.xls')) { lireFichierExcel(file); return; }
+
+  // Vérifie les 2 premiers octets : un fichier xlsx (zip) commence
+  // toujours par la signature "PK", même s'il a été renommé en .csv.
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const octets = new Uint8Array(e.target.result);
+    if (octets[0] === 0x50 && octets[1] === 0x4B) lireFichierExcel(file);
+    else lireFichierCsv(file);
+  };
+  reader.onerror = () => lireFichierCsv(file);
+  reader.readAsArrayBuffer(file.slice(0, 4));
+}
+
+function lireFichierCsv(file) {
   Papa.parse(file, {
-    complete: (res) => {
-      csvRows = res.data;
-      document.getElementById('step-1').classList.add('done');
-      document.getElementById('step-2').classList.add('active');
-      document.getElementById('card-upload').classList.add('hidden');
-      document.getElementById('card-mapping').classList.remove('hidden');
-      const firstRow = csvRows[0] || [];
-      csvHeaders = firstRow.map((h, i) => h || ('Colonne ' + (i+1)));
-      ['map-date','map-libelle','map-debit'].forEach(id => {
-        document.getElementById(id).innerHTML = csvHeaders.map((h,i) => `<option value="${i}">${escH(h)}</option>`).join('');
-      });
-      document.getElementById('map-credit').innerHTML = '<option value="">— Un seul montant signé —</option>' + csvHeaders.map((h,i) => `<option value="${i}">${escH(h)}</option>`).join('');
-      // Détection basique par nom de colonne
-      csvHeaders.forEach((h,i) => {
-        const hl = (h||'').toLowerCase();
-        if (hl.includes('date')) document.getElementById('map-date').value = i;
-        if (hl.includes('libell') || hl.includes('label')) document.getElementById('map-libelle').value = i;
-        if (hl.includes('débit') || hl.includes('debit')) document.getElementById('map-debit').value = i;
-        if (hl.includes('crédit') || hl.includes('credit')) document.getElementById('map-credit').value = i;
-      });
-    },
+    complete: (res) => { csvRows = res.data; apresLectureFichier(); },
     error: (err) => showImportErr('Erreur de lecture du fichier : ' + err.message)
+  });
+}
+
+function lireFichierExcel(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const classeur = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const feuille = classeur.Sheets[classeur.SheetNames[0]];
+      csvRows = XLSX.utils.sheet_to_json(feuille, { header: 1, raw: false, dateNF: 'dd/mm/yyyy', defval: '' });
+      apresLectureFichier();
+    } catch (err) {
+      showImportErr("Impossible de lire ce fichier Excel : " + err.message);
+    }
+  };
+  reader.onerror = () => showImportErr('Erreur de lecture du fichier.');
+  reader.readAsArrayBuffer(file);
+}
+
+function apresLectureFichier() {
+  document.getElementById('step-1').classList.add('done');
+  document.getElementById('step-2').classList.add('active');
+  document.getElementById('card-upload').classList.add('hidden');
+  document.getElementById('card-mapping').classList.remove('hidden');
+  const firstRow = csvRows[0] || [];
+  csvHeaders = firstRow.map((h, i) => h || ('Colonne ' + (i+1)));
+  ['map-date','map-libelle','map-debit'].forEach(id => {
+    document.getElementById(id).innerHTML = csvHeaders.map((h,i) => `<option value="${i}">${escH(h)}</option>`).join('');
+  });
+  document.getElementById('map-credit').innerHTML = '<option value="">— Un seul montant signé —</option>' + csvHeaders.map((h,i) => `<option value="${i}">${escH(h)}</option>`).join('');
+  // Détection basique par nom de colonne
+  csvHeaders.forEach((h,i) => {
+    const hl = (h||'').toLowerCase();
+    if (hl.includes('date')) document.getElementById('map-date').value = i;
+    if (hl.includes('libell') || hl.includes('label')) document.getElementById('map-libelle').value = i;
+    if (hl.includes('débit') || hl.includes('debit')) document.getElementById('map-debit').value = i;
+    if (hl.includes('crédit') || hl.includes('credit')) document.getElementById('map-credit').value = i;
   });
 }
 ['dragover','dragleave','drop'].forEach(evt => {
