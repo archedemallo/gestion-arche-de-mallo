@@ -58,6 +58,7 @@
   #login-screen{max-width:340px;margin:80px auto;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:28px;}
   #login-screen input{width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-size:13px;}
   #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+.chip-suivi{font-size:9px;padding:1px 6px;border-radius:8px;background:var(--warm);border:0.5px solid var(--border-mid);}
 </style>
 </head>
 <body>
@@ -218,6 +219,17 @@
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="modal-lier-suivi">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title"><i class="ti ti-link"></i> Lier à un enregistrement Suivi</span><button class="modal-close" onclick="closeLierSuivi()">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><input type="text" id="ls-search" class="f-input" style="width:100%;" placeholder="Rechercher par nom (adhésion, don, adoption, réservation)…" oninput="rechercherLierSuivi()"></div>
+      <div id="ls-resultats" style="max-height:300px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="closeLierSuivi()">Annuler</button></div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <script src="compta-commun.js"></script>
@@ -322,7 +334,7 @@ function resetRemise() {
 // ============================================================
 async function loadData() {
   const { data: remises, error: e1 } = await supabaseClient.from('remises_cheques').select('*').order('date_remise', { ascending: false }).order('id');
-  const { data: details, error: e2 } = await supabaseClient.from('remise_cheques_details').select('*').order('numero_ordre');
+  const { data: details, error: e2 } = await supabaseClient.from('remise_cheques_details').select('*, adhesion:adhesions(id, personnes(nom,prenom,raison_sociale)), don:dons(id, personnes(nom,prenom,raison_sociale)), adoption:adoptions(id, personnes(nom,prenom,raison_sociale)), reservation:reservations(id, personnes(nom,prenom,raison_sociale)), materiel:materiel_mouvements(id, materiel, personnes(nom,prenom,raison_sociale))').order('numero_ordre');
   if (e1 || e2) { showToast('Erreur de chargement'); return; }
   allRemises = remises || []; allDetails = details || [];
   renderKPIs(); renderTable();
@@ -492,13 +504,66 @@ function renderDetailCheques() {
       <td>${escH(d.numero_recu||'—')}</td>
       <td>${escH(r.numero_bordereau||'—')}</td>
       <td>${r.statut==='encaissee'?'<span style="color:var(--green);">Encaissée</span>':'<span style="color:var(--amber);">En attente</span>'}</td>
+      <td style="font-size:10px;">${suiviCell(d, r)}</td>
     </tr>`;
   }).join('');
 
   wrap.innerHTML = `<table><thead><tr>
-    <th>Date remise</th><th>Nom</th><th>N° chèque</th><th class="r">Montant</th><th>Type de mouvement</th><th>Description</th><th>Chat</th><th>N° reçu fiscal</th><th>N° bordereau</th><th>Statut</th>
+    <th>Date remise</th><th>Nom</th><th>N° chèque</th><th class="r">Montant</th><th>Type de mouvement</th><th>Description</th><th>Chat</th><th>N° reçu fiscal</th><th>N° bordereau</th><th>Statut</th><th>Suivi</th>
   </tr></thead><tbody>${trs}</tbody>
-  <tfoot><tr><td colspan="3" style="font-weight:600;">${lignes.length} chèque(s)</td><td class="r" style="font-weight:600;">${fmt(totalMontant)}</td><td colspan="6"></td></tr></tfoot></table>`;
+  <tfoot><tr><td colspan="3" style="font-weight:600;">${lignes.length} chèque(s)</td><td class="r" style="font-weight:600;">${fmt(totalMontant)}</td><td colspan="7"></td></tr></tfoot></table>`;
+}
+// Rétabli — confirmé absent du projet Fusion (signalé dans
+// 020_remises_cheques.sql : "non repris pour l'instant"). Un chèque de
+// remise correspond à exactement un enregistrement Suivi (pas de
+// ventilation multi-cible comme pour Caisse/Banque).
+function nomPersonne(p) { if (!p) return '?'; return (p.prenom?p.prenom+' ':'') + (p.nom || p.raison_sociale || '?'); }
+function suiviCell(d, r) {
+  const labels = { adhesion:'Adhésion', don:'Don', adoption:'Adoption', reservation:'Réservation' };
+  for (const t of ['adhesion','don','adoption','reservation']) {
+    if (d[t]) return `<span class="chip-suivi">${labels[t]} — ${escH(nomPersonne(d[t].personnes))} ${roleActuel==='admin'&&!r.verifie?`<button onclick="delierChequeSuivi('${d.id}')" style="border:none;background:none;color:var(--red);cursor:pointer;">x</button>`:''}</span>`;
+  }
+  if (d.materiel) return `<span class="chip-suivi">Prêt matériel — ${escH(nomPersonne(d.materiel.personnes))} ${roleActuel==='admin'&&!r.verifie?`<button onclick="delierChequeSuivi('${d.id}')" style="border:none;background:none;color:var(--red);cursor:pointer;">x</button>`:''}</span>`;
+  return roleActuel==='admin'&&!r.verifie ? `<button onclick="openLierSuivi('${d.id}')" title="Lier à un enregistrement Suivi" style="border:0.5px solid var(--border-mid);border-radius:4px;background:none;cursor:pointer;font-size:9px;padding:1px 6px;color:var(--text-2);">+ lier</button>` : '—';
+}
+
+// ============================================================
+// LIER UN CHÈQUE À UN ENREGISTREMENT SUIVI (recherche + choix unique)
+// ============================================================
+let lierSuiviDetailId = null;
+function openLierSuivi(detailId) {
+  lierSuiviDetailId = detailId;
+  document.getElementById('ls-search').value = '';
+  document.getElementById('ls-resultats').innerHTML = '';
+  document.getElementById('modal-lier-suivi').classList.remove('hidden');
+}
+function closeLierSuivi() { document.getElementById('modal-lier-suivi').classList.add('hidden'); lierSuiviDetailId = null; }
+let lsSearchTimer = null;
+function rechercherLierSuivi() {
+  clearTimeout(lsSearchTimer);
+  const texte = document.getElementById('ls-search').value.trim();
+  lsSearchTimer = setTimeout(async () => {
+    try {
+      const { data, error } = await supabaseClient.rpc('rechercher_suivi_pour_ventilation', { p_recherche: texte || null });
+      if (error) throw error;
+      const labels = { adhesion:'Adhésion', don:'Don', adoption:'Adoption', reservation:'Réservation', materiel_mouvement:'Prêt de matériel' };
+      document.getElementById('ls-resultats').innerHTML = (data||[]).map(r => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-bottom:0.5px solid var(--border);font-size:11px;cursor:pointer;" onclick="choisirLierSuivi('${r.type}','${r.id}')">
+          <span>${escH(labels[r.type])} — ${escH(r.nom_affiche)} <span style="color:var(--text-3);">${r.date_operation||''}</span></span>
+          <span style="font-weight:500;">${fmt(r.montant_suggere)}</span>
+        </div>`).join('') || '<div style="padding:8px;color:var(--text-3);font-size:11px;">Aucun résultat</div>';
+    } catch(e) { console.error(e); document.getElementById('ls-resultats').innerHTML = '<div style="padding:8px;color:var(--red);font-size:11px;">Erreur : '+escH(e.message)+'</div>'; }
+  }, 300);
+}
+async function choisirLierSuivi(type, id) {
+  if (!lierSuiviDetailId) return;
+  try { const { error } = await supabaseClient.rpc('lier_remise_cheque_suivi', { p_detail_id: lierSuiviDetailId, p_type: type, p_cible_id: id }); if (error) throw error; closeLierSuivi(); showToast('Chèque lié à Suivi'); await loadData(); if (activeMainTab==='cheques') renderDetailCheques(); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+async function delierChequeSuivi(detailId) {
+  if (!confirm('Délier ce rapprochement Suivi ?')) return;
+  try { const { error } = await supabaseClient.rpc('delier_remise_cheque_suivi', { p_detail_id: detailId }); if (error) throw error; showToast('Rapprochement supprimé'); await loadData(); if (activeMainTab==='cheques') renderDetailCheques(); }
+  catch(e) { alert('Erreur : ' + e.message); }
 }
 function toggleRow(id) { if (openRows.has(id)) openRows.delete(id); else openRows.add(id); renderTable(); }
 
