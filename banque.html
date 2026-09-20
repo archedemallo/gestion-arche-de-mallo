@@ -613,6 +613,19 @@ async function voirRapprochement(id) {
       </div>
     </div>`);
   }
+  if (!r.ref_remise) {
+    const { data: remises } = await supabaseClient.from('remises_cheques').select('id, numero_bordereau, date_remise, montant_total').eq('statut', 'en_attente').order('date_remise', { ascending: false });
+    extra.push(`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);">
+      <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;"><i class="ti ti-stack"></i> Lier à une remise de chèques</div>
+      <div style="display:flex;gap:8px;">
+        <select id="rap-remise-select" class="f-select" style="flex:1;">
+          <option value="">— Choisir une remise en attente —</option>
+          ${(remises||[]).map(rm => `<option value="${rm.id}">${escH(rm.numero_bordereau||'?')} — ${formatDateFR(rm.date_remise)} — ${fmt(rm.montant_total)}</option>`).join('')}
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="lierRemiseRapprochement()"><i class="ti ti-check"></i> Lier</button>
+      </div>
+    </div>`);
+  }
 
   const { data: liens } = await supabaseClient.from('banque_mouvement_facture_liens').select('facture_id, factures(id, numero_facture, fournisseur, montant_ttc, date_facture)').eq('banque_mouvement_id', id);
   const facturesLiees = (liens||[]).map(l => l.factures).filter(Boolean);
@@ -652,6 +665,12 @@ async function lierChequeRapprochement() {
   const chequeId = document.getElementById('rap-cheque-select')?.value;
   if (!chequeId || !rapprBankId) return;
   try { const { error } = await supabaseClient.rpc('lier_banque_cheque', { p_banque_mouvement_id: rapprBankId, p_cheque_id: chequeId }); if (error) throw error; showToast('Chèque lié'); await loadData(); await voirRapprochement(rapprBankId); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+async function lierRemiseRapprochement() {
+  const remiseId = document.getElementById('rap-remise-select')?.value;
+  if (!remiseId || !rapprBankId) return;
+  try { const { error } = await supabaseClient.rpc('lier_banque_remise', { p_banque_mouvement_id: rapprBankId, p_remise_id: remiseId }); if (error) throw error; showToast('Remise liée'); await loadData(); await voirRapprochement(rapprBankId); }
   catch(e) { alert('Erreur : ' + e.message); }
 }
 async function lierFactureRapprochement() {
@@ -711,7 +730,7 @@ function rechercherVentilation() {
           <span>${escH(labels[r.type])} — ${escH(r.nom_affiche)} <span style="color:var(--text-3);">${r.date_operation||''}</span></span>
           <span style="font-weight:500;">${fmt(r.montant_suggere)}</span>
         </div>`).join('') || '<div style="padding:8px;color:var(--text-3);font-size:11px;">Aucun résultat</div>';
-    } catch(e) { console.error(e); }
+    } catch(e) { console.error(e); document.getElementById('vent-resultats').innerHTML = '<div style="padding:8px;color:var(--red);font-size:11px;">Erreur de recherche : '+escH(e.message)+'</div>'; }
   }, 300);
 }
 function ajouterLigneVentilation(type, id, label, montantSuggere) {
