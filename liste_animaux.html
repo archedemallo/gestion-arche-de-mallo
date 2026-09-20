@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liste des animaux — L'Arche de Mallo</title>
+<style>
+  :root{ --cream:#faf7f2; --warm:#f0e8d8; --brown:#3d2b1f; --orange:#c96b2a; --grey:#8a7968; --red:#c00000; --green:#2e7d32; }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:Arial,sans-serif;background:var(--cream);color:var(--brown);}
+  .wrap{max-width:1000px;margin:0 auto;padding:20px 16px 60px;}
+  .card{background:#fff;border:1px solid var(--warm);border-radius:12px;padding:16px 18px;margin-bottom:18px;}
+  .card h2{font-size:13px;margin:0 0 12px;color:var(--orange);}
+  .champ{margin-bottom:10px;}
+  .champ label{display:block;font-size:11px;color:var(--grey);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:3px;}
+  .champ input, .champ select{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--warm);border-radius:6px;font-size:13px;background:#fff;font-family:inherit;}
+  .ligne2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .cases{display:flex;gap:18px;flex-wrap:wrap;}
+  .cases label{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;text-transform:none;}
+  .btn{padding:9px 18px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;margin-right:8px;}
+  .btn:hover{opacity:0.92;}
+  .msg{font-size:12px;margin-top:8px;min-height:16px;}
+  .msg.ok{color:var(--green);} .msg.err{color:var(--red);}
+  #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+  .empty{color:var(--grey);font-size:12px;font-style:italic;}
+
+  .entete-print{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:16px;background:#fff;border-bottom:3px solid var(--orange);}
+  .entete-print img{width:80px;height:80px;object-fit:contain;}
+  .entete-print .entete-left{display:flex;align-items:center;gap:16px;}
+  .entete-print p{margin:0;font-size:11px;line-height:1.5;}
+  .entete-print p.bold{font-weight:bold;}
+  .entete-print .entete-right{text-align:right;}
+  .entete-print .entete-right p.bold{font-size:14px;color:var(--orange);}
+  .entete-print a{color:var(--orange);}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 18px;font-size:12.5px;}
+  .grid2 .lbl{color:var(--grey);}
+
+  table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:4px;}
+  th{text-align:left;font-size:10px;color:var(--grey);text-transform:uppercase;padding:5px 6px;border-bottom:1px solid var(--warm);}
+  td{padding:5px 6px;border-bottom:1px solid #f2ece1;}
+
+  @media print {
+    #login-screen, .no-print { display:none !important; }
+    body{background:#fff;}
+    .wrap{max-width:100%;padding:0 4px;}
+    .card{border:none;border-radius:0;padding:0;margin-bottom:14px;box-shadow:none;}
+    thead{display:table-header-group;}
+    tr{page-break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+
+<div id="login-screen" style="position:fixed;inset:0;background:var(--cream);z-index:99999;display:flex;align-items:center;justify-content:center;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid var(--warm);border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:var(--grey);margin-bottom:16px;">Connexion requise.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+
+<div class="entete-print">
+  <div class="entete-left">
+    <img src="logo_arche.png" alt="Logo">
+    <div>
+      <p class="bold">Association L'ARCHE DE MALLO</p>
+      <p>8 ter rue d'Eschène<br>90140 AUTRECHÊNE<br>07.71.64.69.89<br><a href="mailto:archedemallo@gmail.com">archedemallo@gmail.com</a></p>
+    </div>
+  </div>
+  <div class="entete-right">
+    <p class="bold">Liste des animaux</p>
+    <p id="entete-sous-titre">—</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="card no-print">
+    <h2>Options</h2>
+
+    <div class="champ">
+      <label>Période</label>
+      <div class="cases">
+        <label><input type="radio" name="mode" value="jour" checked onchange="onModeChange()"> Présents au jour de l'impression</label>
+        <label><input type="radio" name="mode" value="periode" onchange="onModeChange()"> Présents sur une période</label>
+      </div>
+    </div>
+
+    <div class="ligne2" id="zone-periode" style="display:none;">
+      <div class="champ">
+        <label>Du</label>
+        <input type="date" id="date-debut">
+      </div>
+      <div class="champ">
+        <label>Au</label>
+        <input type="date" id="date-fin">
+      </div>
+    </div>
+
+    <div class="champ" style="max-width:260px;">
+      <label>Espèce</label>
+      <select id="filtre-espece">
+        <option value="chat" selected>Chat</option>
+        <option value="chien">Chien</option>
+        <option value="lapin">Lapin</option>
+        <option value="autre">Autre</option>
+        <option value="tous">Toutes les espèces</option>
+      </select>
+    </div>
+
+    <button type="button" class="btn" onclick="genererListe()">Générer la liste</button>
+    <button type="button" class="btn" id="btn-imprimer" style="display:none;" onclick="window.print()">🖨️ Imprimer</button>
+    <div id="gen-msg" class="msg"></div>
+  </div>
+
+  <div id="resultats" style="display:none;">
+    <div class="card">
+      <h2>Récapitulatif</h2>
+      <div id="recap-contenu"></div>
+    </div>
+
+    <div class="card">
+      <h2 id="table-titre">Liste détaillée</h2>
+      <table id="table-animaux">
+        <thead>
+          <tr>
+            <th>N°</th><th>Nom</th><th>Espèce</th><th>Sexe</th><th>Couleur</th>
+            <th>Né(e) le</th><th>Arrivée</th><th>Situation actuelle</th><th id="th-sortie" style="display:none;">Sortie</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="no-print" style="font-size:12px;"><a href="index.html">← Retour à l'accueil</a></p>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script>
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+
+// Libellés (voir statuts_animaux.html / 030_transitions_statut_animal.sql)
+const LABELS_STATUT = {
+  en_observation: 'En observation', adoptable: 'Adoptable', non_adoptable: 'Non adoptable',
+  malade: 'Malade', decede: 'Décédé', relache: 'Relâché', reservation_annulee: 'Réservation annulée',
+  reserve: 'Réservé', au_veto: 'Au véto', famille_accueil: "Famille d'accueil", adopte: 'Adopté'
+};
+const LABELS_ORIGINE = {
+  depot: 'Dépôt', abandon: 'Abandon', saisie: 'Saisie',
+  ne_a_association: "Né à l'association", trappage: 'Trappage'
+};
+const ORDRE_STATUT = ['en_observation', 'au_veto', 'malade', 'non_adoptable', 'adoptable',
+  'reserve', 'reservation_annulee', 'famille_accueil', 'adopte', 'relache', 'decede'];
+const STATUTS_FINAUX = ['decede', 'relache', 'adopte'];
+
+function escH(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/'/g, '&#39;').replace(/"/g, '&quot;'); }
+function fmtDate(d) { if (!d) return '—'; const s = String(d).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const p = s.slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; } return s; }
+function todayIso() { return new Date().toISOString().split('T')[0]; }
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('date-fin').value = todayIso();
+  const debut = new Date();
+  debut.setDate(debut.getDate() - 30);
+  document.getElementById('date-debut').value = debut.toISOString().split('T')[0];
+});
+
+function onModeChange() {
+  const periode = document.querySelector('input[name="mode"]:checked').value === 'periode';
+  document.getElementById('zone-periode').style.display = periode ? 'grid' : 'none';
+}
+
+async function genererListe() {
+  const msg = document.getElementById('gen-msg');
+  msg.textContent = 'Chargement…'; msg.className = 'msg';
+
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  const especeFiltre = document.getElementById('filtre-espece').value;
+
+  let pDebut, pFin;
+  if (mode === 'jour') {
+    pDebut = pFin = todayIso();
+  } else {
+    pDebut = document.getElementById('date-debut').value;
+    pFin = document.getElementById('date-fin').value;
+    if (!pDebut || !pFin) { msg.textContent = 'Choisissez une date de début et une date de fin.'; msg.className = 'msg err'; return; }
+    if (pDebut > pFin) { msg.textContent = 'La date de début doit précéder la date de fin.'; msg.className = 'msg err'; return; }
+  }
+
+  const [resAnimaux, resHisto] = await Promise.all([
+    supabaseClient.from('animaux').select('id,numero_interne,nom_usuel,nom_adoption,espece,sexe,couleur,date_naissance,date_arrivee,origine_arrivee,statut_actuel,date_deces'),
+    supabaseClient.from('animaux_statuts_historique').select('animal_id,statut,date_debut,date_fin').order('date_debut')
+  ]);
+
+  if (resAnimaux.error) { msg.textContent = 'Erreur : ' + resAnimaux.error.message; msg.className = 'msg err'; return; }
+  if (resHisto.error) { msg.textContent = 'Erreur : ' + resHisto.error.message; msg.className = 'msg err'; return; }
+
+  const histoParAnimal = {};
+  (resHisto.data || []).forEach(function(h) {
+    (histoParAnimal[h.animal_id] = histoParAnimal[h.animal_id] || []).push(h);
+  });
+
+  const lignes = [];
+  (resAnimaux.data || []).forEach(function(a) {
+    const espece = a.espece || 'chat';
+    if (especeFiltre !== 'tous' && espece !== especeFiltre) return;
+
+    const hs = histoParAnimal[a.id] || [];
+    const dateArrivee = a.date_arrivee || (hs[0] ? hs[0].date_debut : null);
+    if (!dateArrivee) return; // fiche incomplète (aucune date connue) : on l'ignore
+
+    const sortie = hs.find(function(h) { return STATUTS_FINAUX.indexOf(h.statut) !== -1; });
+    const dateSortie = sortie ? sortie.date_debut : null;
+
+    // Présent sur la période demandée : arrivé avant la fin, et pas
+    // encore sorti avant le début (ou toujours présent aujourd'hui).
+    const present = dateArrivee <= pFin && (!dateSortie || dateSortie >= pDebut);
+    if (!present) return;
+
+    const enCours = hs.find(function(h) { return !h.date_fin; });
+    const sortiePendantPeriode = dateSortie && dateSortie >= pDebut && dateSortie <= pFin;
+
+    lignes.push({
+      numero: a.numero_interne,
+      nom: a.nom_usuel,
+      nomAdoption: a.nom_adoption,
+      espece: espece,
+      sexe: a.sexe,
+      couleur: a.couleur,
+      naissance: a.date_naissance,
+      arrivee: dateArrivee,
+      origine: a.origine_arrivee,
+      statutActuel: a.statut_actuel,
+      depuisLe: enCours ? enCours.date_debut : null,
+      sortieDate: sortiePendantPeriode ? dateSortie : null,
+      sortieStatut: sortiePendantPeriode ? sortie.statut : null
+    });
+  });
+
+  lignes.sort(function(x, y) { return (x.nom || '').localeCompare(y.nom || '', 'fr'); });
+
+  afficherResultats(lignes, mode, pDebut, pFin);
+  msg.textContent = '';
+}
+
+function afficherResultats(lignes, mode, pDebut, pFin) {
+  document.getElementById('entete-sous-titre').textContent = mode === 'jour'
+    ? 'Animaux présents le ' + fmtDate(todayIso())
+    : 'Animaux présents du ' + fmtDate(pDebut) + ' au ' + fmtDate(pFin);
+
+  const compte = {};
+  lignes.forEach(function(l) { compte[l.statutActuel] = (compte[l.statutActuel] || 0) + 1; });
+  const blocs = ORDRE_STATUT.filter(function(s) { return compte[s]; }).map(function(s) {
+    return '<div><span class="lbl">' + escH(LABELS_STATUT[s] || s) + ' :</span> ' + compte[s] + '</div>';
+  });
+  document.getElementById('recap-contenu').innerHTML = '<div class="grid2">' + blocs.join('') +
+    '<div style="grid-column:1/-1;font-weight:bold;margin-top:6px;">Total : ' + lignes.length +
+    (lignes.length > 1 ? ' animaux' : ' animal') + '</div></div>';
+
+  const avecSortie = mode === 'periode' && lignes.some(function(l) { return l.sortieDate; });
+  document.getElementById('th-sortie').style.display = avecSortie ? '' : 'none';
+
+  document.getElementById('table-body').innerHTML = lignes.length ? lignes.map(function(l) {
+    return '<tr>' +
+      '<td>' + escH(l.numero || '—') + '</td>' +
+      '<td>' + escH(l.nom || '—') + (l.nomAdoption ? ' <span style="color:var(--grey);">(' + escH(l.nomAdoption) + ')</span>' : '') + '</td>' +
+      '<td>' + escH(l.espece) + '</td>' +
+      '<td>' + (l.sexe === 'M' ? 'Mâle' : (l.sexe === 'F' ? 'Femelle' : '—')) + '</td>' +
+      '<td>' + escH(l.couleur || '—') + '</td>' +
+      '<td>' + fmtDate(l.naissance) + '</td>' +
+      '<td>' + fmtDate(l.arrivee) + (l.origine ? ' — ' + escH(LABELS_ORIGINE[l.origine] || l.origine) : '') + '</td>' +
+      '<td>' + escH(LABELS_STATUT[l.statutActuel] || l.statutActuel || '—') +
+        (l.depuisLe ? ' <span style="color:var(--grey);">(depuis le ' + fmtDate(l.depuisLe) + ')</span>' : '') + '</td>' +
+      (avecSortie ? '<td>' + (l.sortieDate ? fmtDate(l.sortieDate) + ' — ' + escH(LABELS_STATUT[l.sortieStatut] || l.sortieStatut) : '—') + '</td>' : '') +
+    '</tr>';
+  }).join('') : '<tr><td colspan="9" class="empty">Aucun animal ne correspond à ces critères.</td></tr>';
+
+  document.getElementById('table-titre').textContent = 'Liste détaillée (' + lignes.length + (lignes.length > 1 ? ' animaux' : ' animal') + ')';
+  document.getElementById('resultats').style.display = 'block';
+  document.getElementById('btn-imprimer').style.display = 'inline-block';
+}
+</script>
+</body>
+</html>
