@@ -47,6 +47,16 @@
   .ag-cb-item{display:block;font-size:11px;padding:3px 0;cursor:pointer;}
   .cb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;max-height:200px;overflow-y:auto;}
   .cb-item{font-size:11px;display:block;padding:2px 0;}
+  .ag-filter-details{margin-bottom:8px;border:0.5px solid var(--border);border-radius:6px;padding:0 8px;}
+  .ag-filter-details .cb-grid{padding:6px 0 8px;}
+  .ag-filter-details summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2);padding:7px 0;user-select:none;}
+  .ag-filter-details summary::-webkit-details-marker{display:none;}
+  .ag-filter-details summary::marker{content:'';}
+  .ag-filter-details summary .ti-plus{display:inline-block;}
+  .ag-filter-details summary .ti-minus{display:none;}
+  .ag-filter-details[open] summary .ti-plus{display:none;}
+  .ag-filter-details[open] summary .ti-minus{display:inline-block;}
+  .ag-filter-count{background:var(--surface-2);border-radius:10px;padding:1px 7px;font-size:10px;color:var(--text-3);margin-left:auto;}
   .warn-box{background:#fff4e5;border:0.5px solid #ffd699;color:#7a4a00;font-size:11px;padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:10px;}
   .config-panel{background:var(--surface-2);border:0.5px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px;}
   .evt-tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;}
@@ -525,22 +535,36 @@ function typesDisponibles() {
   allBanque.forEach(r => r.type_mouvement && set.add(r.type_mouvement));
   return [...set].sort((a,b)=>a.localeCompare(b,'fr'));
 }
+function descriptionsDisponibles() {
+  const set = new Set();
+  allCaisse.forEach(r => r.description && set.add(r.description));
+  allBanque.forEach(r => r.description && set.add(r.description));
+  return [...set].sort((a,b)=>a.localeCompare(b,'fr'));
+}
 function renderAgConfigPanel() {
   const types = typesDisponibles();
+  const descriptions = descriptionsDisponibles();
   const el = document.getElementById('ag-config-panel');
   el.innerHTML = `
     <div style="font-size:11px;color:var(--text-3);margin-bottom:10px;">
-      Une catégorie additionne les lignes dont le <em>type de mouvement</em> correspond, sur les sources cochées.
+      Une catégorie additionne les lignes dont le <em>type de mouvement</em> et/ou le <em>descriptif</em> correspondent, sur les sources cochées.
       <strong>Attention</strong> : cocher à la fois "Banque" et "Chèques"/"Remises" pour une même catégorie peut compter deux fois
       la même somme (une fois à l'émission du chèque/de la remise, une fois à son encaissement en banque). Ne les cumulez que si
       vous êtes sûr que les types/descriptions utilisés ne se recoupent jamais entre les deux.
     </div>
-    ${agConfig.map((cat, i) => renderAgCategoryRow(cat, i, types)).join('')}
+    ${agConfig.map((cat, i) => renderAgCategoryRow(cat, i, types, descriptions)).join('')}
     <button class="btn btn-secondary btn-sm" onclick="ajouterAgCategorie()"><i class="ti ti-plus"></i> Ajouter une catégorie</button>
     <button class="btn btn-primary btn-sm" onclick="saveAgConfig()" style="margin-left:8px;"><i class="ti ti-device-floppy"></i> Enregistrer</button>
   `;
 }
-function renderAgCategoryRow(cat, i, types) {
+function renderAgFilterDetails(label, i, items, selected, toggleFn) {
+  const nbSel = selected.length;
+  return `<details class="ag-filter-details" ${nbSel ? 'open' : ''}>
+    <summary><i class="ti ti-plus"></i><i class="ti ti-minus"></i> ${label} <span class="ag-filter-count">${nbSel ? nbSel+'/'+items.length : 'tous'}</span></summary>
+    <div class="cb-grid">${items.map(t => `<label class="cb-item"><input type="checkbox" ${selected.includes(t)?'checked':''} onchange="${toggleFn}(${i},'${escH(t).replace(/'/g,"\\'")}',this.checked)"> ${escH(t)}</label>`).join('') || `<span style="color:var(--text-3);">Aucun élément trouvé</span>`}</div>
+  </details>`;
+}
+function renderAgCategoryRow(cat, i, types, descriptions) {
   const srcs = cat.sources || ['banque','caisse'];
   const doubleCountRisk = srcs.includes('banque') && (srcs.includes('cheques') || srcs.includes('remises'));
   const srcOptions = [['caisse','Caisse'],['caisse2','Caisse 2'],['banque','Banque'],['cheques','Chèques'],['remises','Remises'],['factures','Factures']];
@@ -558,8 +582,8 @@ function renderAgCategoryRow(cat, i, types) {
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
       ${srcOptions.map(([v,l]) => `<label style="font-size:11px;"><input type="checkbox" ${srcs.includes(v)?'checked':''} onchange="toggleAgSource(${i},'${v}',this.checked)"> ${l}</label>`).join('')}
     </div>
-    <div style="font-size:10px;color:var(--text-3);margin-bottom:4px;">Types de mouvement inclus :</div>
-    <div class="cb-grid">${types.map(t => `<label class="cb-item"><input type="checkbox" ${(cat.types||[]).includes(t)?'checked':''} onchange="toggleAgType(${i},'${escH(t).replace(/'/g,"\\'")}',this.checked)"> ${escH(t)}</label>`).join('') || '<span style="color:var(--text-3);">Aucun type trouvé</span>'}</div>
+    ${renderAgFilterDetails('Types de mouvement', i, types, cat.types||[], 'toggleAgType')}
+    ${renderAgFilterDetails('Descriptifs', i, descriptions, cat.descriptions||[], 'toggleAgDescription')}
   </div>`;
 }
 function toggleAgSource(i, src, checked) {
@@ -573,8 +597,13 @@ function toggleAgType(i, type, checked) {
   checked ? s.add(type) : s.delete(type);
   agConfig[i].types = [...s];
 }
+function toggleAgDescription(i, description, checked) {
+  const s = new Set(agConfig[i].descriptions || []);
+  checked ? s.add(description) : s.delete(description);
+  agConfig[i].descriptions = [...s];
+}
 function ajouterAgCategorie() {
-  agConfig.push({ cat: 'Nouvelle catégorie', sens: 'depense', sources: ['banque','caisse'], types: [] });
+  agConfig.push({ cat: 'Nouvelle catégorie', sens: 'depense', sources: ['banque','caisse'], types: [], descriptions: [] });
   renderAgConfigPanel();
 }
 
@@ -596,24 +625,26 @@ function computeAgResults() {
   const facturesParNumero = {}; allFactures.forEach(f => { if (f.numero_facture) facturesParNumero[f.numero_facture] = f; });
   const chequesParId = {}; allCheques.forEach(c => { chequesParId[c.id] = c; });
   function resoudre(r) {
-    if (r.ref_cheque && chequesParId[r.ref_cheque]) { const c = chequesParId[r.ref_cheque]; return { type: c.type_mouvement, ignorer: false }; }
-    if (r.lien_facture && facturesParNumero[r.lien_facture]) { const f = facturesParNumero[r.lien_facture]; return { type: f.categorie, ignorer: false }; }
-    return { type: r.type_mouvement, ignorer: false };
+    if (r.ref_cheque && chequesParId[r.ref_cheque]) { const c = chequesParId[r.ref_cheque]; return { type: c.type_mouvement, description: c.description, ignorer: false }; }
+    if (r.lien_facture && facturesParNumero[r.lien_facture]) { const f = facturesParNumero[r.lien_facture]; return { type: f.categorie, description: f.description, ignorer: false }; }
+    return { type: r.type_mouvement, description: r.description, ignorer: false };
   }
 
   return agConfig.map(cat => {
     const srcs = cat.sources || ['banque','caisse'];
     const types = (cat.types||[]).map(t=>t.toLowerCase().trim());
+    const descs = (cat.descriptions||[]).map(d=>d.toLowerCase().trim());
     function matchType(t) { return !types.length || types.includes((t||'').toLowerCase().trim()); }
+    function matchDescription(d) { return !descs.length || descs.includes((d||'').toLowerCase().trim()); }
 
     let total = 0;
     const ops = [];
-    if (srcs.includes('caisse')) caisse1.forEach(r => { if (r.ref_remise) return; const {type} = resoudre(r); if (matchType(type)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Caisse 1',date:r.date_mouvement,libelle:r.libelle,type,montant:v});} } });
-    if (srcs.includes('caisse2')) caisse2.forEach(r => { if (r.ref_remise) return; const {type} = resoudre(r); if (matchType(type)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Caisse 2',date:r.date_mouvement,libelle:r.libelle,type,montant:v});} } });
-    if (srcs.includes('banque')) banque.forEach(r => { if (r.ref_remise) return; const {type} = resoudre(r); if (matchType(type)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Banque',date:r.date_mouvement,libelle:r.libelle_complementaire||r.description||r.libelle,type,montant:v});} } });
-    if (srcs.includes('cheques')) cheques.forEach(r => { if (matchType(r.type_mouvement)) { const v=-fmtN(r.montant); if(v){total+=v;ops.push({src:'Chèque',date:r.date_emission,libelle:r.beneficiaire,type:r.type_mouvement,montant:v});} } });
-    if (srcs.includes('remises')) remises.forEach(r => { if (matchType(r.type_mouvement)) { const v=fmtN(r.montant); if(v){total+=v;ops.push({src:'Remise',date:r.date_remise,libelle:r.donateur||r.description,type:r.type_mouvement,montant:v});} } });
-    if (srcs.includes('factures')) factures.forEach(r => { if (matchType(r.categorie)) { const v=-fmtN(r.montant_ttc); if(v){total+=v;ops.push({src:'Facture',date:r.date_facture,libelle:r.description||r.fournisseur,type:r.categorie,montant:v});} } });
+    if (srcs.includes('caisse')) caisse1.forEach(r => { if (r.ref_remise) return; const {type,description} = resoudre(r); if (matchType(type) && matchDescription(description)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Caisse 1',date:r.date_mouvement,libelle:r.libelle,type,montant:v});} } });
+    if (srcs.includes('caisse2')) caisse2.forEach(r => { if (r.ref_remise) return; const {type,description} = resoudre(r); if (matchType(type) && matchDescription(description)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Caisse 2',date:r.date_mouvement,libelle:r.libelle,type,montant:v});} } });
+    if (srcs.includes('banque')) banque.forEach(r => { if (r.ref_remise) return; const {type,description} = resoudre(r); if (matchType(type) && matchDescription(description)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Banque',date:r.date_mouvement,libelle:r.libelle_complementaire||r.description||r.libelle,type,montant:v});} } });
+    if (srcs.includes('cheques')) cheques.forEach(r => { if (matchType(r.type_mouvement) && matchDescription(r.description)) { const v=-fmtN(r.montant); if(v){total+=v;ops.push({src:'Chèque',date:r.date_emission,libelle:r.beneficiaire,type:r.type_mouvement,montant:v});} } });
+    if (srcs.includes('remises')) remises.forEach(r => { if (matchType(r.type_mouvement) && matchDescription(r.description)) { const v=fmtN(r.montant); if(v){total+=v;ops.push({src:'Remise',date:r.date_remise,libelle:r.donateur||r.description,type:r.type_mouvement,montant:v});} } });
+    if (srcs.includes('factures')) factures.forEach(r => { if (matchType(r.categorie) && matchDescription(r.description)) { const v=-fmtN(r.montant_ttc); if(v){total+=v;ops.push({src:'Facture',date:r.date_facture,libelle:r.description||r.fournisseur,type:r.categorie,montant:v});} } });
 
     return { ...cat, total, ops };
   });
