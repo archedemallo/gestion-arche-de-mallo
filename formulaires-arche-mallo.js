@@ -272,6 +272,25 @@ function buildHtmlWithData() {
         html = html.replace(regex, '$1' + val + '$2');
     });
 
+    // Selects éditables (ex. "Saisi par") : le choix de l'utilisateur ne vit
+    // que dans la propriété .value du <select>, jamais dans un attribut
+    // "selected" du HTML sérialisé — sans ce traitement, le PDF/impression
+    // retombe toujours sur la première option ("— Choisir —").
+    document.querySelectorAll('select.editable').forEach(function(select) {
+        if (!select.id) return;
+        var val = select.value;
+        var regex = new RegExp('(<select[^>]*?id="' + select.id + '"[^>]*>)([\\s\\S]*?)(<\\/select>)', 'g');
+        html = html.replace(regex, function(match, openTag, optionsHtml, closeTag) {
+            var cleaned = optionsHtml.replace(/\s+selected(="[^"]*")?/g, '');
+            if (val) {
+                var valEscaped = val.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                var optRegex = new RegExp('(<option[^>]*?value="' + valEscaped + '"(?![^>]*selected))');
+                cleaned = cleaned.replace(optRegex, '$1 selected');
+            }
+            return openTag + cleaned + closeTag;
+        });
+    });
+
     // Remplacer les cases à cocher par ☑ ou ☐ selon leur état réel
     document.querySelectorAll('.checkbox').forEach(function(cb) {
         var isChecked = cb.classList.contains('checked');
