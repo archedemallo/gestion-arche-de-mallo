@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nouvelle arrivée — L'Arche de Mallo</title>
+<link rel="stylesheet" href="formulaires-arche-mallo.css">
+<style>
+  :root{ --cream:#faf7f2; --warm:#f0e8d8; --brown:#3d2b1f; --orange:#c96b2a; --grey:#8a7968; --red:#c00000; --green:#2e7d32; }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:Arial,sans-serif;background:var(--cream);color:var(--brown);}
+  .wrap{max-width:900px;margin:0 auto;padding:20px 16px 60px;}
+  .card{background:#fff;border:1px solid var(--warm);border-radius:12px;padding:16px 18px;margin-bottom:18px;}
+  .card h2{font-size:13px;margin:0 0 12px;color:var(--orange);}
+  .champ{margin-bottom:10px;}
+  .champ label{display:block;font-size:11px;color:var(--grey);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:3px;}
+  .champ label .req{color:var(--red);}
+  .champ input, .champ select, .champ textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--warm);border-radius:6px;font-size:13px;background:#fff;font-family:inherit;}
+  .champ textarea{resize:vertical;min-height:56px;}
+  .ligne2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .ligne3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .cases{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px;}
+  .cases label{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;text-transform:none;}
+  .cases input[type=checkbox]{width:16px;height:16px;}
+  .btn{padding:9px 18px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;}
+  .btn:hover{opacity:0.92;}
+  .msg{font-size:12px;margin-top:8px;min-height:16px;}
+  .msg.ok{color:var(--green);} .msg.err{color:var(--red);}
+  #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+</style>
+</head>
+<body>
+
+<div id="login-screen" style="position:fixed;inset:0;background:var(--cream);z-index:99999;display:flex;align-items:center;justify-content:center;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid var(--warm);border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:var(--grey);margin-bottom:16px;">Connexion requise.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+
+<div id="entete"></div>
+<div style="max-width:900px;margin:0 auto;padding:0 16px;">
+  <p style="font-size:11px;color:var(--grey);margin:-8px 0 12px;">Déclarer l'arrivée d'un nouvel animal (trappage, dépôt, abandon, saisie, naissance à l'association)</p>
+</div>
+
+<div class="wrap">
+
+  <div class="card">
+    <h2>Nouvelle arrivée</h2>
+
+    <div class="champ">
+      <label>Nom de l'animal <span class="req">*</span></label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="arr-nom" style="flex:0 0 70%;min-width:0;">
+        <button type="button" class="btn" style="flex:0 0 30%;padding:8px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" onclick="suggererNomArrivee()">🎲 Nom aléatoire</button>
+      </div>
+    </div>
+
+    <div class="ligne3">
+      <div class="champ">
+        <label>Type d'animal <span class="req">*</span></label>
+        <select id="arr-espece">
+          <option value="chat" selected>Chat</option>
+          <option value="chien">Chien</option>
+          <option value="lapin">Lapin</option>
+          <option value="autre">Autre</option>
+        </select>
+      </div>
+      <div class="champ">
+        <label>Sexe</label>
+        <select id="arr-sexe">
+          <option value="">— Inconnu —</option>
+          <option value="F">Femelle</option>
+          <option value="M">Mâle</option>
+        </select>
+      </div>
+      <div class="champ">
+        <label>Date de naissance</label>
+        <input type="date" id="arr-date-naissance">
+      </div>
+    </div>
+
+    <div class="ligne2">
+      <div class="champ">
+        <label>Origine <span class="req">*</span></label>
+        <select id="arr-origine">
+          <option value="">— Choisir —</option>
+          <option value="trappage">Trappage</option>
+          <option value="depot">Dépôt</option>
+          <option value="abandon">Abandon</option>
+          <option value="saisie">Saisie</option>
+          <option value="ne_a_association">Né à l'association</option>
+        </select>
+      </div>
+      <div class="champ">
+        <label>Date d'arrivée <span class="req">*</span></label>
+        <input type="date" id="arr-date">
+      </div>
+    </div>
+
+    <div class="ligne2">
+      <div class="champ">
+        <label>Couleur <span class="req">*</span></label>
+        <input type="text" id="arr-couleur">
+      </div>
+      <div class="champ">
+        <label>Puce</label>
+        <input type="text" id="arr-puce">
+      </div>
+    </div>
+
+    <div class="champ">
+      <label>Saisi par <span class="req">*</span></label>
+      <select id="arr-saisi-par"><option value="">Chargement…</option></select>
+    </div>
+
+    <div class="champ">
+      <label>Déjà fait à l'arrivée</label>
+      <div class="cases">
+        <label><input type="checkbox" id="arr-sterilise"> Stérilisé</label>
+        <label><input type="checkbox" id="arr-vermifuge"> Vermifugé</label>
+        <label><input type="checkbox" id="arr-antipuce"> Antipuce</label>
+      </div>
+    </div>
+
+    <div class="ligne2">
+      <div class="champ">
+        <label>Nom de la personne à l'origine (ex. trappeur)</label>
+        <input type="text" id="arr-nom-personne">
+      </div>
+      <div class="champ">
+        <label>Prénom</label>
+        <input type="text" id="arr-prenom-personne">
+      </div>
+    </div>
+    <div class="champ">
+      <label>Motif / précisions</label>
+      <input type="text" id="arr-motif">
+    </div>
+    <div class="champ">
+      <label>Autre info</label>
+      <textarea id="arr-autre-info" placeholder="Toute autre information utile sur l'animal…"></textarea>
+    </div>
+
+    <button type="button" class="btn" onclick="declarerArrivee()">Enregistrer l'arrivée</button>
+    <div id="arr-msg" class="msg"></div>
+  </div>
+
+  <p style="font-size:12px;"><a href="statuts_animaux.html">→ Faire évoluer le statut d'un animal déjà connu</a></p>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script src="noms-chats.js"></script>
+<script>
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+
+document.addEventListener('DOMContentLoaded', function() {
+  creerEntete({ dateId: 'dateRef', dateLabel: 'Date :', titre: 'Nouvelle arrivée' });
+  chargerListeSaisisseurs('arr-saisi-par');
+  document.getElementById('arr-date').valueAsDate = new Date();
+});
+
+async function suggererNomArrivee() {
+  const champ = document.getElementById('arr-nom');
+  const nom = await proposerNomAleatoireChat(champ.value.trim());
+  if (nom) champ.value = nom;
+  else alert("Impossible de proposer un nom pour l'instant (réessayez, ou saisissez-en un vous-même).");
+}
+
+async function declarerArrivee() {
+  const msg = document.getElementById('arr-msg');
+  msg.textContent = ''; msg.className = 'msg';
+
+  const nom = document.getElementById('arr-nom').value.trim();
+  const origine = document.getElementById('arr-origine').value;
+  const date = document.getElementById('arr-date').value;
+  const couleur = document.getElementById('arr-couleur').value.trim();
+  const saisiPar = document.getElementById('arr-saisi-par').value;
+
+  if (!nom) { msg.textContent = 'Le nom est obligatoire.'; msg.className = 'msg err'; return; }
+  if (!origine) { msg.textContent = "L'origine est obligatoire."; msg.className = 'msg err'; return; }
+  if (!couleur) { msg.textContent = 'La couleur est obligatoire.'; msg.className = 'msg err'; return; }
+  if (!saisiPar) { msg.textContent = '"Saisi par" est obligatoire.'; msg.className = 'msg err'; return; }
+
+  const { data, error } = await supabaseClient.rpc('creer_arrivee_animal', {
+    p_nom_usuel: nom,
+    p_origine_arrivee: origine,
+    p_date_arrivee: date || null,
+    p_couleur: couleur,
+    p_date_naissance: document.getElementById('arr-date-naissance').value || null,
+    p_puce: document.getElementById('arr-puce').value.trim() || null,
+    p_nom_personne: document.getElementById('arr-nom-personne').value.trim() || null,
+    p_prenom_personne: document.getElementById('arr-prenom-personne').value.trim() || null,
+    p_motif: document.getElementById('arr-motif').value.trim() || null,
+    p_saisi_par_id: saisiPar,
+    p_sexe: document.getElementById('arr-sexe').value || null,
+    p_espece: document.getElementById('arr-espece').value || 'chat',
+    p_sterilise: document.getElementById('arr-sterilise').checked,
+    p_vermifuge: document.getElementById('arr-vermifuge').checked,
+    p_antipuce: document.getElementById('arr-antipuce').checked,
+    p_autre_info: document.getElementById('arr-autre-info').value.trim() || null
+  });
+
+  if (error) { msg.textContent = 'Erreur : ' + error.message; msg.className = 'msg err'; return; }
+
+  msg.textContent = 'Arrivée enregistrée.';
+  msg.className = 'msg ok';
+  invaliderCacheNomsAnimauxPresents();
+
+  ['arr-nom','arr-couleur','arr-puce','arr-nom-personne','arr-prenom-personne','arr-motif','arr-date-naissance','arr-autre-info']
+    .forEach(function(id) { document.getElementById(id).value = ''; });
+  document.getElementById('arr-sexe').value = '';
+  document.getElementById('arr-espece').value = 'chat';
+  document.getElementById('arr-origine').value = '';
+  document.getElementById('arr-saisi-par').value = '';
+  document.getElementById('arr-sterilise').checked = false;
+  document.getElementById('arr-vermifuge').checked = false;
+  document.getElementById('arr-antipuce').checked = false;
+  document.getElementById('arr-date').valueAsDate = new Date();
+}
+</script>
+</body>
+</html>
