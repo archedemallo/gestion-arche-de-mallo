@@ -114,11 +114,6 @@
     </div>
 
     <div class="champ">
-      <label>Saisi par <span class="req">*</span></label>
-      <select id="arr-saisi-par"><option value="">Chargement…</option></select>
-    </div>
-
-    <div class="champ">
       <label>Déjà fait à l'arrivée</label>
       <div class="cases">
         <label><input type="checkbox" id="arr-sterilise"> Stérilisé</label>
@@ -164,7 +159,7 @@ initSessionSuivi();
 
 document.addEventListener('DOMContentLoaded', function() {
   creerEntete({ dateId: 'dateRef', dateLabel: 'Date :', titre: 'Nouvelle arrivée' });
-  chargerListeSaisisseurs('arr-saisi-par');
+  chargerListeSaisisseurs();
   document.getElementById('arr-date').valueAsDate = new Date();
 });
 
@@ -183,7 +178,7 @@ async function declarerArrivee() {
   const origine = document.getElementById('arr-origine').value;
   const date = document.getElementById('arr-date').value;
   const couleur = document.getElementById('arr-couleur').value.trim();
-  const saisiPar = document.getElementById('arr-saisi-par').value;
+  const saisiPar = document.getElementById('saisiPar').value;
 
   if (!nom) { msg.textContent = 'Le nom est obligatoire.'; msg.className = 'msg err'; return; }
   if (!origine) { msg.textContent = "L'origine est obligatoire."; msg.className = 'msg err'; return; }
@@ -220,7 +215,7 @@ async function declarerArrivee() {
   document.getElementById('arr-sexe').value = '';
   document.getElementById('arr-espece').value = 'chat';
   document.getElementById('arr-origine').value = '';
-  document.getElementById('arr-saisi-par').value = '';
+  document.getElementById('saisiPar').value = '';
   document.getElementById('arr-sterilise').checked = false;
   document.getElementById('arr-vermifuge').checked = false;
   document.getElementById('arr-antipuce').checked = false;
