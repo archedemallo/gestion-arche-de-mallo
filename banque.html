@@ -676,6 +676,7 @@ async function voirRapprochement(id) {
     document.getElementById('vent-search').value = '';
     document.getElementById('vent-err').classList.add('hidden');
     renderVentLignes();
+    rechercherVentilation();
   }
 }
 function closeRapprochement() { document.getElementById('modal-rappr').classList.add('hidden'); rapprBankId = null; }
