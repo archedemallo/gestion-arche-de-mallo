@@ -537,6 +537,7 @@ function openLierSuivi(detailId) {
   document.getElementById('ls-search').value = '';
   document.getElementById('ls-resultats').innerHTML = '';
   document.getElementById('modal-lier-suivi').classList.remove('hidden');
+  rechercherLierSuivi();
 }
 function closeLierSuivi() { document.getElementById('modal-lier-suivi').classList.add('hidden'); lierSuiviDetailId = null; }
 let lsSearchTimer = null;
