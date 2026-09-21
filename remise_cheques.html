@@ -341,7 +341,7 @@ async function loadData() {
 }
 function renderKPIs() {
   const per = document.getElementById('fl-per')?.value;
-  const rows = allRemises.filter(r => r.periode === per);
+  const rows = allRemises.filter(r => periodeNormaliser(r.periode) === periodeNormaliser(per));
   const att = rows.filter(r => r.statut === 'en_attente');
   const enc = rows.filter(r => r.statut === 'encaissee');
   document.getElementById('kpi-bar').innerHTML = `
@@ -360,7 +360,7 @@ function renderTable() {
   const mMin = document.getElementById('fl-montant-min')?.value;
   const mMax = document.getElementById('fl-montant-max')?.value;
 
-  const perRows = allRemises.filter(r => r.periode === per);
+  const perRows = allRemises.filter(r => periodeNormaliser(r.periode) === periodeNormaliser(per));
   const detailsDe = r => allDetails.filter(d => d.remise_id === r.id);
   let rows = perRows;
   if (statutF) rows = rows.filter(r => r.statut === statutF);
@@ -447,7 +447,7 @@ function switchMainTab(tab) {
 }
 function updateTabBadges() {
   const per = document.getElementById('fl-per')?.value;
-  const remisesPer = allRemises.filter(r => r.periode === per);
+  const remisesPer = allRemises.filter(r => periodeNormaliser(r.periode) === periodeNormaliser(per));
   const chequesPer = remisesPer.reduce((s, r) => s + allDetails.filter(d => d.remise_id === r.id).length, 0);
   const b1 = document.getElementById('badge-tab-remises'); if (b1) b1.textContent = remisesPer.length;
   const b2 = document.getElementById('badge-tab-cheques'); if (b2) b2.textContent = chequesPer;
@@ -469,7 +469,7 @@ function renderDetailCheques() {
   const dFrom = document.getElementById('dc-date-from')?.value || '';
   const dTo   = document.getElementById('dc-date-to')?.value || '';
 
-  const remisesPer = allRemises.filter(r => r.periode === per);
+  const remisesPer = allRemises.filter(r => periodeNormaliser(r.periode) === periodeNormaliser(per));
   const remiseById = Object.fromEntries(remisesPer.map(r => [r.id, r]));
   let lignes = allDetails.filter(d => remiseById[d.remise_id]);
 
