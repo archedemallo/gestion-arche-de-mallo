@@ -534,12 +534,18 @@ function typesDisponibles() {
   const set = new Set();
   allCaisse.forEach(r => r.type_mouvement && set.add(r.type_mouvement));
   allBanque.forEach(r => r.type_mouvement && set.add(r.type_mouvement));
+  allCheques.forEach(r => r.type_mouvement && set.add(r.type_mouvement));
+  allRemiseDetails.forEach(r => r.type_mouvement && set.add(r.type_mouvement));
+  allFactures.forEach(r => r.categorie && set.add(r.categorie));
   return [...set].sort((a,b)=>a.localeCompare(b,'fr'));
 }
 function descriptionsDisponibles() {
   const set = new Set();
   allCaisse.forEach(r => r.description && set.add(r.description));
   allBanque.forEach(r => r.description && set.add(r.description));
+  allCheques.forEach(r => r.description && set.add(r.description));
+  allRemiseDetails.forEach(r => r.description && set.add(r.description));
+  allFactures.forEach(r => r.description && set.add(r.description));
   return [...set].sort((a,b)=>a.localeCompare(b,'fr'));
 }
 function renderAgConfigPanel() {
