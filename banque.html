@@ -205,6 +205,30 @@
   </div>
 </div>
 
+<!-- MODAL VENTILATION -->
+<div class="modal-overlay hidden" id="modal-ventilation">
+  <div class="modal" style="width:640px;">
+    <div class="modal-header"><span class="modal-title"><i class="ti ti-git-merge"></i> Lier à un/des enregistrement(s) Suivi</span><button class="modal-close" onclick="closeVentilation()">×</button></div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;" id="vent-info"></div>
+      <div class="form-group"><input type="text" id="vent-search" class="f-input" style="width:100%;" placeholder="Rechercher par nom (adhésion, don, adoption, réservation)…" oninput="rechercherVentilation()"></div>
+      <div id="vent-resultats" style="max-height:160px;overflow-y:auto;margin-bottom:12px;"></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Répartition</div>
+      <div id="vent-lignes" style="margin-bottom:8px;"></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding-top:8px;border-top:0.5px solid var(--border);">
+        <span>Total ventilé</span>
+        <span id="vent-total" style="font-weight:600;">0,00 €</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);">
+        <span>Montant du mouvement</span>
+        <span id="vent-montant-mouvement">—</span>
+      </div>
+      <div id="vent-err" class="hidden" style="color:var(--red);font-size:11px;padding:6px 0;"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="closeVentilation()">Annuler</button><button class="btn btn-primary btn-sm" onclick="confirmVentilation()"><i class="ti ti-check"></i> Enregistrer la ventilation</button></div>
+  </div>
+</div>
+
 <!-- MODAL RAPPROCHEMENT -->
 <div class="modal-overlay hidden" id="modal-rappr">
   <div class="modal">
@@ -291,7 +315,7 @@ async function loadData() {
 
 async function renderKPIs() {
   const per = document.getElementById('fl-per')?.value;
-  const rows = allRows.filter(r => r.periode === per);
+  const rows = allRows.filter(r => periodeNormaliser(r.periode) === periodeNormaliser(per));
   const inn = rows.reduce((s,r) => s + (parseFloat(r.credit)||0), 0);
   const out = rows.reduce((s,r) => s + (parseFloat(r.debit)||0), 0);
   const { data: soldeRow } = await supabaseClient.from('soldes').select('montant').eq('periode', per).eq('compte', 'banque').eq('type_solde', 'initial').maybeSingle();
@@ -332,7 +356,7 @@ function renderTable() {
 
   const bordereauDe = r => r.ref_remise ? (remisesMap[r.ref_remise] || '') : '';
 
-  const perRows = allRows.filter(r => r.periode === per);
+  const perRows = allRows.filter(r => periodeNormaliser(r.periode) === periodeNormaliser(per));
   let rows = perRows;
   if (typeF)  rows = rows.filter(r => r.type_mouvement === typeF);
   if (descF)  rows = rows.filter(r => r.description === descF);
@@ -419,7 +443,9 @@ function renderTable() {
           ? `<span class="lock-icon"><i class="ti ti-lock"></i></span>`
           : `<button class="edit-btn" onclick="openEdit('${r.id}')" title="Modifier"><i class="ti ti-pencil"></i></button>
              <button class="del-btn" onclick="openDel('${r.id}')" title="Supprimer"><i class="ti ti-trash"></i></button>
-             <button class="edit-btn" onclick="voirRapprochement('${r.id}')" title="Rapprochement (chèque/facture/remise/caisse/Suivi)"><i class="ti ti-link"></i></button>`)
+             ${rapproche
+                ? `<button class="edit-btn" onclick="voirRapprochement('${r.id}')" title="Voir le rapprochement (chèque/remise/Suivi)"><i class="ti ti-link"></i></button>`
+                : `<button class="edit-btn" onclick="openVentilation('${r.id}','${escH(r.libelle||'')}',${parseFloat(r.credit||r.debit)||0})" title="Lier à un/des enregistrement(s) Suivi"><i class="ti ti-git-merge"></i></button>`}`)
           : (rapproche ? `<i class="ti ti-link" style="color:var(--text-3);" title="Rapproché"></i>` : '')}
       </td>
     </tr>`;
@@ -562,31 +588,12 @@ let rapprBankId = null; // mouvement actuellement ouvert dans le panneau Rapproc
 async function voirRapprochement(id) {
   const r = allRows.find(x => x.id === id); if (!r) return;
   rapprBankId = id;
-  ventMouvementId = id; ventMontantMouvement = parseFloat(r.credit || r.debit) || 0; ventLignes = [];
   const lignes = [];
   if (r.ref_cheque) {
-    const { data: chq } = await supabaseClient.from('cheques').select('numero_cheque, montant').eq('id', r.ref_cheque).maybeSingle();
-    lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);"><span>Chèque encaissé ${chq?'— N°'+escH(chq.numero_cheque)+' — '+fmt(chq.montant):''}</span><button class="btn btn-danger btn-sm" onclick="delier('cheque','${r.id}')">Délier</button></div>`);
+    lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);"><span>Chèque encaissé</span><button class="btn btn-danger btn-sm" onclick="delier('cheque','${r.id}')">Délier</button></div>`);
   }
-  if (r.ref_remise) {
-    const { data: rem } = await supabaseClient.from('remises_cheques').select('montant_total').eq('id', r.ref_remise).maybeSingle();
-    lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);"><span>Remise de chèques ${remisesMap[r.ref_remise]?'— '+escH(remisesMap[r.ref_remise]):''} ${rem?'— '+fmt(rem.montant_total):''}</span><button class="btn btn-danger btn-sm" onclick="delier('remise','${r.id}')">Délier</button></div>`);
-  }
-  const { data: suiviLiens } = await supabaseClient.from('banque_mouvement_suivi_liens').select('id, montant, adhesion:adhesions(personnes(nom,prenom,raison_sociale)), don:dons(personnes(nom,prenom,raison_sociale)), adoption:adoptions(personnes(nom,prenom,raison_sociale)), reservation:reservations(personnes(nom,prenom,raison_sociale)), materiel:materiel_mouvements(materiel, personnes(nom,prenom,raison_sociale))').eq('banque_mouvement_id', id);
-  const labelSuiviLien = l => {
-    if (l.adhesion) return 'Adhésion — ' + nomPersonne(l.adhesion.personnes);
-    if (l.don) return 'Don — ' + nomPersonne(l.don.personnes);
-    if (l.adoption) return 'Adoption — ' + nomPersonne(l.adoption.personnes);
-    if (l.reservation) return 'Réservation — ' + nomPersonne(l.reservation.personnes);
-    if (l.materiel) return 'Prêt matériel — ' + nomPersonne(l.materiel.personnes) + ' — ' + (l.materiel.materiel||'');
-    return 'Lien Suivi';
-  };
-  if (suiviLiens && suiviLiens.length) {
-    lignes.push(`<div style="padding:6px 0;border-bottom:0.5px solid var(--border);">
-      <div style="display:flex;justify-content:space-between;align-items:center;"><span>Enregistrement(s) Suivi (ventilation)</span><button class="btn btn-danger btn-sm" onclick="delier('suivi','${r.id}')">Tout délier</button></div>
-      ${suiviLiens.map(l => `<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-2);padding:2px 0 2px 10px;"><span>${escH(labelSuiviLien(l))}</span><span>${fmt(l.montant)}</span></div>`).join('')}
-    </div>`);
-  }
+  if (r.ref_remise) lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);"><span>Remise de chèques ${remisesMap[r.ref_remise]?'— '+escH(remisesMap[r.ref_remise]):''}</span><button class="btn btn-danger btn-sm" onclick="delier('remise','${r.id}')">Délier</button></div>`);
+  if (r.suivi_ref) lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);"><span>Enregistrement(s) Suivi (ventilation)</span><button class="btn btn-danger btn-sm" onclick="delier('suivi','${r.id}')">Délier</button></div>`);
 
   document.getElementById('rappr-body').innerHTML = lignes.join('') || '<div style="color:var(--text-3);font-size:12px;">Aucun rapprochement</div>';
   document.getElementById('modal-rappr').classList.remove('hidden');
@@ -650,28 +657,7 @@ async function voirRapprochement(id) {
     </div>
   </div>`);
 
-  extra.push(`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);">
-    <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;"><i class="ti ti-git-merge"></i> Lier à une ligne Suivi (don, adhésion, adoption, réservation…)</div>
-    <div class="form-group"><input type="text" id="vent-search" class="f-input" style="width:100%;" placeholder="Rechercher par nom…" oninput="rechercherVentilation()"></div>
-    <div id="vent-resultats" style="max-height:140px;overflow-y:auto;margin-bottom:8px;"></div>
-    <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:4px;">Répartition à ajouter</div>
-    <div id="vent-lignes" style="margin-bottom:6px;"></div>
-    <div style="display:flex;justify-content:space-between;font-size:11px;padding-top:6px;border-top:0.5px solid var(--border);">
-      <span>Total ventilé</span><span id="vent-total" style="font-weight:600;">0,00 €</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);margin-bottom:6px;">
-      <span>Montant du mouvement</span><span id="vent-montant-mouvement">${fmt(ventMontantMouvement)}</span>
-    </div>
-    <div id="vent-err" class="hidden" style="color:var(--red);font-size:11px;padding:4px 0;"></div>
-    <button class="btn btn-primary btn-sm" onclick="confirmVentilation()"><i class="ti ti-check"></i> Enregistrer la ventilation</button>
-  </div>`);
-
-  if (rapprBankId === id) {
-    document.getElementById('rappr-body').innerHTML += extra.join('');
-    document.getElementById('vent-search').value = '';
-    document.getElementById('vent-err').classList.add('hidden');
-    renderVentLignes();
-  }
+  if (rapprBankId === id) document.getElementById('rappr-body').innerHTML += extra.join('');
 }
 function closeRapprochement() { document.getElementById('modal-rappr').classList.add('hidden'); rapprBankId = null; }
 
@@ -718,6 +704,17 @@ async function delierCaisseRapprochement(caisseId) {
 // fonctionnait).
 // ============================================================
 let ventMouvementId = null, ventMontantMouvement = 0, ventLignes = [];
+function openVentilation(id, libelle, montant) {
+  ventMouvementId = id; ventMontantMouvement = montant; ventLignes = [];
+  document.getElementById('vent-info').textContent = libelle + ' — ' + fmt(montant);
+  document.getElementById('vent-search').value = '';
+  document.getElementById('vent-resultats').innerHTML = '';
+  document.getElementById('vent-err').classList.add('hidden');
+  document.getElementById('vent-montant-mouvement').textContent = fmt(montant);
+  renderVentLignes();
+  document.getElementById('modal-ventilation').classList.remove('hidden');
+}
+function closeVentilation() { document.getElementById('modal-ventilation').classList.add('hidden'); }
 
 let ventSearchTimer = null;
 function rechercherVentilation() {
@@ -764,12 +761,11 @@ async function confirmVentilation() {
   try {
     const { error } = await supabaseClient.rpc('lier_banque_suivi', { p_banque_mouvement_id: ventMouvementId, p_liens: liens });
     if (error) throw error;
-    showToast('Ventilation enregistrée !'); await loadData(); await voirRapprochement(rapprBankId);
+    closeVentilation(); showToast('Ventilation enregistrée !'); await loadData();
   } catch(e) { const el=document.getElementById('vent-err'); el.textContent='Erreur : '+e.message; el.classList.remove('hidden'); }
 }
 
 function fmt(v) { if (v===null||v===undefined||v==='') return '—'; return parseFloat(v).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
-function nomPersonne(p) { if (!p) return '?'; return (p.prenom?p.prenom+' ':'') + (p.nom || p.raison_sociale || '?'); }
 function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
 function showErr(m) { const e=document.getElementById('form-err'); e.textContent=m; e.classList.remove('hidden'); }
 function showToast(m) { const t=document.createElement('div'); t.className='success-toast'; t.textContent=m; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
