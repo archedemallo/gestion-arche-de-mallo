@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Caisse — Compta Arche de Mallo</title>
+<title>Banque — Compta Arche de Mallo</title>
 <link rel="stylesheet" href="compta-style.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
-  .form-title{font-size:13px;font-weight:600;margin-bottom:14px;padding-bottom:10px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .form-title{font-size:13px;font-weight:600;margin-bottom:14px;padding-bottom:10px;border-bottom:0.5px solid var(--border);}
   .form-group{margin-bottom:10px;}
   .form-label{display:block;font-size:10px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;}
   .form-label.req::after{content:' *';color:var(--red);}
@@ -16,8 +16,8 @@
   .list-head{padding:12px 16px;border-bottom:0.5px solid var(--border);}
   .list-title{font-size:13px;font-weight:600;margin-bottom:8px;}
   .filters-bar{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;align-items:center;}
-  .f-select{font-size:11px;padding:4px 8px;border-radius:var(--radius-sm);border:0.5px solid var(--border-mid);background:var(--surface);color:var(--text-2);font-family:'DM Sans',sans-serif;}
-  .f-input{font-size:11px;padding:4px 10px;border-radius:var(--radius-sm);border:0.5px solid var(--border-mid);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;}
+  .f-select{font-size:11px;padding:4px 8px;border-radius:var(--radius-sm);border:0.5px solid var(--border-mid);background:var(--surface);}
+  .f-input{font-size:11px;padding:4px 10px;border-radius:var(--radius-sm);border:0.5px solid var(--border-mid);background:var(--surface);}
   .kpi-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;}
   .kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px 14px;}
   .kpi-label{font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;}
@@ -26,15 +26,13 @@
   .tbl-scroll-body{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 300px);}
   table{border-collapse:collapse;font-size:11px;min-width:100%;}
   thead th{text-align:left;font-size:9px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.6px;padding:7px 10px;border-bottom:0.5px solid var(--border);background:var(--surface-2);cursor:pointer;white-space:nowrap;position:sticky;top:0;}
-  thead th:hover{background:var(--warm);}
   tbody td{padding:7px 10px;border-bottom:0.5px solid var(--border);vertical-align:middle;}
   tbody tr:hover{background:var(--cream);}
   tbody tr.verified-row{background:rgba(59,109,17,0.04);}
-  tbody tr.verified-row td{color:var(--text-3);}
   .r{text-align:right;font-variant-numeric:tabular-nums;}
   .amount-c{color:var(--green);} .amount-d{color:var(--red);}
   .chip{font-size:9px;padding:2px 7px;border-radius:10px;border:0.5px solid;white-space:nowrap;}
-  .chip-brd,.chip-suivi{font-size:9px;padding:1px 6px;border-radius:8px;background:var(--warm);border:0.5px solid var(--border-mid);}
+  .chip-link{font-size:9px;padding:1px 6px;border-radius:8px;background:var(--warm);border:0.5px solid var(--border-mid);white-space:nowrap;}
   .edit-btn,.del-btn,.flag-btn,.search-btn{background:none;border:none;cursor:pointer;font-size:13px;padding:0 3px;color:var(--text-2);}
   .del-btn{color:var(--red);} .flag-btn.on,.search-btn.on{color:var(--green);}
   .lock-icon{font-size:12px;color:var(--green);}
@@ -43,7 +41,7 @@
   .sens-btn.credit.active{background:var(--green);color:white;border-color:var(--green);}
   .sens-btn.debit.active{background:var(--red);color:white;border-color:var(--red);}
   .modal-overlay{position:fixed;inset:0;background:rgba(61,43,31,0.35);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
-  .modal{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;}
+  .modal{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);width:540px;max-width:95vw;max-height:90vh;overflow-y:auto;}
   .modal-header{padding:14px 18px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
   .modal-title{font-size:13px;font-weight:600;}
   .modal-close{background:none;border:none;font-size:18px;color:var(--text-3);cursor:pointer;}
@@ -52,18 +50,17 @@
   .confirm-detail{margin-top:10px;padding:10px;background:var(--red-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--red);}
   .success-toast{position:fixed;bottom:20px;right:20px;background:var(--green);color:white;padding:10px 18px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;z-index:999;}
   .hidden{display:none!important;}
+  .info-box{background:var(--blue-bg);border:0.5px solid rgba(24,95,165,0.15);border-radius:var(--radius-sm);padding:8px 12px;font-size:11px;color:var(--blue);margin-bottom:12px;}
   #login-screen{max-width:340px;margin:80px auto;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:28px;}
-  #login-screen h1{font-size:16px;margin-bottom:4px;}
-  #login-screen p{font-size:12px;color:var(--text-3);margin-bottom:16px;}
-  #login-screen input{width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;}
+  #login-screen input{width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-size:13px;}
   #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
 </style>
 </head>
 <body>
 
 <div id="login-screen">
-  <h1>Compta — L'Arche de Mallo</h1>
-  <p>Connexion requise.</p>
+  <h1 style="font-size:16px;">Compta — L'Arche de Mallo</h1>
+  <p style="font-size:12px;color:var(--text-3);margin-bottom:16px;">Connexion requise.</p>
   <input type="email" id="login-email" placeholder="Email">
   <input type="password" id="login-password" placeholder="Mot de passe">
   <div id="login-err"></div>
@@ -83,9 +80,9 @@
   <a class="nav-item" href="journal.html"><i class="ti ti-notebook"></i>Journal</a>
 
   <div class="nav-section">Opérations</div>
-  <a class="nav-item active" href="caisse.html"><i class="ti ti-cash"></i>Caisse</a>
+  <a class="nav-item" href="caisse.html"><i class="ti ti-cash"></i>Caisse</a>
   <a class="nav-item" href="caisse_physique.html"><i class="ti ti-coin"></i>Caisse physique</a>
-  <a class="nav-item" href="banque.html"><i class="ti ti-building-bank"></i>Banque</a>
+  <a class="nav-item active" href="banque.html"><i class="ti ti-building-bank"></i>Banque</a>
   <a class="nav-item" href="cheques.html"><i class="ti ti-checkbook"></i>Chèques</a>
   <a class="nav-item" href="remise_cheques.html"><i class="ti ti-file-invoice"></i>Remises de chèques</a>
   <a class="nav-item" href="import_rapprochement.html"><i class="ti ti-arrows-exchange"></i>Import / rapprochement</a>
@@ -107,7 +104,7 @@
 </aside>
 <div class="main">
   <div class="topbar">
-    <div class="topbar-title"><i class="ti ti-cash" style="color:var(--orange)"></i> Caisse — Opérations</div>
+    <div class="topbar-title"><i class="ti ti-building-bank" style="color:var(--orange)"></i> Banque</div>
     <div class="topbar-right" style="display:flex;align-items:center;gap:14px;">
       <span style="font-size:11px;color:var(--text-3);" id="topbar-user"></span>
       <button class="btn btn-secondary btn-sm" onclick="seDeconnecter()">Déconnexion</button>
@@ -115,22 +112,15 @@
   </div>
   <div class="page-content">
 
-    <div class="form-group" style="max-width:200px;margin-bottom:14px;">
-      <label class="form-label">Caisse</label>
-      <select id="f-caisse" onchange="onCaisseChange()">
-        <option value="caisse1">Caisse 1</option>
-        <option value="caisse2">Caisse 2</option>
-      </select>
-    </div>
-
     <div class="kpi-bar" id="kpi-bar"></div>
 
     <div class="list-card">
       <div class="list-head">
         <div class="list-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-          <span id="list-title">Opérations — Caisse 1</span>
-          <button class="btn btn-primary btn-sm" id="btn-new" onclick="openNewOp()"><i class="ti ti-plus"></i> Nouvelle opération</button>
+          <span>Opérations bancaires</span>
+          <a class="btn btn-secondary btn-sm" href="import_rapprochement.html" style="text-decoration:none;"><i class="ti ti-arrows-exchange"></i> Import banque</a>
         </div>
+        <div class="info-box" style="margin:8px 0 10px;"><i class="ti ti-info-circle"></i> Les opérations bancaires ne se saisissent pas à la main : elles arrivent uniquement par <a href="import_rapprochement.html" style="color:inherit;text-decoration:underline;">Import / rapprochement</a>. Les lignes existantes restent modifiables ici.</div>
         <div class="filters-bar">
           <select class="f-select" id="fl-per" onchange="onFilterChange()"></select>
           <input class="f-input" type="text" id="fl-search" placeholder="Rechercher…" oninput="renderTable()">
@@ -140,31 +130,32 @@
             <option value="">Débits + Crédits</option><option value="credit">Crédits</option><option value="debit">Débits</option>
           </select>
           <select class="f-select" id="fl-flag" onchange="renderTable()">
-            <option value="">Toutes lignes</option><option value="a_verifier">À vérifier</option><option value="verifie">Vérifiées</option>
+            <option value="">Toutes lignes</option><option value="verifie">Vérifiées</option><option value="non-verifie">Non vérifiées</option>
           </select>
           <select class="f-select" id="fl-chat" onchange="renderTable()"><option value="">Tous chats</option></select>
           <select class="f-select" id="fl-recu" onchange="renderTable()"><option value="">Tous reçus</option></select>
           <select class="f-select" id="fl-bordereau" onchange="renderTable()"><option value="">Tous bordereaux</option></select>
           <input class="f-input" type="date" id="fl-date-from" onchange="renderTable()" title="Du">
           <input class="f-input" type="date" id="fl-date-to" onchange="renderTable()" title="Au">
+          <input class="f-input" type="number" step="0.01" id="fl-montant-min" placeholder="Montant min" style="width:90px;" oninput="renderTable()">
+          <input class="f-input" type="number" step="0.01" id="fl-montant-max" placeholder="Montant max" style="width:90px;" oninput="renderTable()">
           <button class="btn btn-secondary btn-sm" onclick="clearFilters()"><i class="ti ti-x"></i> Effacer</button>
         </div>
       </div>
       <div class="tbl-scroll-body" id="table-wrap">
-        <div style="padding:32px;text-align:center;color:var(--text-3);"><i class="ti ti-loader-2"></i> Chargement…</div>
+        <div style="padding:32px;text-align:center;color:var(--text-3);">Chargement…</div>
       </div>
     </div>
   </div>
 </div>
 </div>
 
-<!-- MODAL NOUVELLE OPÉRATION / MODIFIER -->
+<!-- MODAL MODIFIER UNE OPÉRATION
+     (la création manuelle a été retirée : en Banque, les nouvelles lignes
+     arrivent uniquement via Import / rapprochement) -->
 <div class="modal-overlay hidden" id="modal-newop">
   <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title"><i class="ti ti-plus"></i> <span id="form-mode-lbl">Nouvelle opération</span></span>
-      <button class="modal-close" onclick="closeNewOp()">×</button>
-    </div>
+    <div class="modal-header"><span class="modal-title" id="form-mode-lbl">Modifier l'opération</span><button class="modal-close" onclick="closeNewOp()">×</button></div>
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">Sens</label>
@@ -176,31 +167,26 @@
       <div class="form-group"><label class="form-label">Période</label><select id="f-per"></select></div>
       <div class="form-row-2">
         <div class="form-group"><label class="form-label req">Date</label><input type="date" id="f-date"></div>
-        <div class="form-group"><label class="form-label req">Montant (€)</label><input type="number" id="f-montant" step="0.01" min="0" placeholder="0,00"></div>
+        <div class="form-group"><label class="form-label req">Montant (€)</label><input type="number" id="f-montant" step="0.01" min="0"></div>
       </div>
       <div class="form-group"><label class="form-label req">Libellé</label><input type="text" id="f-libelle" placeholder="Nom, description courte"></div>
-      <div class="form-group">
-        <label class="form-label req">Type de mouvement</label>
-        <select id="f-type" onchange="onTypeChange()"></select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Description</label>
-        <select id="f-desc"><option value="">— Choisir un type d'abord —</option></select>
-      </div>
-      <div class="form-group"><label class="form-label">Fournisseur</label><select id="f-fourn"></select></div>
-      <div class="form-group"><label class="form-label">Libellé complémentaire</label><input type="text" id="f-libelle-comp" placeholder="Précisions libres…"></div>
+      <div class="form-group"><label class="form-label req">Type de mouvement</label><select id="f-type" onchange="onTypeChange()"></select></div>
+      <div class="form-group"><label class="form-label">Description</label><select id="f-desc"><option value="">— Choisir un type d'abord —</option></select></div>
       <div class="form-row-2">
-        <div class="form-group"><label class="form-label">Nom du chat</label><input type="text" id="f-chat" placeholder="Si adoption"></div>
-        <div class="form-group"><label class="form-label">N° reçu fiscal</label><input type="text" id="f-recu"></div>
+        <div class="form-group"><label class="form-label">Fournisseur</label><select id="f-fourn"></select></div>
+        <div class="form-group"><label class="form-label">Mode de règlement</label><input type="text" id="f-mode-reglement" placeholder="Virement, CB, chèque…"></div>
       </div>
-      <div class="form-group">
-        <label class="form-label"><i class="ti ti-building-bank" style="font-size:11px;"></i> N° bordereau remise banque</label>
-        <input type="text" id="f-bordereau" placeholder="Ex: RB-2026-001">
+      <div class="form-group"><label class="form-label">Libellé complémentaire</label><input type="text" id="f-libelle-comp"></div>
+      <div class="form-row-2">
+        <div class="form-group"><label class="form-label">Nom du chat</label><input type="text" id="f-chat"></div>
+        <div class="form-group"><label class="form-label">N° facture</label><input type="text" id="f-facture"></div>
       </div>
+      <div class="form-group"><label class="form-label">N° reçu fiscal don</label><input type="text" id="f-recu-fiscal"></div>
+
       <div id="form-err" class="hidden" style="color:var(--red);font-size:11px;padding:6px 0;margin-top:4px;"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="resetForm()"><i class="ti ti-refresh"></i> Vider</button>
+      <button class="btn btn-secondary" onclick="closeNewOp()">Annuler</button>
       <button class="btn btn-primary" id="btn-submit" onclick="submitForm()"><i class="ti ti-device-floppy"></i> Enregistrer</button>
     </div>
   </div>
@@ -209,46 +195,31 @@
 <!-- MODAL FLAG -->
 <div class="modal-overlay hidden" id="modal-flag">
   <div class="modal">
-    <div class="modal-header"><span class="modal-title"><i class="ti ti-flag" style="color:var(--orange)"></i> Annoter la ligne</span><button class="modal-close" onclick="closeFlag()">×</button></div>
+    <div class="modal-header"><span class="modal-title">Annoter la ligne</span><button class="modal-close" onclick="closeFlag()">×</button></div>
     <div class="modal-body">
       <div style="font-size:12px;color:var(--text-2);margin-bottom:12px;" id="flag-info"></div>
-      <div class="form-group"><label class="form-label">Commentaire</label><textarea id="flag-comment" rows="3" placeholder="Info à vérifier…" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:11px;"></textarea></div>
+      <div class="form-group"><label class="form-label">Commentaire</label><textarea id="flag-comment" rows="3" style="width:100%;box-sizing:border-box;padding:6px 8px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-size:11px;"></textarea></div>
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;margin-top:10px;"><input type="checkbox" id="flag-resolved"> Marquer comme résolu</label>
     </div>
     <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="closeFlag()">Annuler</button><button class="btn btn-primary btn-sm" onclick="saveFlag()">Enregistrer</button></div>
   </div>
 </div>
 
-<!-- MODAL VENTILATION -->
-<div class="modal-overlay hidden" id="modal-ventilation">
-  <div class="modal" style="width:640px;">
-    <div class="modal-header"><span class="modal-title"><i class="ti ti-git-merge"></i> Lier à un/des enregistrement(s) Suivi</span><button class="modal-close" onclick="closeVentilation()">×</button></div>
-    <div class="modal-body">
-      <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;" id="vent-info"></div>
-      <div class="form-group"><input type="text" id="vent-search" class="f-input" style="width:100%;" placeholder="Rechercher par nom (adhésion, don, adoption, réservation)…" oninput="rechercherVentilation()"></div>
-      <div id="vent-resultats" style="max-height:160px;overflow-y:auto;margin-bottom:12px;"></div>
-      <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Répartition</div>
-      <div id="vent-lignes" style="margin-bottom:8px;"></div>
-      <div style="display:flex;justify-content:space-between;font-size:12px;padding-top:8px;border-top:0.5px solid var(--border);">
-        <span>Total ventilé</span>
-        <span id="vent-total" style="font-weight:600;">0,00 €</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);">
-        <span>Montant du mouvement</span>
-        <span id="vent-montant-mouvement">—</span>
-      </div>
-      <div id="vent-err" class="hidden" style="color:var(--red);font-size:11px;padding:6px 0;"></div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="closeVentilation()">Annuler</button><button class="btn btn-primary btn-sm" onclick="confirmVentilation()"><i class="ti ti-check"></i> Enregistrer la ventilation</button></div>
+<!-- MODAL RAPPROCHEMENT -->
+<div class="modal-overlay hidden" id="modal-rappr">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title"><i class="ti ti-link"></i> Rapprochement</span><button class="modal-close" onclick="closeRapprochement()">×</button></div>
+    <div class="modal-body" id="rappr-body"></div>
+    <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="closeRapprochement()">Fermer</button></div>
   </div>
 </div>
 
 <!-- MODAL SUPPRIMER -->
 <div class="modal-overlay hidden" id="modal-del">
   <div class="modal">
-    <div class="modal-header"><span class="modal-title"><i class="ti ti-trash" style="color:var(--red)"></i> Supprimer</span><button class="modal-close" onclick="closeDel()">×</button></div>
-    <div class="modal-body"><div style="font-size:12px;">Êtes-vous sûr de vouloir supprimer cette opération ?</div><div class="confirm-detail" id="del-detail"></div></div>
-    <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="closeDel()">Annuler</button><button class="btn btn-danger btn-sm" onclick="confirmDel()"><i class="ti ti-trash"></i> Supprimer</button></div>
+    <div class="modal-header"><span class="modal-title">Supprimer</span><button class="modal-close" onclick="closeDel()">×</button></div>
+    <div class="modal-body"><div style="font-size:12px;">Supprimer cette opération ? Un chèque/une remise rattaché(e) sera remis en attente.</div><div class="confirm-detail" id="del-detail"></div></div>
+    <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="closeDel()">Annuler</button><button class="btn btn-danger btn-sm" onclick="confirmDel()">Supprimer</button></div>
   </div>
 </div>
 
@@ -260,14 +231,9 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
 let allRows = [], editId = null, delId = null, flagTarget = null;
 let sortCol = 'date_mouvement', sortAsc = false;
-let roleActuel = null;
-let typesEtDescriptions = []; // [{id, valeur, descriptions:[{id,valeur}]}]
-let fournisseurs = [];
+let roleActuel = null, typesEtDescriptions = [], activeSens = 'credit';
 let soldeInitialActuel = 0; // rempli par renderKPIs(), utilisé par renderTable() pour le solde cumulé
 
-// ============================================================
-// CONNEXION (identique à caisse_physique.html)
-// ============================================================
 async function seConnecter() {
   document.getElementById('login-err').textContent = '';
   const email = document.getElementById('login-email').value.trim();
@@ -277,114 +243,77 @@ async function seConnecter() {
   await demarrerApp(data.user);
 }
 async function seDeconnecter() { await supabaseClient.auth.signOut(); location.reload(); }
-
 async function demarrerApp(user) {
   const { data: profil, error } = await supabaseClient.from('profils_compta').select('role, email').eq('user_id', user.id).maybeSingle();
-  if (error || !profil) {
-    document.getElementById('login-err').textContent = "Ce compte n'est pas autorisé sur la Compta (contactez l'administrateur).";
-    await supabaseClient.auth.signOut();
-    return;
-  }
+  if (error || !profil) { document.getElementById('login-err').textContent = "Ce compte n'est pas autorisé sur la Compta."; await supabaseClient.auth.signOut(); return; }
   roleActuel = profil.role;
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  document.getElementById('topbar-user').textContent = profil.email + (roleActuel === 'lecteur' ? ' (lecture seule)' : '');
-  document.getElementById('sidebar-username').textContent = profil.email + (roleActuel === 'lecteur' ? ' (lecture seule)' : '');
+  document.getElementById('topbar-user').textContent = profil.email + (roleActuel==='lecteur' ? ' (lecture seule)' : '');
+  document.getElementById('sidebar-username').textContent = profil.email + (roleActuel==='lecteur' ? ' (lecture seule)' : '');
   document.getElementById('sidebar-avatar').textContent = (profil.email||'?').charAt(0).toUpperCase();
-  if (roleActuel === 'lecteur') document.getElementById('btn-new').style.display = 'none';
-
-  await chargerPeriodes();
-  await chargerTypesEtDescriptions();
-  await chargerFournisseurs();
+  await chargerPeriodes(); await chargerTypesEtDescriptions(); await chargerFournisseurs();
   document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
   await loadData();
 }
-(async function initSession() {
-  const { data } = await supabaseClient.auth.getSession();
-  if (data.session) await demarrerApp(data.session.user);
-})();
+(async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(data.session.user); })();
 
-// ============================================================
-// PÉRIODES (config_compta, clé 'periodes')
-// ============================================================
 // Période par défaut : définie une seule fois dans Configuration
 async function chargerPeriodes() { await initPeriodes(supabaseClient, ['f-per','fl-per']); }
-
-// ============================================================
-// TYPES / DESCRIPTIONS — cascade : la description proposée dépend du
-// type choisi (nouveauté demandée, absente de l'ancien système).
-// ============================================================
 async function chargerTypesEtDescriptions() {
   const { data: types } = await supabaseClient.from('types_mouvement').select('id, valeur, ordre').order('ordre');
   const { data: descs } = await supabaseClient.from('descriptions_mouvement').select('id, type_mouvement_id, valeur, ordre').order('ordre');
-  typesEtDescriptions = (types || []).map(t => ({ ...t, descriptions: (descs || []).filter(d => d.type_mouvement_id === t.id) }));
-
-  const ft = document.getElementById('f-type');
-  ft.innerHTML = '<option value="">— Choisir —</option>';
-  typesEtDescriptions.forEach(t => ft.innerHTML += `<option>${escH(t.valeur)}</option>`);
+  typesEtDescriptions = (types||[]).map(t => ({...t, descriptions:(descs||[]).filter(d=>d.type_mouvement_id===t.id)}));
+  document.getElementById('f-type').innerHTML = '<option value="">— Choisir —</option>' + typesEtDescriptions.map(t=>`<option>${escH(t.valeur)}</option>`).join('');
 }
 function onTypeChange() {
-  const typeVal = document.getElementById('f-type').value;
-  const t = typesEtDescriptions.find(x => x.valeur === typeVal);
-  const fd = document.getElementById('f-desc');
-  if (!t || !t.descriptions.length) {
-    fd.innerHTML = '<option value="">—</option>';
-    return;
-  }
-  fd.innerHTML = '<option value="">—</option>' + t.descriptions.map(d => `<option>${escH(d.valeur)}</option>`).join('');
+  const t = typesEtDescriptions.find(x => x.valeur === document.getElementById('f-type').value);
+  document.getElementById('f-desc').innerHTML = '<option value="">—</option>' + (t?.descriptions||[]).map(d=>`<option>${escH(d.valeur)}</option>`).join('');
 }
-
 async function chargerFournisseurs() {
   const { data } = await supabaseClient.from('fournisseurs').select('nom').eq('actif', true).order('nom');
-  fournisseurs = (data || []).map(f => f.nom);
-  const ff = document.getElementById('f-fourn');
-  ff.innerHTML = '<option value="">—</option>' + fournisseurs.map(f => `<option>${escH(f)}</option>`).join('');
-}
-
-function onCaisseChange() {
-  const caisse = document.getElementById('f-caisse').value;
-  document.getElementById('list-title').textContent = 'Opérations — ' + (caisse === 'caisse1' ? 'Caisse 1' : 'Caisse 2');
-  loadData();
+  document.getElementById('f-fourn').innerHTML = '<option value="">—</option>' + (data||[]).map(f=>`<option>${escH(f.nom)}</option>`).join('');
 }
 function onFilterChange() { renderKPIs(); }
 
-// ============================================================
-// CHARGEMENT
-// ============================================================
+let remisesMap = {}; // ref_remise (id) -> numero_bordereau, pour filtrer/afficher le bordereau sur les mouvements bancaires (banque_mouvements n'a pas ce champ directement, seulement via la remise liée)
 async function loadData() {
-  const caisse = document.getElementById('f-caisse').value;
-  const { data, error } = await supabaseClient.from('caisse_mouvements').select('*').eq('caisse', caisse).order('date_mouvement');
-  if (error) { showErr('Erreur de chargement : ' + error.message); return; }
-  allRows = data || [];
+  const [mvt, rem] = await Promise.all([
+    supabaseClient.from('banque_mouvements').select('*').order('date_mouvement'),
+    supabaseClient.from('remises_cheques').select('id, numero_bordereau'),
+  ]);
+  if (mvt.error) { showToast('Erreur : ' + mvt.error.message); return; }
+  allRows = mvt.data || [];
+  remisesMap = {};
+  (rem.data || []).forEach(r => { remisesMap[r.id] = r.numero_bordereau; });
   await renderKPIs();
 }
 
-// ============================================================
-// KPIs
-// ============================================================
 async function renderKPIs() {
-  const caisse = document.getElementById('f-caisse').value;
   const per = document.getElementById('fl-per')?.value;
   const rows = allRows.filter(r => r.periode === per);
   const inn = rows.reduce((s,r) => s + (parseFloat(r.credit)||0), 0);
   const out = rows.reduce((s,r) => s + (parseFloat(r.debit)||0), 0);
-
-  const { data: soldeRow } = await supabaseClient.from('soldes').select('montant').eq('periode', per).eq('compte', caisse).eq('type_solde', 'initial').maybeSingle();
+  const { data: soldeRow } = await supabaseClient.from('soldes').select('montant').eq('periode', per).eq('compte', 'banque').eq('type_solde', 'initial').maybeSingle();
   const soldInit = soldeRow ? parseFloat(soldeRow.montant) || 0 : 0;
   soldeInitialActuel = soldInit; // utilisé par renderTable() pour le solde cumulé ligne par ligne
   const soldActuel = soldInit + inn - out;
-
   document.getElementById('kpi-bar').innerHTML = `
     <div class="kpi"><div class="kpi-label">Solde actuel</div><div class="kpi-value" style="color:${soldActuel>=0?'var(--green)':'var(--red)'}">${fmt(soldActuel)}</div></div>
     <div class="kpi"><div class="kpi-label">Entrées</div><div class="kpi-value" style="color:var(--green)">${fmt(inn)}</div><div class="kpi-sub">${rows.filter(r=>r.credit>0).length} op.</div></div>
     <div class="kpi"><div class="kpi-label">Sorties</div><div class="kpi-value" style="color:var(--red)">${fmt(out)}</div><div class="kpi-sub">${rows.filter(r=>r.debit>0).length} op.</div></div>
     <div class="kpi"><div class="kpi-label">Net période</div><div class="kpi-value" style="color:${inn-out>=0?'var(--green)':'var(--red)'}">${fmt(inn-out)}</div></div>
-    <div class="kpi"><div class="kpi-label">Solde initial</div><div class="kpi-value" style="color:var(--blue)">${fmt(soldInit)}</div><div class="kpi-sub">Configuré dans Config</div></div>`;
+    <div class="kpi"><div class="kpi-label">Solde initial</div><div class="kpi-value" style="color:var(--blue)">${fmt(soldInit)}</div></div>`;
   renderTable();
 }
 
 // ============================================================
-// TABLEAU
+// TABLEAU — solde cumulé calculé par ID (jamais par référence d'objet
+// ni par ordre d'affichage) et dans un ordre chronologique STABLE
+// (date puis date de création en tie-break) : c'est précisément ce qui
+// manquait dans l'ancien système et causait le décalage d'une ligne
+// signalé (le solde affiché ne correspondait pas à la bonne ligne dès
+// que deux mouvements avaient la même date).
 // ============================================================
 function renderTable() {
   const per     = document.getElementById('fl-per')?.value;
@@ -392,43 +321,48 @@ function renderTable() {
   const typeF   = document.getElementById('fl-type')?.value || '';
   const descF   = document.getElementById('fl-desc')?.value || '';
   const sensF   = document.getElementById('fl-sens')?.value || '';
-  const dateFrom= document.getElementById('fl-date-from')?.value || '';
-  const dateTo  = document.getElementById('fl-date-to')?.value || '';
   const flagF   = document.getElementById('fl-flag')?.value || '';
   const chatF   = document.getElementById('fl-chat')?.value || '';
   const recuF   = document.getElementById('fl-recu')?.value || '';
   const bordF   = document.getElementById('fl-bordereau')?.value || '';
+  const dFrom   = document.getElementById('fl-date-from')?.value || '';
+  const dTo     = document.getElementById('fl-date-to')?.value || '';
+  const mMin    = document.getElementById('fl-montant-min')?.value;
+  const mMax    = document.getElementById('fl-montant-max')?.value;
 
-  let rows = allRows.filter(r => r.periode === per);
-  if (typeF)                rows = rows.filter(r => r.type_mouvement === typeF);
-  if (descF)                rows = rows.filter(r => r.description === descF);
-  if (sensF === 'credit')   rows = rows.filter(r => parseFloat(r.credit) > 0);
-  if (sensF === 'debit')    rows = rows.filter(r => parseFloat(r.debit) > 0);
-  if (dateFrom)              rows = rows.filter(r => r.date_mouvement >= dateFrom);
-  if (dateTo)                 rows = rows.filter(r => r.date_mouvement <= dateTo);
-  if (flagF)                   rows = rows.filter(r => r.flag_statut === flagF);
-  if (chatF)                   rows = rows.filter(r => r.nom_chat === chatF);
-  if (recuF)                   rows = rows.filter(r => r.numero_recu === recuF);
-  if (bordF)                   rows = rows.filter(r => r.numero_bordereau === bordF);
-  if (search) rows = rows.filter(r =>
-    [r.libelle, r.type_mouvement, r.libelle_complementaire, r.description, r.numero_bordereau].join(' ').toLowerCase().includes(search)
-  );
+  const bordereauDe = r => r.ref_remise ? (remisesMap[r.ref_remise] || '') : '';
+
+  const perRows = allRows.filter(r => r.periode === per);
+  let rows = perRows;
+  if (typeF)  rows = rows.filter(r => r.type_mouvement === typeF);
+  if (descF)  rows = rows.filter(r => r.description === descF);
+  if (sensF==='credit') rows = rows.filter(r => parseFloat(r.credit) > 0);
+  if (sensF==='debit')  rows = rows.filter(r => parseFloat(r.debit) > 0);
+  if (flagF==='verifie')     rows = rows.filter(r => r.statut === 'verifie');
+  if (flagF==='non-verifie') rows = rows.filter(r => r.statut !== 'verifie');
+  if (chatF)  rows = rows.filter(r => r.nom_chat === chatF);
+  if (recuF)  rows = rows.filter(r => r.numero_don_fiscal === recuF);
+  if (bordF)  rows = rows.filter(r => bordereauDe(r) === bordF);
+  if (dFrom)  rows = rows.filter(r => r.date_mouvement >= dFrom);
+  if (dTo)    rows = rows.filter(r => r.date_mouvement <= dTo);
+  if (mMin)   rows = rows.filter(r => (parseFloat(r.credit)||parseFloat(r.debit)||0) >= parseFloat(mMin));
+  if (mMax)   rows = rows.filter(r => (parseFloat(r.credit)||parseFloat(r.debit)||0) <= parseFloat(mMax));
+  if (search) rows = rows.filter(r => [r.libelle, r.type_mouvement, r.description, r.libelle_complementaire, r.numero_facture, r.fournisseur].join(' ').toLowerCase().includes(search));
 
   // Tri d'affichage — départage impérativement les égalités (même date)
   // avec le même critère (cree_le) que le calcul du solde cumulé
-  // ci-dessous, sinon deux lignes de même date affichées côte à côte ne
-  // correspondent pas forcément à l'ordre chronologique réel, et le
-  // solde paraît incohérent d'une ligne à l'autre.
+  // ci-dessous. Sans ce départage, deux lignes de même date pouvaient
+  // s'afficher dans un ordre différent de l'ordre chronologique réel
+  // utilisé pour le solde : deux lignes visuellement adjacentes à
+  // l'écran n'étaient alors pas forcément adjacentes dans le temps, ce
+  // qui rendait la colonne Solde incohérente d'une ligne à l'autre.
   rows = [...rows].sort((a,b) => {
-    let va = a[sortCol], vb = b[sortCol];
-    va = va===null||va===undefined ? '' : va; vb = vb===null||vb===undefined ? '' : vb;
+    let va=a[sortCol], vb=b[sortCol]; va=va??''; vb=vb??'';
     let cmp = typeof va === 'number' ? va-vb : String(va).localeCompare(String(vb),'fr');
     if (cmp === 0) { const ca=a.cree_le||'', cb=b.cree_le||''; cmp = ca<cb ? -1 : ca>cb ? 1 : 0; }
     return sortAsc ? cmp : -cmp;
   });
 
-  // Filtres dynamiques (valeurs présentes dans la période)
-  const perRows = allRows.filter(r => r.periode === per);
   const remplirSelect = (id, valeurs, placeholder) => {
     const el = document.getElementById(id);
     const cur = el.value;
@@ -437,19 +371,21 @@ function renderTable() {
   remplirSelect('fl-type', [...new Set(perRows.map(r => r.type_mouvement).filter(Boolean))].sort(), 'Tous les types de mouvement');
   remplirSelect('fl-desc', [...new Set(perRows.map(r => r.description).filter(Boolean))].sort(), 'Toutes les descriptions');
   remplirSelect('fl-chat', [...new Set(perRows.map(r => r.nom_chat).filter(Boolean))].sort(), 'Tous chats');
-  remplirSelect('fl-recu', [...new Set(perRows.map(r => r.numero_recu).filter(Boolean))].sort(), 'Tous reçus');
-  remplirSelect('fl-bordereau', [...new Set(perRows.map(r => r.numero_bordereau).filter(Boolean))].sort(), 'Tous bordereaux');
+  remplirSelect('fl-recu', [...new Set(perRows.map(r => r.numero_don_fiscal).filter(Boolean))].sort(), 'Tous reçus');
+  remplirSelect('fl-bordereau', [...new Set(perRows.map(bordereauDe).filter(Boolean))].sort(), 'Tous bordereaux');
 
-  if (!rows.length) {
-    document.getElementById('table-wrap').innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-3);font-size:12px;">Aucune opération</div>';
-    return;
-  }
+  if (!rows.length) { document.getElementById('table-wrap').innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-3);font-size:12px;">Aucune opération</div>'; return; }
 
   // Solde cumulé : tri chronologique stable (date, puis cree_le en
-  // tie-break) + clé = id (uuid). Part du solde initial de la période
-  // (sinon le solde affiché ligne par ligne est relatif à zéro et ne
-  // correspond pas au solde réel dès qu'un solde initial est configuré).
-  const chrono = [...perRows].sort((a,b) => (a.date_mouvement < b.date_mouvement ? -1 : a.date_mouvement > b.date_mouvement ? 1 : (a.cree_le < b.cree_le ? -1 : 1)));
+  // tie-break) + clé = id (uuid), jamais une référence d'objet ni
+  // l'ordre d'affichage courant.
+  const chrono = [...perRows].sort((a,b) => {
+    if (a.date_mouvement !== b.date_mouvement) return a.date_mouvement < b.date_mouvement ? -1 : 1;
+    return a.cree_le < b.cree_le ? -1 : a.cree_le > b.cree_le ? 1 : 0;
+  });
+  // Part du solde initial de la période (voir la note ci-dessus sur le
+  // décalage : partir de 0 était le même bug que celui déjà corrigé,
+  // simplement recopié ici par erreur au moment d'écrire cette page).
   let running = soldeInitialActuel;
   const soldeMap = new Map();
   chrono.forEach(r => { running += (parseFloat(r.credit)||0) - (parseFloat(r.debit)||0); soldeMap.set(r.id, running); });
@@ -458,26 +394,20 @@ function renderTable() {
   const mkTh = (label, col) => `<th onclick="setSort('${col}')">${label} <span style="opacity:.5">${si(col)}</span></th>`;
 
   const trs = rows.map(r => {
-    const isVerified = r.flag_statut === 'verifie';
-    const flagged = r.flag_statut === 'a_verifier';
+    const isVerified = r.statut === 'verifie';
+    const flagged = r.flag_verifie;
+    const rapproche = !!(r.ref_cheque || r.ref_remise || r.suivi_ref);
     return `<tr class="${isVerified?'verified-row':''}">
-      <td style="text-align:center;">
-        <input type="checkbox" ${isVerified?'checked':''} ${roleActuel!=='admin'?'disabled':''}
-          title="${isVerified?'Décocher pour modifier':'Cocher pour verrouiller'}"
-          onchange="toggleVerified('${r.id}',this.checked)">
-      </td>
+      <td style="text-align:center;"><input type="checkbox" ${isVerified?'checked':''} ${roleActuel!=='admin'?'disabled':''} onchange="toggleVerified('${r.id}',this.checked)"></td>
       <td style="white-space:nowrap;">${formatDateFR(r.date_mouvement)}</td>
       <td title="${escH(r.libelle||'')}">${r.libelle||''}</td>
       <td class="r amount-d">${r.debit?fmt(r.debit):''}</td>
       <td class="r amount-c">${r.credit?fmt(r.credit):''}</td>
-      <td class="r" style="font-size:10px;">${fmt(soldeMap.get(r.id)||0)}</td>
+      <td class="r" style="font-size:10px;">${fmt(soldeMap.get(r.id))}</td>
       <td>${puceType(r.type_mouvement)}</td>
       <td>${puceDescription(r.description)}</td>
-      <td style="font-size:10px;">${r.libelle_complementaire||''}</td>
+      <td style="font-size:10px;">${escH(r.fournisseur||'')||'—'}</td>
       <td style="font-size:10px;">${r.nom_chat||''}</td>
-      <td style="font-size:10px;">${r.numero_recu||''}</td>
-      <td style="font-size:10px;">${r.numero_bordereau?`<span class="chip-brd">${escH(r.numero_bordereau)} ${roleActuel==='admin'?`<button onclick="delierBordereau('${r.id}')" style="border:none;background:none;color:var(--red);cursor:pointer;">x</button>`:''}</span>`:''}</td>
-      <td style="font-size:10px;">${r.suivi_ref?`<span class="chip-suivi">Suivi ${roleActuel==='admin'?`<button onclick="delierSuivi('${r.id}')" style="border:none;background:none;color:var(--red);cursor:pointer;">x</button>`:''}</span>`:(roleActuel==='admin'&&!isVerified?`<button onclick="openVentilation('${r.id}','${escH(r.libelle||'')}',${parseFloat(r.credit||r.debit)||0})" title="Lier à un/des enregistrement(s) Suivi" style="border:0.5px solid var(--border-mid);border-radius:4px;background:none;cursor:pointer;font-size:9px;padding:1px 6px;color:var(--text-2);">+ lier</button>`:'—')}</td>
       <td class="r" style="white-space:nowrap;">
         ${roleActuel==='admin' ? `
           <button class="flag-btn ${flagged?'on':''}" onclick="openFlag('${r.id}','${escH(r.libelle||'')}','${escH(r.flag_commentaire||'')}')" title="${flagged ? 'Annotation : '+escH(r.flag_commentaire||'') : 'Annoter'}"><i class="ti ti-flag"></i></button>
@@ -486,78 +416,37 @@ function renderTable() {
       </td>
       <td class="r" style="white-space:nowrap;">
         ${roleActuel==='admin' ? (isVerified
-          ? `<span class="lock-icon" title="Verrouillée"><i class="ti ti-lock"></i></span>`
+          ? `<span class="lock-icon"><i class="ti ti-lock"></i></span>`
           : `<button class="edit-btn" onclick="openEdit('${r.id}')" title="Modifier"><i class="ti ti-pencil"></i></button>
-             <button class="del-btn" onclick="openDel('${r.id}')" title="Supprimer"><i class="ti ti-trash"></i></button>`)
-          : ''}
+             <button class="del-btn" onclick="openDel('${r.id}')" title="Supprimer"><i class="ti ti-trash"></i></button>
+             <button class="edit-btn" onclick="voirRapprochement('${r.id}')" title="Rapprochement (chèque/facture/remise/caisse/Suivi)"><i class="ti ti-link"></i></button>`)
+          : (rapproche ? `<i class="ti ti-link" style="color:var(--text-3);" title="Rapproché"></i>` : '')}
       </td>
     </tr>`;
   }).join('');
 
-  document.getElementById('table-wrap').innerHTML = `
-    <table>
-      <thead><tr>
-        <th style="width:36px;" title="Vérifié / Verrouillé">✓</th>
-        ${mkTh('Date','date_mouvement')}
-        ${mkTh('Libellé','libelle')}
-        ${mkTh('Débit','debit')}
-        ${mkTh('Crédit','credit')}
-        <th class="r">Solde</th>
-        ${mkTh('Type de mouvement','type_mouvement')}
-        ${mkTh('Description','description')}
-        <th>Libellé comp.</th>
-        <th>Chat</th>
-        <th>N° reçu</th>
-        <th>Bord. remise</th>
-        <th>Rapproché</th>
-        <th class="r">Annoter</th>
-        <th class="r">Actions</th>
-      </tr></thead>
-      <tbody>${trs}</tbody>
-    </table>`;
+  document.getElementById('table-wrap').innerHTML = `<table><thead><tr>
+    <th style="width:36px;">✓</th>
+    ${mkTh('Date','date_mouvement')}${mkTh('Libellé','libelle')}${mkTh('Débit','debit')}${mkTh('Crédit','credit')}
+    <th class="r">Solde</th>${mkTh('Type de mouvement','type_mouvement')}${mkTh('Description','description')}${mkTh('Fournisseur','fournisseur')}
+    <th>Chat</th><th class="r">Annoter</th><th class="r">Actions</th>
+  </tr></thead><tbody>${trs}</tbody></table>`;
 }
 function setSort(col) { if (sortCol===col) sortAsc=!sortAsc; else { sortCol=col; sortAsc=true; } renderTable(); }
 function clearFilters() {
-  ['fl-search','fl-date-from','fl-date-to'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
-  ['fl-type','fl-desc','fl-sens','fl-flag','fl-chat','fl-recu','fl-bordereau'].forEach(id => { const e=document.getElementById(id); if(e) e.selectedIndex=0; });
+  document.getElementById('fl-search').value = '';
+  ['fl-date-from','fl-date-to','fl-montant-min','fl-montant-max'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
+  ['fl-type','fl-desc','fl-sens','fl-flag','fl-chat','fl-recu','fl-bordereau'].forEach(id => document.getElementById(id).selectedIndex = 0);
   renderTable();
 }
 
-// ============================================================
-// VERROUILLAGE
-// ============================================================
 async function toggleVerified(id, checked) {
-  try {
-    const { error } = await supabaseClient.rpc('verrouiller_operation_caisse', { p_id: id, p_verrouiller: checked });
-    if (error) throw error;
-    await loadData();
-    showToast(checked ? 'Ligne verrouillée' : 'Ligne déverrouillée');
-  } catch(e) { alert('Erreur : ' + e.message); await loadData(); }
+  try { const { error } = await supabaseClient.rpc('verrouiller_operation_banque', { p_id: id, p_verrouiller: checked }); if (error) throw error; await loadData(); showToast(checked?'Verrouillée':'Déverrouillée'); }
+  catch(e) { alert('Erreur : ' + e.message); await loadData(); }
 }
 
-// ============================================================
-// FORMULAIRE AJOUT / MODIF
-// ============================================================
-let activeSens = 'credit';
-function setSens(s) {
-  activeSens = s;
-  document.getElementById('btn-credit').classList.toggle('active', s==='credit');
-  document.getElementById('btn-debit').classList.toggle('active', s==='debit');
-}
-function openNewOp() { resetForm(); document.getElementById('modal-newop').classList.remove('hidden'); }
+function setSens(s) { activeSens = s; document.getElementById('btn-credit').classList.toggle('active', s==='credit'); document.getElementById('btn-debit').classList.toggle('active', s==='debit'); }
 function closeNewOp() { document.getElementById('modal-newop').classList.add('hidden'); editId = null; }
-function resetForm() {
-  ['f-date','f-montant','f-libelle','f-libelle-comp','f-chat','f-recu','f-bordereau'].forEach(id => {
-    const e = document.getElementById(id); if(e) e.value = id==='f-date' ? new Date().toISOString().split('T')[0] : '';
-  });
-  document.getElementById('f-type').selectedIndex = 0;
-  document.getElementById('f-desc').innerHTML = '<option value="">— Choisir un type d\'abord —</option>';
-  document.getElementById('f-fourn').selectedIndex = 0;
-  document.getElementById('form-err').classList.add('hidden');
-  document.getElementById('form-mode-lbl').textContent = 'Nouvelle opération';
-  setSens('credit');
-  editId = null;
-}
 
 async function submitForm() {
   document.getElementById('form-err').classList.add('hidden');
@@ -580,22 +469,20 @@ async function submitForm() {
     p_libelle_complementaire: document.getElementById('f-libelle-comp').value.trim() || null,
     p_fournisseur: document.getElementById('f-fourn').value || null,
     p_nom_chat: document.getElementById('f-chat').value.trim() || null,
-    p_numero_recu: document.getElementById('f-recu').value.trim() || null,
-    p_numero_bordereau: document.getElementById('f-bordereau').value.trim() || null,
+    p_numero_facture: document.getElementById('f-facture').value.trim() || null,
+    p_numero_don_fiscal: document.getElementById('f-recu-fiscal').value.trim() || null,
+    p_mode_reglement: document.getElementById('f-mode-reglement').value.trim() || null,
   };
 
-  const btn = document.getElementById('btn-submit');
-  btn.disabled = true;
+  // En Banque, on ne crée plus de ligne à la main : ce formulaire ne sert
+  // qu'à modifier une opération existante (importée via Import / rapprochement).
+  if (!editId) { showErr("Les nouvelles opérations bancaires s'ajoutent uniquement via Import / rapprochement."); return; }
+
+  const btn = document.getElementById('btn-submit'); btn.disabled = true;
   try {
-    if (editId) {
-      const { error } = await supabaseClient.rpc('modifier_operation_caisse', { p_id: editId, ...params });
-      if (error) throw error;
-      showToast('Opération modifiée !');
-    } else {
-      const { error } = await supabaseClient.rpc('creer_operation_caisse', { p_caisse: document.getElementById('f-caisse').value, ...params, p_reglement: 'Espèces' });
-      if (error) throw error;
-      showToast('Opération enregistrée !');
-    }
+    const { error } = await supabaseClient.rpc('modifier_operation_banque', { p_id: editId, ...params });
+    if (error) throw error;
+    showToast('Opération modifiée !');
     closeNewOp(); await loadData();
   } catch(e) { showErr('Erreur : ' + (e.message || '?')); }
   finally { btn.disabled = false; }
@@ -603,7 +490,7 @@ async function submitForm() {
 
 function openEdit(id) {
   const r = allRows.find(x => x.id === id);
-  if (!r || r.flag_statut === 'verifie') { showToast('⚠️ Ligne verrouillée'); return; }
+  if (!r || r.statut === 'verifie') { showToast('⚠️ Ligne verrouillée'); return; }
   editId = id;
   document.getElementById('f-date').value = r.date_mouvement;
   document.getElementById('f-montant').value = r.credit || r.debit || '';
@@ -614,36 +501,28 @@ function openEdit(id) {
   document.getElementById('f-fourn').value = r.fournisseur || '';
   document.getElementById('f-libelle-comp').value = r.libelle_complementaire || '';
   document.getElementById('f-chat').value = r.nom_chat || '';
-  document.getElementById('f-recu').value = r.numero_recu || '';
-  document.getElementById('f-bordereau').value = r.numero_bordereau || '';
+  document.getElementById('f-facture').value = r.numero_facture || '';
+  document.getElementById('f-recu-fiscal').value = r.numero_don_fiscal || '';
+  document.getElementById('f-mode-reglement').value = r.mode_reglement || '';
+  document.getElementById('f-per').value = r.periode || document.getElementById('f-per').value;
   setSens(parseFloat(r.credit) > 0 ? 'credit' : 'debit');
   document.getElementById('form-mode-lbl').textContent = "Modifier l'opération";
   document.getElementById('modal-newop').classList.remove('hidden');
 }
 
-// ============================================================
-// SUPPRESSION
-// ============================================================
 function openDel(id) {
-  const r = allRows.find(x => x.id === id);
-  if (!r) return;
+  const r = allRows.find(x => x.id === id); if (!r) return;
   delId = id;
-  document.getElementById('del-detail').innerHTML = `<strong>${formatDateFR(r.date_mouvement)}</strong> — ${r.libelle||'—'}<br>${r.type_mouvement||''} — ${r.credit?'+'+fmt(r.credit):r.debit?'−'+fmt(r.debit):''}`;
+  document.getElementById('del-detail').innerHTML = `<strong>${formatDateFR(r.date_mouvement)}</strong> — ${r.libelle||'—'}<br>${r.credit?'+'+fmt(r.credit):r.debit?'−'+fmt(r.debit):''}`;
   document.getElementById('modal-del').classList.remove('hidden');
 }
 function closeDel() { document.getElementById('modal-del').classList.add('hidden'); delId = null; }
 async function confirmDel() {
   if (!delId) return;
-  try {
-    const { error } = await supabaseClient.rpc('supprimer_operation_caisse', { p_id: delId });
-    if (error) throw error;
-    closeDel(); showToast('Supprimée'); await loadData();
-  } catch(e) { alert('Erreur : ' + e.message); }
+  try { const { error } = await supabaseClient.rpc('supprimer_operation_banque', { p_id: delId }); if (error) throw error; closeDel(); showToast('Supprimée'); await loadData(); }
+  catch(e) { alert('Erreur : ' + e.message); }
 }
 
-// ============================================================
-// FLAG / ANNOTATION
-// ============================================================
 function openFlag(id, libelle, comment) {
   flagTarget = id;
   document.getElementById('flag-info').textContent = 'Ligne : ' + libelle;
@@ -654,51 +533,191 @@ function openFlag(id, libelle, comment) {
 function closeFlag() { document.getElementById('modal-flag').classList.add('hidden'); flagTarget = null; }
 async function saveFlag() {
   if (!flagTarget) return;
-  const comment = document.getElementById('flag-comment').value.trim();
-  const resolved = document.getElementById('flag-resolved').checked;
   try {
-    const { error } = await supabaseClient.rpc('annoter_operation_caisse', { p_id: flagTarget, p_commentaire: comment, p_resolu: resolved });
+    const { error } = await supabaseClient.rpc('annoter_operation_banque', { p_id: flagTarget, p_commentaire: document.getElementById('flag-comment').value.trim(), p_resolu: document.getElementById('flag-resolved').checked });
     if (error) throw error;
     closeFlag(); await loadData(); showToast('Annotation enregistrée');
   } catch(e) { alert('Erreur : ' + e.message); }
 }
 
-// ============================================================
-// DÉLIER BORDEREAU / SUIVI — passe par des RPC sécurisées (comme le
-// reste de la page), au lieu d'un .update() direct sur la table qui
-// contournait le verrouillage (corrigé — signalé en revue de code).
-// ============================================================
-async function delierBordereau(id) {
-  if (!confirm('Supprimer le rapprochement avec le bordereau de remise ?')) return;
-  try { const { error } = await supabaseClient.rpc('delier_caisse_bordereau', { p_caisse_mouvement_id: id }); if (error) throw error; showToast('Rapprochement bordereau supprimé'); await loadData(); }
-  catch(e) { alert('Erreur : ' + e.message); }
-}
-async function delierSuivi(id) {
-  if (!confirm("Supprimer le rapprochement Suivi ?")) return;
-  try { const { error } = await supabaseClient.rpc('delier_caisse_suivi', { p_caisse_mouvement_id: id }); if (error) throw error; showToast('Rapprochement Suivi supprimé'); await loadData(); }
+async function delier(type, id) {
+  const fn = type==='cheque' ? 'delier_banque_cheque' : type==='remise' ? 'delier_banque_remise' : 'delier_banque_suivi';
+  if (!confirm('Supprimer ce rapprochement ?')) return;
+  try { const { error } = await supabaseClient.rpc(fn, { p_banque_mouvement_id: id }); if (error) throw error; showToast('Rapprochement supprimé'); await loadData(); await voirRapprochement(id); }
   catch(e) { alert('Erreur : ' + e.message); }
 }
 
-// ============================================================
-// HELPERS
-// ============================================================
+let rapprBankId = null; // mouvement actuellement ouvert dans le panneau Rapprochement
+
+// Remplace l'ancienne colonne "Rapproché" (chips CHQ/BRD/Suivi toujours
+// visibles) par une icône dans Actions — la colonne prenait trop de
+// place pour une info qu'on ne consulte qu'occasionnellement.
+//
+// Rétablit ici les sections "Lier à un chèque" / "Lier à une facture"
+// du panneau Rapprochement de l'ancien système (perdues lors de la
+// simplification initiale de la Fusion) : sélection dans une liste
+// déroulante des chèques en attente / factures non réglées, application
+// immédiate (contrairement à l'ancien système qui les mettait en
+// attente jusqu'à l'enregistrement global du formulaire).
+async function voirRapprochement(id) {
+  const r = allRows.find(x => x.id === id); if (!r) return;
+  rapprBankId = id;
+  ventMouvementId = id; ventMontantMouvement = parseFloat(r.credit || r.debit) || 0; ventLignes = [];
+  const lignes = [];
+  if (r.ref_cheque) {
+    const { data: chq } = await supabaseClient.from('cheques').select('numero_cheque, montant').eq('id', r.ref_cheque).maybeSingle();
+    lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);"><span>Chèque encaissé ${chq?'— N°'+escH(chq.numero_cheque)+' — '+fmt(chq.montant):''}</span><button class="btn btn-danger btn-sm" onclick="delier('cheque','${r.id}')">Délier</button></div>`);
+  }
+  if (r.ref_remise) {
+    const { data: rem } = await supabaseClient.from('remises_cheques').select('montant_total').eq('id', r.ref_remise).maybeSingle();
+    lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);"><span>Remise de chèques ${remisesMap[r.ref_remise]?'— '+escH(remisesMap[r.ref_remise]):''} ${rem?'— '+fmt(rem.montant_total):''}</span><button class="btn btn-danger btn-sm" onclick="delier('remise','${r.id}')">Délier</button></div>`);
+  }
+  const { data: suiviLiens } = await supabaseClient.from('banque_mouvement_suivi_liens').select('id, montant, adhesion:adhesions(personnes(nom,prenom,raison_sociale)), don:dons(personnes(nom,prenom,raison_sociale)), adoption:adoptions(personnes(nom,prenom,raison_sociale)), reservation:reservations(personnes(nom,prenom,raison_sociale)), materiel:materiel_mouvements(materiel, personnes(nom,prenom,raison_sociale))').eq('banque_mouvement_id', id);
+  const labelSuiviLien = l => {
+    if (l.adhesion) return 'Adhésion — ' + nomPersonne(l.adhesion.personnes);
+    if (l.don) return 'Don — ' + nomPersonne(l.don.personnes);
+    if (l.adoption) return 'Adoption — ' + nomPersonne(l.adoption.personnes);
+    if (l.reservation) return 'Réservation — ' + nomPersonne(l.reservation.personnes);
+    if (l.materiel) return 'Prêt matériel — ' + nomPersonne(l.materiel.personnes) + ' — ' + (l.materiel.materiel||'');
+    return 'Lien Suivi';
+  };
+  if (suiviLiens && suiviLiens.length) {
+    lignes.push(`<div style="padding:6px 0;border-bottom:0.5px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;align-items:center;"><span>Enregistrement(s) Suivi (ventilation)</span><button class="btn btn-danger btn-sm" onclick="delier('suivi','${r.id}')">Tout délier</button></div>
+      ${suiviLiens.map(l => `<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-2);padding:2px 0 2px 10px;"><span>${escH(labelSuiviLien(l))}</span><span>${fmt(l.montant)}</span></div>`).join('')}
+    </div>`);
+  }
+
+  document.getElementById('rappr-body').innerHTML = lignes.join('') || '<div style="color:var(--text-3);font-size:12px;">Aucun rapprochement</div>';
+  document.getElementById('modal-rappr').classList.remove('hidden');
+
+  // Sections "Lier à..." chargées à part (async) sans bloquer l'affichage du reste.
+  const extra = [];
+  if (!r.ref_cheque) {
+    const { data: cheques } = await supabaseClient.from('cheques').select('id, numero_cheque, beneficiaire, montant').eq('statut', 'en_attente').order('date_emission', { ascending: false });
+    extra.push(`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);">
+      <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;"><i class="ti ti-writing"></i> Lier à un chèque</div>
+      <div style="display:flex;gap:8px;">
+        <select id="rap-cheque-select" class="f-select" style="flex:1;">
+          <option value="">— Choisir un chèque en attente —</option>
+          ${(cheques||[]).map(c => `<option value="${c.id}">N°${escH(c.numero_cheque)} — ${escH(c.beneficiaire)} — ${fmt(c.montant)}</option>`).join('')}
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="lierChequeRapprochement()"><i class="ti ti-check"></i> Lier</button>
+      </div>
+    </div>`);
+  }
+  if (!r.ref_remise) {
+    const { data: remises } = await supabaseClient.from('remises_cheques').select('id, numero_bordereau, date_remise, montant_total').eq('statut', 'en_attente').order('date_remise', { ascending: false });
+    extra.push(`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);">
+      <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;"><i class="ti ti-stack"></i> Lier à une remise de chèques</div>
+      <div style="display:flex;gap:8px;">
+        <select id="rap-remise-select" class="f-select" style="flex:1;">
+          <option value="">— Choisir une remise en attente —</option>
+          ${(remises||[]).map(rm => `<option value="${rm.id}">${escH(rm.numero_bordereau||'?')} — ${formatDateFR(rm.date_remise)} — ${fmt(rm.montant_total)}</option>`).join('')}
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="lierRemiseRapprochement()"><i class="ti ti-check"></i> Lier</button>
+      </div>
+    </div>`);
+  }
+
+  const { data: liens } = await supabaseClient.from('banque_mouvement_facture_liens').select('facture_id, factures(id, numero_facture, fournisseur, montant_ttc, date_facture)').eq('banque_mouvement_id', id);
+  const facturesLiees = (liens||[]).map(l => l.factures).filter(Boolean);
+  const { data: facturesDispo } = await supabaseClient.from('factures').select('id, numero_facture, fournisseur, montant_ttc, date_facture').neq('statut', 'payee').order('date_facture', { ascending: false });
+  extra.push(`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);">
+    <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;"><i class="ti ti-file-invoice"></i> Lier à une facture</div>
+    ${facturesLiees.map(f => `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid var(--border);font-size:11px;"><span>${escH(f.fournisseur||'?')} — ${escH(f.numero_facture||'')} — ${fmt(f.montant_ttc)}</span><button class="btn btn-danger btn-sm" onclick="delierFactureRapprochement('${f.id}')">Délier</button></div>`).join('')}
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <select id="rap-facture-select" class="f-select" style="flex:1;">
+        <option value="">— Choisir une facture non réglée —</option>
+        ${(facturesDispo||[]).filter(f => !facturesLiees.find(fl=>fl.id===f.id)).map(f => `<option value="${f.id}">${escH(f.fournisseur||'?')} — ${fmt(f.montant_ttc)} — ${f.date_facture||'?'}</option>`).join('')}
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="lierFactureRapprochement()"><i class="ti ti-check"></i> Lier</button>
+    </div>
+  </div>`);
+
+  const { data: caisseLiees } = await supabaseClient.from('caisse_mouvements').select('id, caisse, date_mouvement, libelle, debit').eq('ref_banque', id);
+  const { data: caisseDispo } = await supabaseClient.from('caisse_mouvements').select('id, caisse, date_mouvement, libelle, debit').is('ref_banque', null).gt('debit', 0).neq('flag_statut', 'verifie').order('date_mouvement', { ascending: false });
+  const labelCaisse = c => (c.caisse === 'caisse2' ? 'Caisse2' : 'Caisse1') + ' — ' + formatDateFR(c.date_mouvement) + ' — ' + (c.libelle||'') + ' — ' + fmt(c.debit);
+  extra.push(`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);">
+    <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;"><i class="ti ti-cash"></i> Lier à une sortie de caisse (dépôt espèces)</div>
+    ${(caisseLiees||[]).map(c => `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid var(--border);font-size:11px;"><span>${escH(labelCaisse(c))}</span><button class="btn btn-danger btn-sm" onclick="delierCaisseRapprochement('${c.id}')">Délier</button></div>`).join('')}
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <select id="rap-caisse-select" class="f-select" style="flex:1;">
+        <option value="">— Choisir une sortie caisse —</option>
+        ${(caisseDispo||[]).map(c => `<option value="${c.id}">${escH(labelCaisse(c))}</option>`).join('')}
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="lierCaisseRapprochement()"><i class="ti ti-check"></i> Lier</button>
+    </div>
+  </div>`);
+
+  extra.push(`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);">
+    <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;"><i class="ti ti-git-merge"></i> Lier à une ligne Suivi (don, adhésion, adoption, réservation…)</div>
+    <div class="form-group"><input type="text" id="vent-search" class="f-input" style="width:100%;" placeholder="Rechercher par nom…" oninput="rechercherVentilation()"></div>
+    <div id="vent-resultats" style="max-height:140px;overflow-y:auto;margin-bottom:8px;"></div>
+    <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:4px;">Répartition à ajouter</div>
+    <div id="vent-lignes" style="margin-bottom:6px;"></div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;padding-top:6px;border-top:0.5px solid var(--border);">
+      <span>Total ventilé</span><span id="vent-total" style="font-weight:600;">0,00 €</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);margin-bottom:6px;">
+      <span>Montant du mouvement</span><span id="vent-montant-mouvement">${fmt(ventMontantMouvement)}</span>
+    </div>
+    <div id="vent-err" class="hidden" style="color:var(--red);font-size:11px;padding:4px 0;"></div>
+    <button class="btn btn-primary btn-sm" onclick="confirmVentilation()"><i class="ti ti-check"></i> Enregistrer la ventilation</button>
+  </div>`);
+
+  if (rapprBankId === id) {
+    document.getElementById('rappr-body').innerHTML += extra.join('');
+    document.getElementById('vent-search').value = '';
+    document.getElementById('vent-err').classList.add('hidden');
+    renderVentLignes();
+  }
+}
+function closeRapprochement() { document.getElementById('modal-rappr').classList.add('hidden'); rapprBankId = null; }
+
+async function lierChequeRapprochement() {
+  const chequeId = document.getElementById('rap-cheque-select')?.value;
+  if (!chequeId || !rapprBankId) return;
+  try { const { error } = await supabaseClient.rpc('lier_banque_cheque', { p_banque_mouvement_id: rapprBankId, p_cheque_id: chequeId }); if (error) throw error; showToast('Chèque lié'); await loadData(); await voirRapprochement(rapprBankId); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+async function lierRemiseRapprochement() {
+  const remiseId = document.getElementById('rap-remise-select')?.value;
+  if (!remiseId || !rapprBankId) return;
+  try { const { error } = await supabaseClient.rpc('lier_banque_remise', { p_banque_mouvement_id: rapprBankId, p_remise_id: remiseId }); if (error) throw error; showToast('Remise liée'); await loadData(); await voirRapprochement(rapprBankId); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+async function lierFactureRapprochement() {
+  const factureId = document.getElementById('rap-facture-select')?.value;
+  if (!factureId || !rapprBankId) return;
+  try { const { error } = await supabaseClient.rpc('lier_banque_facture', { p_banque_mouvement_id: rapprBankId, p_facture_id: factureId }); if (error) throw error; showToast('Facture liée'); await loadData(); await voirRapprochement(rapprBankId); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+async function delierFactureRapprochement(factureId) {
+  if (!rapprBankId) return;
+  if (!confirm('Délier cette facture ?')) return;
+  try { const { error } = await supabaseClient.rpc('delier_banque_facture', { p_banque_mouvement_id: rapprBankId, p_facture_id: factureId }); if (error) throw error; showToast('Facture déliée'); await loadData(); await voirRapprochement(rapprBankId); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+async function lierCaisseRapprochement() {
+  const caisseId = document.getElementById('rap-caisse-select')?.value;
+  if (!caisseId || !rapprBankId) return;
+  try { const { error } = await supabaseClient.rpc('lier_banque_caisse', { p_banque_mouvement_id: rapprBankId, p_caisse_mouvement_id: caisseId }); if (error) throw error; showToast('Sortie de caisse liée'); await loadData(); await voirRapprochement(rapprBankId); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+async function delierCaisseRapprochement(caisseId) {
+  if (!rapprBankId) return;
+  if (!confirm('Délier cette sortie de caisse ?')) return;
+  try { const { error } = await supabaseClient.rpc('delier_banque_caisse', { p_banque_mouvement_id: rapprBankId, p_caisse_mouvement_id: caisseId }); if (error) throw error; showToast('Sortie de caisse déliée'); await loadData(); await voirRapprochement(rapprBankId); }
+  catch(e) { alert('Erreur : ' + e.message); }
+}
+
 // ============================================================
 // VENTILATION — lier un mouvement à un ou plusieurs enregistrements
 // Suivi en une fois (n'existait pas du tout avant, seul "délier"
 // fonctionnait).
 // ============================================================
 let ventMouvementId = null, ventMontantMouvement = 0, ventLignes = [];
-function openVentilation(id, libelle, montant) {
-  ventMouvementId = id; ventMontantMouvement = montant; ventLignes = [];
-  document.getElementById('vent-info').textContent = libelle + ' — ' + fmt(montant);
-  document.getElementById('vent-search').value = '';
-  document.getElementById('vent-resultats').innerHTML = '';
-  document.getElementById('vent-err').classList.add('hidden');
-  document.getElementById('vent-montant-mouvement').textContent = fmt(montant);
-  renderVentLignes();
-  document.getElementById('modal-ventilation').classList.remove('hidden');
-}
-function closeVentilation() { document.getElementById('modal-ventilation').classList.add('hidden'); }
 
 let ventSearchTimer = null;
 function rechercherVentilation() {
@@ -743,13 +762,14 @@ async function confirmVentilation() {
   if (!ventLignes.length) { const e=document.getElementById('vent-err'); e.textContent='Ajoutez au moins une ligne.'; e.classList.remove('hidden'); return; }
   const liens = ventLignes.map(l => ({ [l.type + '_id']: l.id, montant: l.montant }));
   try {
-    const { error } = await supabaseClient.rpc('lier_caisse_suivi', { p_caisse_mouvement_id: ventMouvementId, p_liens: liens });
+    const { error } = await supabaseClient.rpc('lier_banque_suivi', { p_banque_mouvement_id: ventMouvementId, p_liens: liens });
     if (error) throw error;
-    closeVentilation(); showToast('Ventilation enregistrée !'); await loadData();
+    showToast('Ventilation enregistrée !'); await loadData(); await voirRapprochement(rapprBankId);
   } catch(e) { const el=document.getElementById('vent-err'); el.textContent='Erreur : '+e.message; el.classList.remove('hidden'); }
 }
 
 function fmt(v) { if (v===null||v===undefined||v==='') return '—'; return parseFloat(v).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
+function nomPersonne(p) { if (!p) return '?'; return (p.prenom?p.prenom+' ':'') + (p.nom || p.raison_sociale || '?'); }
 function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
 function showErr(m) { const e=document.getElementById('form-err'); e.textContent=m; e.classList.remove('hidden'); }
 function showToast(m) { const t=document.createElement('div'); t.className='success-toast'; t.textContent=m; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
