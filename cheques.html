@@ -230,7 +230,7 @@ async function loadData() {
 
 function renderKPIs() {
   const per = document.getElementById('fl-per')?.value;
-  const rows = allCheques.filter(r => r.periode === per);
+  const rows = allCheques.filter(r => periodeNormaliser(r.periode) === periodeNormaliser(per));
   const att = rows.filter(r => r.statut === 'en_attente');
   const enc = rows.filter(r => r.statut === 'encaisse');
   const totAtt = att.reduce((s,r)=>s+(parseFloat(r.montant)||0),0);
@@ -253,7 +253,7 @@ function renderTable() {
   const mMin = document.getElementById('fl-montant-min')?.value;
   const mMax = document.getElementById('fl-montant-max')?.value;
 
-  const perRows = allCheques.filter(r => r.periode === per);
+  const perRows = allCheques.filter(r => periodeNormaliser(r.periode) === periodeNormaliser(per));
   let rows = perRows.filter(r => (!sf || r.statut===sf) && (!st || r.type_mouvement===st) && (!df || r.description===df) && (!cf || r.nom_chat===cf));
   if (dFrom) rows = rows.filter(r => r.date_emission >= dFrom);
   if (dTo)   rows = rows.filter(r => r.date_emission <= dTo);
