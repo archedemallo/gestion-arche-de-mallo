@@ -30,6 +30,13 @@
   .r{text-align:right;font-variant-numeric:tabular-nums;}
   .amount-c{color:var(--green);} .amount-d{color:var(--red);}
   .chip{font-size:9px;padding:2px 7px;border-radius:10px;border:0.5px solid;}
+  .row-nouveau{background:rgba(59,109,17,0.04);}
+  .row-doublon{background:rgba(133,79,11,0.06);opacity:0.75;}
+  .status-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;white-space:nowrap;}
+  .s-nouveau{background:var(--green-bg);color:var(--green);}
+  .s-doublon{background:var(--amber-bg);color:var(--amber);}
+  .select-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11.5px;padding:8px 2px;}
+  .select-bar .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;}
   .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
   .kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px 14px;}
   .kpi-label{font-size:9px;color:var(--text-3);text-transform:uppercase;margin-bottom:3px;}
@@ -140,6 +147,19 @@
         <div class="form-group"><label class="form-label">Colonne Crédit (si séparée)</label><select id="map-credit" class="f-select"><option value="">— Un seul montant signé —</option></select></div>
         <div class="form-group"><label class="form-label">Lignes à ignorer en début</label><input type="number" id="map-skip" class="f-input" value="0" min="0" max="20"></div>
         <div class="form-group" style="justify-content:flex-end;"><button class="btn btn-primary btn-sm" onclick="genererApercu()"><i class="ti ti-eye"></i> Aperçu</button></div>
+      </div>
+      <div id="select-bar" class="select-bar hidden">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="select-all" onchange="toggleAllLines(this.checked)" style="width:14px;height:14px;accent-color:var(--orange);">
+          Tout sélectionner
+        </label>
+        <span style="color:var(--text-3);">|</span>
+        <span id="sel-count" style="font-weight:600;">0 sélectionnée(s)</span>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="selectNouveauxSeulement()"><i class="ti ti-sparkles"></i> Nouveaux seulement</button>
+        <span style="margin-left:auto;display:flex;gap:12px;">
+          <span><span class="dot" style="background:var(--green);"></span><span id="cnt-nouveau">0</span> nouveaux</span>
+          <span><span class="dot" style="background:var(--amber);"></span><span id="cnt-doublon">0</span> doublons</span>
+        </span>
       </div>
       <div class="preview-table" id="preview-wrap"></div>
       <div id="import-err" class="hidden" style="color:var(--red);font-size:11px;padding:8px 0;"></div>
@@ -340,15 +360,43 @@ function parseNombreCsv(s) {
   return parseFloat(String(s).replace(/\s/g,'').replace(',','.')) || 0;
 }
 
-function genererApercu() {
+// Récupère les mouvements déjà enregistrés dans la destination choisie
+// (Banque ou Caisse), pour repérer les lignes du relevé qui y figurent
+// déjà (même date + même montant signé, à 1 centime près).
+async function chargerLignesExistantes(destination) {
+  if (destination === 'banque') {
+    const { data, error } = await supabaseClient.from('banque_mouvements').select('date_mouvement, debit, credit');
+    if (error) throw error;
+    return (data || []).map(r => ({ date: r.date_mouvement, montant: (parseFloat(r.credit) || 0) - (parseFloat(r.debit) || 0) }));
+  }
+  const { data, error } = await supabaseClient.from('caisse_mouvements').select('date_mouvement, debit, credit').eq('caisse', destination);
+  if (error) throw error;
+  return (data || []).map(r => ({ date: r.date_mouvement, montant: (parseFloat(r.credit) || 0) - (parseFloat(r.debit) || 0) }));
+}
+
+// Idem, mais pour les lignes déjà importées ici (en attente, déjà
+// rapprochées ou ignorées) — cas fréquent : le même fichier bancaire
+// réimporté une deuxième fois avant d'avoir traité les lignes.
+async function chargerLignesDejaImportees(destination) {
+  const { data, error } = await supabaseClient.from('import_rapprochement').select('date_mouvement, montant').eq('destination', destination);
+  if (error) throw error;
+  return (data || []).map(r => ({ date: r.date_mouvement, montant: parseFloat(r.montant) || 0 }));
+}
+
+function estDoublon(ligne, existantes) {
+  return existantes.some(e => e.date === ligne.date && Math.abs(e.montant - ligne.montant) < 0.01);
+}
+
+async function genererApercu() {
   document.getElementById('import-err').classList.add('hidden');
   const skip = parseInt(document.getElementById('map-skip').value) || 0;
   const iDate = parseInt(document.getElementById('map-date').value);
   const iLib  = parseInt(document.getElementById('map-libelle').value);
   const iDeb  = parseInt(document.getElementById('map-debit').value);
   const iCred = document.getElementById('map-credit').value === '' ? null : parseInt(document.getElementById('map-credit').value);
+  const destination = document.getElementById('imp-destination').value;
 
-  parsedPreview = [];
+  const lignesBrutes = [];
   for (let r = skip; r < csvRows.length; r++) {
     const row = csvRows[r];
     if (!row || row.every(c => !c)) continue;
@@ -361,28 +409,84 @@ function genererApercu() {
     } else {
       montant = parseNombreCsv(row[iDeb]);
     }
-    parsedPreview.push({ date, libelle: row[iLib] || '', montant });
+    lignesBrutes.push({ date, libelle: row[iLib] || '', montant });
   }
 
-  if (!parsedPreview.length) { showImportErr('Aucune ligne valide détectée — vérifiez le mapping des colonnes.'); return; }
+  if (!lignesBrutes.length) { showImportErr('Aucune ligne valide détectée — vérifiez le mapping des colonnes.'); return; }
+
+  let existantes;
+  try {
+    const [dejaEnregistrees, dejaImportees] = await Promise.all([
+      chargerLignesExistantes(destination),
+      chargerLignesDejaImportees(destination)
+    ]);
+    existantes = dejaEnregistrees.concat(dejaImportees);
+  } catch (e) {
+    showImportErr('Erreur lors de la vérification des doublons : ' + (e.message || '?'));
+    return;
+  }
+
+  parsedPreview = lignesBrutes.map(l => {
+    const doublon = estDoublon(l, existantes);
+    return { ...l, statut: doublon ? 'doublon' : 'nouveau', selected: !doublon };
+  });
 
   document.getElementById('step-2').classList.add('done');
   document.getElementById('step-3').classList.add('active');
-  const trs = parsedPreview.slice(0, 200).map(r => `<tr>
-    <td>${r.date}</td><td>${escH(r.libelle)}</td>
-    <td class="r ${r.montant>=0?'amount-c':'amount-d'}">${fmt(r.montant)}</td>
-  </tr>`).join('');
-  document.getElementById('preview-wrap').innerHTML = `<table><thead><tr><th>Date</th><th>Libellé</th><th class="r">Montant</th></tr></thead><tbody>${trs}</tbody></table>` +
-    (parsedPreview.length > 200 ? `<div style="padding:8px;font-size:11px;color:var(--text-3);">... et ${parsedPreview.length-200} autres lignes</div>` : '');
+  renderApercu();
+}
+
+function renderApercu() {
+  const trs = parsedPreview.map((r, i) => {
+    const cls = r.statut === 'nouveau' ? 'row-nouveau' : 'row-doublon';
+    const badge = r.statut === 'nouveau'
+      ? '<span class="status-badge s-nouveau"><i class="ti ti-sparkles"></i> Nouveau</span>'
+      : '<span class="status-badge s-doublon"><i class="ti ti-alert-triangle"></i> Doublon ?</span>';
+    return `<tr class="${cls}">
+      <td><input type="checkbox" class="ligne-chk" data-i="${i}" ${r.selected ? 'checked' : ''} onchange="onSelectLigne(${i}, this.checked)" style="width:14px;height:14px;accent-color:var(--orange);"></td>
+      <td>${badge}</td>
+      <td>${r.date}</td><td>${escH(r.libelle)}</td>
+      <td class="r ${r.montant>=0?'amount-c':'amount-d'}">${fmt(r.montant)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('preview-wrap').innerHTML = `<table><thead><tr><th style="width:26px;"></th><th>Statut</th><th>Date</th><th>Libellé</th><th class="r">Montant</th></tr></thead><tbody>${trs}</tbody></table>`;
+  document.getElementById('select-bar').classList.remove('hidden');
+  document.getElementById('cnt-nouveau').textContent = parsedPreview.filter(r => r.statut === 'nouveau').length;
+  document.getElementById('cnt-doublon').textContent = parsedPreview.filter(r => r.statut === 'doublon').length;
+  updateSelCount();
+}
+
+function onSelectLigne(i, checked) { parsedPreview[i].selected = checked; updateSelCount(); }
+
+function toggleAllLines(checked) {
+  parsedPreview.forEach(r => r.selected = checked);
+  document.querySelectorAll('.ligne-chk').forEach(c => c.checked = checked);
+  updateSelCount();
+}
+
+function selectNouveauxSeulement() {
+  parsedPreview.forEach(r => r.selected = r.statut === 'nouveau');
+  document.querySelectorAll('.ligne-chk').forEach((c, i) => c.checked = parsedPreview[i].selected);
+  document.getElementById('select-all').checked = false;
+  updateSelCount();
+}
+
+function updateSelCount() {
+  const n = parsedPreview.filter(r => r.selected).length;
+  document.getElementById('sel-count').textContent = n + ' sélectionnée(s)';
+  document.getElementById('select-all').checked = n === parsedPreview.length;
+  const btn = document.getElementById('btn-confirm-import');
+  if (btn) btn.disabled = n === 0;
 }
 
 async function confirmerImport() {
-  if (!parsedPreview.length) { showImportErr('Générez un aperçu d\'abord.'); return; }
+  const selection = parsedPreview.filter(r => r.selected);
+  if (!selection.length) { showImportErr('Sélectionnez au moins une ligne à importer.'); return; }
   const btn = document.getElementById('btn-confirm-import'); btn.disabled = true;
   try {
     const { data, error } = await supabaseClient.rpc('importer_lignes_rapprochement', {
       p_destination: document.getElementById('imp-destination').value,
-      p_lignes: parsedPreview.map(r => ({ ...r, periode: document.getElementById('imp-periode').value }))
+      p_lignes: selection.map(r => ({ date: r.date, libelle: r.libelle, montant: r.montant, periode: document.getElementById('imp-periode').value }))
     });
     if (error) throw error;
     showToast(data + ' ligne(s) importée(s) !');
@@ -397,6 +501,7 @@ function annulerImport() {
   document.getElementById('file-input').value = '';
   document.getElementById('card-mapping').classList.add('hidden');
   document.getElementById('card-upload').classList.remove('hidden');
+  document.getElementById('select-bar').classList.add('hidden');
   ['step-1','step-2','step-3'].forEach(id => document.getElementById(id).classList.remove('active','done'));
   document.getElementById('step-1').classList.add('active');
   document.getElementById('import-err').classList.add('hidden');
