@@ -360,7 +360,7 @@ function decomposerVentilation(rows, liens, fkCol) {
         nom_chat: res.chat || r.nom_chat,
         libelle: res.nom || r.libelle,
         libelle_complementaire: res.nom || r.libelle_complementaire,
-        ref_cheque: null, lien_facture: null, // évite une reclassification cheque/facture sur la part ventilée
+        ref_cheque: null, numero_facture: null, // évite une reclassification cheque/facture sur la part ventilée
         [sens]: montant, [autreSens]: 0 });
     });
     const reste = total - alloue;
@@ -627,7 +627,11 @@ function computeAgResults() {
   const chequesParId = {}; allCheques.forEach(c => { chequesParId[c.id] = c; });
   function resoudre(r) {
     if (r.ref_cheque && chequesParId[r.ref_cheque]) { const c = chequesParId[r.ref_cheque]; return { type: c.type_mouvement, description: c.description, ignorer: false }; }
-    if (r.lien_facture && facturesParNumero[r.lien_facture]) { const f = facturesParNumero[r.lien_facture]; return { type: f.categorie, description: f.description, ignorer: false }; }
+    if (r.numero_facture) {
+      const premierNumero = r.numero_facture.split(',')[0].trim();
+      const f = facturesParNumero[premierNumero];
+      if (f) return { type: f.categorie, description: f.description, ignorer: false };
+    }
     return { type: r.type_mouvement, description: r.description, ignorer: false };
   }
 
