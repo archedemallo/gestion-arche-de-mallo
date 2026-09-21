@@ -622,7 +622,11 @@ async function voirRapprochement(id) {
 
   const { data: liens } = await supabaseClient.from('banque_mouvement_facture_liens').select('facture_id, factures(id, numero_facture, fournisseur, montant_ttc, date_facture)').eq('banque_mouvement_id', id);
   const facturesLiees = (liens||[]).map(l => l.factures).filter(Boolean);
-  const { data: facturesDispo } = await supabaseClient.from('factures').select('id, numero_facture, fournisseur, montant_ttc, date_facture').neq('statut', 'payee').order('date_facture', { ascending: false });
+  const { data: facturesDispo } = await supabaseClient
+  .from('factures')
+  .select('id, numero_facture, fournisseur, montant_ttc, date_facture, statut')
+  .or('statut.is.null,statut.neq.payee')
+  .order('date_facture', { ascending: false });
   extra.push(`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);">
     <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;"><i class="ti ti-file-invoice"></i> Lier à une facture</div>
     ${facturesLiees.map(f => `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid var(--border);font-size:11px;"><span>${escH(f.fournisseur||'?')} — ${escH(f.numero_facture||'')} — ${fmt(f.montant_ttc)}</span><button class="btn btn-danger btn-sm" onclick="delierFactureRapprochement('${f.id}')">Délier</button></div>`).join('')}
