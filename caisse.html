@@ -225,6 +225,7 @@
     <div class="modal-header"><span class="modal-title"><i class="ti ti-git-merge"></i> Lier à un/des enregistrement(s) Suivi</span><button class="modal-close" onclick="closeVentilation()">×</button></div>
     <div class="modal-body">
       <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;" id="vent-info"></div>
+      <div id="vent-existant" style="margin-bottom:10px;"></div>
       <div class="form-group"><input type="text" id="vent-search" class="f-input" style="width:100%;" placeholder="Rechercher par nom (adhésion, don, adoption, réservation)…" oninput="rechercherVentilation()"></div>
       <div id="vent-resultats" style="max-height:160px;overflow-y:auto;margin-bottom:12px;"></div>
       <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Répartition</div>
@@ -365,7 +366,7 @@ async function loadData() {
 async function renderKPIs() {
   const caisse = document.getElementById('f-caisse').value;
   const per = document.getElementById('fl-per')?.value;
-  const rows = allRows.filter(r => periodeNormaliser(r.periode) === periodeNormaliser(per));
+  const rows = allRows.filter(r => r.periode === per);
   const inn = rows.reduce((s,r) => s + (parseFloat(r.credit)||0), 0);
   const out = rows.reduce((s,r) => s + (parseFloat(r.debit)||0), 0);
 
@@ -399,7 +400,7 @@ function renderTable() {
   const recuF   = document.getElementById('fl-recu')?.value || '';
   const bordF   = document.getElementById('fl-bordereau')?.value || '';
 
-  let rows = allRows.filter(r => periodeNormaliser(r.periode) === periodeNormaliser(per));
+  let rows = allRows.filter(r => r.periode === per);
   if (typeF)                rows = rows.filter(r => r.type_mouvement === typeF);
   if (descF)                rows = rows.filter(r => r.description === descF);
   if (sensF === 'credit')   rows = rows.filter(r => parseFloat(r.credit) > 0);
@@ -428,7 +429,7 @@ function renderTable() {
   });
 
   // Filtres dynamiques (valeurs présentes dans la période)
-  const perRows = allRows.filter(r => periodeNormaliser(r.periode) === periodeNormaliser(per));
+  const perRows = allRows.filter(r => r.periode === per);
   const remplirSelect = (id, valeurs, placeholder) => {
     const el = document.getElementById(id);
     const cur = el.value;
@@ -477,7 +478,7 @@ function renderTable() {
       <td style="font-size:10px;">${r.nom_chat||''}</td>
       <td style="font-size:10px;">${r.numero_recu||''}</td>
       <td style="font-size:10px;">${r.numero_bordereau?`<span class="chip-brd">${escH(r.numero_bordereau)} ${roleActuel==='admin'?`<button onclick="delierBordereau('${r.id}')" style="border:none;background:none;color:var(--red);cursor:pointer;">x</button>`:''}</span>`:''}</td>
-      <td style="font-size:10px;">${r.suivi_ref?`<span class="chip-suivi">Suivi ${roleActuel==='admin'?`<button onclick="delierSuivi('${r.id}')" style="border:none;background:none;color:var(--red);cursor:pointer;">x</button>`:''}</span>`:(roleActuel==='admin'&&!isVerified?`<button onclick="openVentilation('${r.id}','${escH(r.libelle||'')}',${parseFloat(r.credit||r.debit)||0})" title="Lier à un/des enregistrement(s) Suivi" style="border:0.5px solid var(--border-mid);border-radius:4px;background:none;cursor:pointer;font-size:9px;padding:1px 6px;color:var(--text-2);">+ lier</button>`:'—')}</td>
+      <td style="font-size:10px;">${roleActuel==='admin'&&!isVerified?`<button onclick="openVentilation('${r.id}','${escH(r.libelle||'')}',${parseFloat(r.credit||r.debit)||0})" title="Lier à un/des enregistrement(s) Suivi" style="border:0.5px solid var(--border-mid);border-radius:4px;background:${r.suivi_ref?'var(--warm)':'none'};cursor:pointer;font-size:9px;padding:1px 6px;color:var(--text-2);">${r.suivi_ref?'Suivi ✓':'+ lier'}</button>`:(r.suivi_ref?'<span class="chip-suivi">Suivi</span>':'—')}</td>
       <td class="r" style="white-space:nowrap;">
         ${roleActuel==='admin' ? `
           <button class="flag-btn ${flagged?'on':''}" onclick="openFlag('${r.id}','${escH(r.libelle||'')}','${escH(r.flag_commentaire||'')}')" title="${flagged ? 'Annotation : '+escH(r.flag_commentaire||'') : 'Annoter'}"><i class="ti ti-flag"></i></button>
@@ -675,7 +676,7 @@ async function delierBordereau(id) {
 }
 async function delierSuivi(id) {
   if (!confirm("Supprimer le rapprochement Suivi ?")) return;
-  try { const { error } = await supabaseClient.rpc('delier_caisse_suivi', { p_caisse_mouvement_id: id }); if (error) throw error; showToast('Rapprochement Suivi supprimé'); await loadData(); }
+  try { const { error } = await supabaseClient.rpc('delier_caisse_suivi', { p_caisse_mouvement_id: id }); if (error) throw error; showToast('Rapprochement Suivi supprimé'); closeVentilation(); await loadData(); }
   catch(e) { alert('Erreur : ' + e.message); }
 }
 
@@ -688,7 +689,8 @@ async function delierSuivi(id) {
 // fonctionnait).
 // ============================================================
 let ventMouvementId = null, ventMontantMouvement = 0, ventLignes = [];
-function openVentilation(id, libelle, montant) {
+function nomPersonne(p) { if (!p) return '?'; return (p.prenom?p.prenom+' ':'') + (p.nom || p.raison_sociale || '?'); }
+async function openVentilation(id, libelle, montant) {
   ventMouvementId = id; ventMontantMouvement = montant; ventLignes = [];
   document.getElementById('vent-info').textContent = libelle + ' — ' + fmt(montant);
   document.getElementById('vent-search').value = '';
@@ -697,6 +699,23 @@ function openVentilation(id, libelle, montant) {
   document.getElementById('vent-montant-mouvement').textContent = fmt(montant);
   renderVentLignes();
   document.getElementById('modal-ventilation').classList.remove('hidden');
+
+  const { data: liens } = await supabaseClient.from('caisse_mouvement_suivi_liens').select('id, montant, adhesion:adhesions(personnes(nom,prenom,raison_sociale)), don:dons(personnes(nom,prenom,raison_sociale)), adoption:adoptions(personnes(nom,prenom,raison_sociale)), reservation:reservations(personnes(nom,prenom,raison_sociale)), materiel:materiel_mouvements(materiel, personnes(nom,prenom,raison_sociale))').eq('caisse_mouvement_id', id);
+  const labelLien = l => {
+    if (l.adhesion) return 'Adhésion — ' + nomPersonne(l.adhesion.personnes);
+    if (l.don) return 'Don — ' + nomPersonne(l.don.personnes);
+    if (l.adoption) return 'Adoption — ' + nomPersonne(l.adoption.personnes);
+    if (l.reservation) return 'Réservation — ' + nomPersonne(l.reservation.personnes);
+    if (l.materiel) return 'Prêt matériel — ' + nomPersonne(l.materiel.personnes) + ' — ' + (l.materiel.materiel||'');
+    return 'Lien Suivi';
+  };
+  const existant = document.getElementById('vent-existant');
+  if (liens && liens.length) {
+    existant.innerHTML = `<div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:4px;">Déjà lié</div>
+      ${liens.map(l => `<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;"><span>${escH(labelLien(l))}</span><span>${fmt(l.montant)}</span></div>`).join('')}
+      <button class="btn btn-danger btn-sm" style="margin-top:4px;" onclick="delierSuivi('${id}')">Tout délier</button>
+      <hr style="border:none;border-top:0.5px solid var(--border);margin:8px 0;">`;
+  } else existant.innerHTML = '';
 }
 function closeVentilation() { document.getElementById('modal-ventilation').classList.add('hidden'); }
 
