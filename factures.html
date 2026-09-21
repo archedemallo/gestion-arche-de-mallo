@@ -239,7 +239,7 @@ async function loadData() {
 
 function renderKPIs() {
   const per = document.getElementById('fl-per')?.value;
-  const rows = allRows.filter(r => r.periode === per);
+  const rows = allRows.filter(r => periodeNormaliser(r.periode) === periodeNormaliser(per));
   const payees = rows.filter(r => r.statut === 'payee');
   const attente = rows.filter(r => r.statut !== 'payee');
   document.getElementById('kpi-row').innerHTML = `
@@ -259,7 +259,7 @@ function renderTable() {
   const dTo = document.getElementById('fl-date-to')?.value||'';
   const mMin = document.getElementById('fl-montant-min')?.value;
   const mMax = document.getElementById('fl-montant-max')?.value;
-  let rows = allRows.filter(r => r.periode === per);
+  let rows = allRows.filter(r => periodeNormaliser(r.periode) === periodeNormaliser(per));
   if (catF) rows = rows.filter(r => r.categorie === catF);
   if (descF) rows = rows.filter(r => r.description === descF);
   if (fournF) rows = rows.filter(r => r.fournisseur === fournF);
