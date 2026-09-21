@@ -150,10 +150,12 @@ function renderGrid() {
         <span class="note-save-indicator" id="saved-${note.id}"><i class="ti ti-check"></i> Sauvegardé</span>
       </div>
     </div>`).join('') + `<div class="note-add-card" onclick="addNote()"><i class="ti ti-plus" style="font-size:20px;"></i>Nouvelle note</div>`;
+  grid.querySelectorAll('.note-textarea').forEach(ta => autoResize(ta));
 }
 
 function onTitleChange(id, value) { const n=notes.find(x=>x.id===id); if(!n)return; n.titre=value; scheduleSave(id); }
-function onTextChange(id, el) { const n=notes.find(x=>x.id===id); if(!n)return; n.texte=el.value; scheduleSave(id); }
+function onTextChange(id, el) { autoResize(el); const n=notes.find(x=>x.id===id); if(!n)return; n.texte=el.value; scheduleSave(id); }
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.max(100, el.scrollHeight) + 'px'; }
 function scheduleSave(id) {
   clearTimeout(saveTimers[id]);
   saveTimers[id] = setTimeout(async () => {
