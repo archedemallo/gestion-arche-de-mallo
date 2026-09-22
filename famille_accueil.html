@@ -197,6 +197,7 @@
 <script src="config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
 <script src="selecteur-animal.js"></script>
+<script src="selecteur-personne.js"></script>
 <script>
     creerEntete({ dateId: 'date_signature', dateLabel: 'Date :' });
     creerSignature('sig1');
@@ -394,6 +395,23 @@ chargerListeSaisisseurs();
         var date   = dateEl   ? dateEl.value   : '';
         await envoyerPhotoAnimal('Famille_Accueil_Provisoire', nom, animal, date);
     }
+</script>
+
+<script>
+// Pré-remplissage de l'animal depuis formulaires_preremplis.html (?animalId=...) :
+// utilise la vraie sélection du sélecteur d'animal (pas juste du texte), pour
+// que la fiche reste bien liée à cet animal en base.
+document.addEventListener('DOMContentLoaded', function() {
+    var animalId = new URLSearchParams(window.location.search).get('animalId');
+    if (animalId && typeof selecteurAnimal !== 'undefined' && selecteurAnimal && typeof selecteurAnimal.selectionner === 'function') {
+        selecteurAnimal.selectionner(animalId);
+    }
+    initSelecteurPersonne({
+        nomId: 'nom',
+        prenomId: 'prenom',
+        champs: { adresse:'adresse', code_postal:'code_postal', ville:'ville', email:'email', telephone:'telephone' }
+    });
+});
 </script>
 
 </body>

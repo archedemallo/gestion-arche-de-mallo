@@ -232,6 +232,7 @@
 <script src="supabase-config.js"></script>
 <script src="config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
+<script src="selecteur-personne.js"></script>
 <script>
     creerEntete({ dateId: 'dateCertificat', dateLabel: 'Date :' });
     creerSignature('sig1');
@@ -355,4 +356,14 @@ async function saveForm() {
     }
 }
     
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initSelecteurPersonne({
+        nomId: 'nomAdoptant',
+        prenomId: 'prenomAdoptant',
+        champs: { adresseAdoptant:'adresse', codePostalAdoptant:'code_postal', villeAdoptant:'ville', email:'email', telephone:'telephone' }
+    });
+});
 </script>

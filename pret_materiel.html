@@ -202,6 +202,7 @@
 <script src="supabase-config.js"></script>
 <script src="config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
+<script src="selecteur-personne.js"></script>
 <script>
     creerEntete({ dateId: 'datePretMateriel', dateLabel: 'Date :' });
     creerSignature('sig1');
@@ -403,5 +404,16 @@ chargerListeSaisisseurs();
         }
     }
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initSelecteurPersonne({
+        nomId: 'nomEmprunteur',
+        prenomId: 'prenomEmprunteur',
+        champs: { adresseEmprunteur:'adresse', codePostalEmprunteur:'code_postal', villeEmprunteur:'ville', emailEmprunteur:'email', telephoneEmprunteur:'telephone' }
+    });
+});
+</script>
+
 </body>
 </html>

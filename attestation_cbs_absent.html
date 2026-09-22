@@ -131,6 +131,7 @@
 <script src="supabase-config.js"></script>
 <script src="config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
+<script src="selecteur-animal.js"></script>
 <script>
     creerEntete({ dateId: 'dateCBS', dateLabel: 'Date :' });
     creerSignature('sig1');
@@ -281,5 +282,12 @@ chargerListeSaisisseurs();
         }
     }
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initSelecteurAnimal({ inputId: 'nomChat', contexte: 'recherche' });
+});
+</script>
+
 </body>
 </html>

@@ -673,6 +673,7 @@ celui de sa famille ou la renonciation de celui-ci.</p>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <script src="selecteur-animal.js"></script>
+<script src="selecteur-personne.js"></script>
 <script src="config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
 <script src="generer-pdf.js"></script>
@@ -1271,6 +1272,23 @@ saveForm = async function() {
         ouvrirFormulaireAdhesion();
     }
 };
+</script>
+
+<script>
+// Pré-remplissage de l'animal depuis formulaires_preremplis.html (?animalId=...) :
+// utilise la vraie sélection du sélecteur d'animal (pas juste du texte), pour
+// que le contrat reste bien lié à cet animal en base.
+document.addEventListener('DOMContentLoaded', function() {
+    var animalId = new URLSearchParams(window.location.search).get('animalId');
+    if (animalId && typeof selecteurAnimal !== 'undefined' && selecteurAnimal && typeof selecteurAnimal.selectionner === 'function') {
+        selecteurAnimal.selectionner(animalId);
+    }
+    initSelecteurPersonne({
+        nomId: 'nom',
+        prenomId: 'prenom',
+        champs: { adresse:'adresse', codePostal:'code_postal', ville:'ville', email:'email', portable:'telephone' }
+    });
+});
 </script>
 
 </body>

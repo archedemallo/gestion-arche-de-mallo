@@ -224,6 +224,7 @@
 <script src="supabase-config.js"></script>
 <script src="config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
+<script src="selecteur-personne.js"></script>
 <script>
 creerEntete({ dateId: 'dateAdhesion', dateLabel: 'Date :' });
 creerSignature('sig1');
@@ -501,6 +502,16 @@ async function saveForm() {
         alert('Erreur lors de la sauvegarde : ' + (err.message || err));
     }
 }
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initSelecteurPersonne({
+        nomId: 'nom',
+        prenomId: 'prenom',
+        champs: { adresse:'adresse', codePostal:'code_postal', ville:'ville', email:'email', portable:'telephone' }
+    });
+});
 </script>
 
 </body>

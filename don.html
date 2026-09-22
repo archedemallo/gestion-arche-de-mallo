@@ -242,6 +242,7 @@
 <script src="supabase-config.js"></script>
 <script src="config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
+<script src="selecteur-personne.js"></script>
 <script>
 creerEntete({ dateId: 'dateEntete', dateLabel: 'Date :' });
 creerSignature('sig1');
@@ -658,6 +659,16 @@ function afficherLienRecuFiscal(url) {
     btn.onclick = function() { window.open(url, '_blank'); };
     conteneur.appendChild(btn);
 }
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initSelecteurPersonne({
+        nomId: 'nom',
+        prenomId: 'prenom',
+        champs: { adresse:'adresse', codePostal:'code_postal', ville:'ville', email:'email', telephone:'telephone', raisonSociale:'raison_sociale' }
+    });
+});
 </script>
 
 </body>

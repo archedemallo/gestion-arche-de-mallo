@@ -324,6 +324,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <script src="selecteur-animal.js"></script>
+<script src="selecteur-personne.js"></script>
 <script src="config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
 <script>
@@ -661,6 +662,30 @@ chargerListeSaisisseurs();
             animalEl ? animalEl.value : '',
             dateEl   ? dateEl.value   : '');
     }
+</script>
+
+<script>
+// Pré-remplissage de l'animal depuis formulaires_preremplis.html (?animalId=...) :
+// le sélecteur d'animal n'existe qu'une fois un type de réservation choisi
+// (Chat/Chaton/Autre animal) ; comme cette source ne concerne que des chats,
+// on présélectionne "Chat" si besoin avant de sélectionner l'animal, pour
+// que la réservation reste bien liée à cet animal en base.
+document.addEventListener('DOMContentLoaded', function() {
+    var animalId = new URLSearchParams(window.location.search).get('animalId');
+    if (animalId && !selecteurAnimal) {
+        var caseType = document.getElementById('type_chat');
+        var ligne = caseType && caseType.closest('.clickable-row');
+        if (ligne) ligne.click();
+    }
+    if (animalId && selecteurAnimal && typeof selecteurAnimal.selectionner === 'function') {
+        selecteurAnimal.selectionner(animalId);
+    }
+    initSelecteurPersonne({
+        nomId: 'nom',
+        prenomId: 'prenom',
+        champs: { adresseAdoptant:'adresse', codePostal:'code_postal', ville:'ville', email:'email', telephone:'telephone' }
+    });
+});
 </script>
 	
 </body>
