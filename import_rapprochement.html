@@ -108,10 +108,6 @@
 <div class="main">
   <div class="topbar">
     <div class="topbar-title"><i class="ti ti-arrows-exchange" style="color:var(--orange)"></i> Import relevé bancaire</div>
-    <div class="topbar-right" style="display:flex;align-items:center;gap:14px;">
-      <span style="font-size:11px;color:var(--text-3);" id="topbar-user"></span>
-      <button class="btn btn-secondary btn-sm" onclick="seDeconnecter()">Déconnexion</button>
-    </div>
   </div>
   <div class="page-content">
 
@@ -246,7 +242,6 @@ async function demarrerApp(user) {
   roleActuel = profil.role;
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  document.getElementById('topbar-user').textContent = profil.email + (roleActuel==='lecteur' ? ' (lecture seule)' : '');
   document.getElementById('sidebar-username').textContent = profil.email + (roleActuel==='lecteur' ? ' (lecture seule)' : '');
   document.getElementById('sidebar-avatar').textContent = (profil.email||'?').charAt(0).toUpperCase();
   if (roleActuel === 'lecteur') document.getElementById('card-upload').style.display = 'none';

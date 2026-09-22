@@ -121,8 +121,6 @@
     <div class="topbar-right" style="display:flex;align-items:center;gap:14px;">
       <span style="font-size:11px;color:var(--text-3);" id="topbar-period-display"></span>
       <select id="periode-select" class="f-select" onchange="onPeriodeChange(this.value)"></select>
-      <span style="font-size:11px;color:var(--text-3);" id="topbar-user"></span>
-      <button class="btn btn-secondary btn-sm" onclick="seDeconnecter()">Déconnexion</button>
     </div>
   </div>
   <div class="page-content">
@@ -287,7 +285,6 @@ async function demarrerApp() {
   roleActuel = profil.role;
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  document.getElementById('topbar-user').textContent = profil.email + (roleActuel==='lecteur' ? ' (lecture seule)' : '');
   document.getElementById('sidebar-username').textContent = profil.email + (roleActuel==='lecteur' ? ' (lecture seule)' : '');
   document.getElementById('sidebar-avatar').textContent = (profil.email||'?').charAt(0).toUpperCase();
   await chargerPeriodes();
@@ -360,7 +357,7 @@ function decomposerVentilation(rows, liens, fkCol) {
         nom_chat: res.chat || r.nom_chat,
         libelle: res.nom || r.libelle,
         libelle_complementaire: res.nom || r.libelle_complementaire,
-        ref_cheque: null, numero_facture: null, // évite une reclassification cheque/facture sur la part ventilée
+        ref_cheque: null, lien_facture: null, // évite une reclassification cheque/facture sur la part ventilée
         [sens]: montant, [autreSens]: 0 });
     });
     const reste = total - alloue;
@@ -534,18 +531,12 @@ function typesDisponibles() {
   const set = new Set();
   allCaisse.forEach(r => r.type_mouvement && set.add(r.type_mouvement));
   allBanque.forEach(r => r.type_mouvement && set.add(r.type_mouvement));
-  allCheques.forEach(r => r.type_mouvement && set.add(r.type_mouvement));
-  allRemiseDetails.forEach(r => r.type_mouvement && set.add(r.type_mouvement));
-  allFactures.forEach(r => r.categorie && set.add(r.categorie));
   return [...set].sort((a,b)=>a.localeCompare(b,'fr'));
 }
 function descriptionsDisponibles() {
   const set = new Set();
   allCaisse.forEach(r => r.description && set.add(r.description));
   allBanque.forEach(r => r.description && set.add(r.description));
-  allCheques.forEach(r => r.description && set.add(r.description));
-  allRemiseDetails.forEach(r => r.description && set.add(r.description));
-  allFactures.forEach(r => r.description && set.add(r.description));
   return [...set].sort((a,b)=>a.localeCompare(b,'fr'));
 }
 function renderAgConfigPanel() {
@@ -633,11 +624,7 @@ function computeAgResults() {
   const chequesParId = {}; allCheques.forEach(c => { chequesParId[c.id] = c; });
   function resoudre(r) {
     if (r.ref_cheque && chequesParId[r.ref_cheque]) { const c = chequesParId[r.ref_cheque]; return { type: c.type_mouvement, description: c.description, ignorer: false }; }
-    if (r.numero_facture) {
-      const premierNumero = r.numero_facture.split(',')[0].trim();
-      const f = facturesParNumero[premierNumero];
-      if (f) return { type: f.categorie, description: f.description, ignorer: false };
-    }
+    if (r.lien_facture && facturesParNumero[r.lien_facture]) { const f = facturesParNumero[r.lien_facture]; return { type: f.categorie, description: f.description, ignorer: false }; }
     return { type: r.type_mouvement, description: r.description, ignorer: false };
   }
 

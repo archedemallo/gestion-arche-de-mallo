@@ -365,6 +365,11 @@ chargerListeSaisisseurs();
             });
         }
     }
+    // Le sélecteur d'animal ne dépend pas du type choisi (contexte toujours
+    // 'reservation') : on l'initialise dès le chargement de la page, sans
+    // attendre que l'utilisateur coche Chat/Chaton/Autre animal, pour que le
+    // champ "Nom provisoire du chat" propose la liste déroulante tout de suite.
+    majTypeReservation();
 
 // Aperçu miniature après prise de photo (avec bouton "Voir la photo" / zoom)
     function aperçuPhoto(input, previewId) {

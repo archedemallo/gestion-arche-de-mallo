@@ -94,6 +94,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
 function fmtDate(d) { if (!d) return '—'; const s=String(d).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const p=s.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; } return s; }
+function capitaliser(s) { s = String(s||''); return s.charAt(0).toUpperCase() + s.slice(1); }
+const ESPECE_LABELS = { chat: 'Chat', chien: 'Chien', lapin: 'Lapin', nac: 'NAC' };
 
 async function chargerFiche(animalId) {
   document.getElementById('fiche').innerHTML = '<div class="card"><div class="empty">Chargement…</div></div>';
@@ -105,12 +107,24 @@ async function chargerFiche(animalId) {
 
 function renderFiche(d) {
   const a = d.animal;
+  const espece = ESPECE_LABELS[(a.espece||'chat').toLowerCase()] || capitaliser(a.espece || 'chat');
+  const naissance = a.date_naissance ? fmtDate(a.date_naissance) + (a.date_naissance_estimee ? ' (estimée)' : '') : '—';
+  const sterilise = d.sterilisation ? (d.sterilisation.sterilise ? 'Oui — ' + fmtDate(d.sterilisation.date_sterilisation) : 'Non') : '—';
+  const vermifuge = d.derniere_vermifuge ? 'Oui — ' + fmtDate(d.derniere_vermifuge) : 'Non';
+  const antipuce = d.derniere_antipuce ? 'Oui — ' + fmtDate(d.derniere_antipuce) : 'Non';
   let html = `<div class="card"><h2>${escH(a.nom_usuel)} <span class="badge">${escH(LABELS_STATUT[a.statut_actuel] || a.statut_actuel || '—')}</span></h2>
     <div class="grid2">
+      <div><span class="lbl">Type :</span> ${escH(espece)}</div>
+      <div><span class="lbl">Sexe :</span> ${escH(a.sexe||'—')}</div>
+      <div><span class="lbl">Date de naissance :</span> ${naissance}</div>
       <div><span class="lbl">Couleur :</span> ${escH(a.couleur||'—')}</div>
       <div><span class="lbl">Puce :</span> ${escH(a.puce||'—')}</div>
       <div><span class="lbl">Arrivée :</span> ${fmtDate(a.date_arrivee)}${a.origine_arrivee?' — '+escH(a.origine_arrivee):''}</div>
       <div><span class="lbl">Décès :</span> ${a.date_deces?fmtDate(a.date_deces):'—'}</div>
+      <div><span class="lbl">Stérilisé(e) :</span> ${sterilise}</div>
+      <div><span class="lbl">Vermifugé :</span> ${vermifuge}</div>
+      <div><span class="lbl">Antipuce :</span> ${antipuce}</div>
+      ${a.signes_particuliers ? `<div style="grid-column:1/-1;"><span class="lbl">Autre info :</span> ${escH(a.signes_particuliers)}</div>` : ''}
     </div>
 
     <h2>Historique de statut</h2>

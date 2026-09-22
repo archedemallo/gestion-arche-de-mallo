@@ -56,7 +56,6 @@
 </div>
 
 <div id="app" class="page hidden">
-  <span class="topbar-user"><span id="topbar-user"></span> — <a href="#" onclick="seDeconnecter();return false;">Déconnexion</a></span>
   <h1>Configuration</h1>
   <div class="sous-titre">L'Arche de Mallo — Comptabilité</div>
 
@@ -212,7 +211,6 @@ async function demarrerApp(user) {
     roleActuel = profil.role;
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
-    document.getElementById('topbar-user').textContent = profil.email + ' (' + (roleActuel === 'admin' ? 'admin' : 'lecture seule') + ')';
     if (roleActuel !== 'admin') {
         document.getElementById('lecteur-notice').style.display = 'block';
         document.querySelectorAll('.admin-only').forEach(function(el) { el.style.display = 'none'; });
