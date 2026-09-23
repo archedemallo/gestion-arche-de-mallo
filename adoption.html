@@ -670,7 +670,7 @@ celui de sa famille ou la renonciation de celui-ci.</p>
 
 
 	
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
 <script src="selecteur-animal.js"></script>
 <script src="selecteur-personne.js"></script>
@@ -678,6 +678,7 @@ celui de sa famille ou la renonciation de celui-ci.</p>
 <script src="formulaires-arche-mallo.js"></script>
 <script src="generer-pdf.js"></script>
 <script src="envoyer-mail.js"></script>
+<script src="stocker-pdf-drive.js"></script>
 <script>
 creerEntete({ dateId: 'dateAdoption', dateLabel: 'Date de cession à charge :' });
 	
@@ -1032,7 +1033,7 @@ function afficherLienFormulaireDon(url) {
 // configuration serveur nécessaire (secrets Brevo).
 const ENVOYER_PDF_MAIL = true;
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = creerClientSupabase();
 initSessionSuivi();
 chargerListeSaisisseurs();
 var dernierAdoptionId = null;
@@ -1200,6 +1201,23 @@ async function _saveFormOriginal() {
                     emailClient: data.email,
                     nomClient: ((data.prenom || '') + ' ' + (data.nom || '')).trim()
                 });
+                try {
+                    await enregistrerPdfDrive({
+                        onglet: 'Adoption',
+                        prenom: data.prenom,
+                        nom: data.nom,
+                        animal: data.nomAdoption || data.nomUsuel,
+                        dateDossier: data.dateFait || null,
+                        filename: data.filename,
+                        pdfBytes: pdfBytes,
+                        tableSource: 'adoptions',
+                        enregistrementId: adoptionId,
+                        typeFichier: 'Contrat de cession'
+                    });
+                } catch (eDrive) {
+                    console.error('Erreur dépôt Drive :', eDrive);
+                    avertissementMail += ' ⚠️ Le dépôt du PDF sur Drive a échoué (' + (eDrive.message || eDrive) + ').';
+                }
             } catch (e) {
                 console.error('Erreur envoi PDF/mail :', e);
                 avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué (' + (e.message || e) + '). L\'adoption est bien enregistrée — vous pouvez imprimer le contrat avec le bouton "Imprimer" en attendant.';

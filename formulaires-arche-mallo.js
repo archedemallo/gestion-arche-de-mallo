@@ -1125,21 +1125,29 @@ async function seDeconnecterSuivi() {
 
 async function verifierAccesSuivi(user) {
     var errEl = document.getElementById('login-err');
-    var res = await supabaseClient.from('profils_suivi').select('email').eq('user_id', user.id).maybeSingle();
-    if (res.error || !res.data) {
-        if (errEl) errEl.textContent = "Ce compte n'est pas autorisé sur Suivi.";
-        await supabaseClient.auth.signOut();
-        return;
+    try {
+        var res = await supabaseClient.from('profils_suivi').select('email').eq('user_id', user.id).maybeSingle();
+        if (res.error || !res.data) {
+            if (errEl) errEl.textContent = "Ce compte n'est pas autorisé sur Suivi.";
+            await supabaseClient.auth.signOut();
+            return;
+        }
+        var screen = document.getElementById('login-screen');
+        if (screen) screen.style.display = 'none';
+    } catch (e) {
+        // Échec réseau (pas un refus d'accès) : on ne bloque pas l'écran
+        // de connexion sans explication, on propose de réessayer.
+        afficherErreurChargement(e);
     }
-    var screen = document.getElementById('login-screen');
-    if (screen) screen.style.display = 'none';
 }
 
 // À appeler explicitement depuis chaque formulaire, juste après avoir
-// créé supabaseClient (voir note ci-dessus).
+// créer supabaseClient (voir note ci-dessus).
 function initSessionSuivi() {
     supabaseClient.auth.getSession().then(function(res) {
         if (res.data.session) verifierAccesSuivi(res.data.session.user);
+    }).catch(function(e) {
+        afficherErreurChargement(e);
     });
 }
 

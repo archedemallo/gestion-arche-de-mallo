@@ -95,11 +95,11 @@
 </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
 <script src="compta-commun.js"></script>
 <script>
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = creerClientSupabase();
 
 let allRows = [];
 
@@ -122,7 +122,7 @@ async function demarrerApp() {
   document.getElementById('sidebar-avatar').textContent = (profil.email||'?').charAt(0).toUpperCase();
   await loadData();
 }
-(async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(); })();
+(async function initSession() { try { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(); } catch (e) { afficherErreurChargement(e); } })();
 
 async function loadData() {
   const { data, error } = await supabaseClient.from('journal_audit_compta').select('*').order('horodatage', { ascending:false }).limit(500);

@@ -172,11 +172,11 @@
   <div id="message"></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
 <script src="compta-commun.js"></script>
 <script>
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = creerClientSupabase();
 
 var typeSelectionne = null;
 var roleActuel = null;
@@ -225,7 +225,7 @@ async function demarrerApp(user) {
     chargerComptesSuivi();
     chargerSaisisseurs();
 }
-(async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(data.session.user); })();
+(async function initSession() { try { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(data.session.user); } catch (e) { afficherErreurChargement(e); } })();
 
 async function appelerRpc(fn, params) {
     const { data, error } = await supabaseClient.rpc(fn, params || {});

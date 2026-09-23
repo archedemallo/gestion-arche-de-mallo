@@ -215,13 +215,13 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
 <script src="compta-commun.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = creerClientSupabase();
 
 let roleActuel = null, typesEtDescriptions = [];
 let csvRows = [], csvHeaders = [], parsedPreview = [];
@@ -248,7 +248,7 @@ async function demarrerApp(user) {
   await chargerPeriodes(); await chargerTypesEtDescriptions(); await chargerFournisseurs();
   await loadData();
 }
-(async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(data.session.user); })();
+(async function initSession() { try { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(data.session.user); } catch (e) { afficherErreurChargement(e); } })();
 
 // Période par défaut : définie une seule fois dans Configuration
 async function chargerPeriodes() { await initPeriodes(supabaseClient, ['imp-periode','fl-periode']); }

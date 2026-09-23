@@ -127,11 +127,15 @@
 </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
 <script src="config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
 <script src="selecteur-animal.js"></script>
+<script src="selecteur-personne.js"></script>
+<script src="generer-pdf.js"></script>
+<script src="envoyer-mail.js"></script>
+<script src="stocker-pdf-drive.js"></script>
 <script>
     creerEntete({ dateId: 'dateCBS', dateLabel: 'Date :' });
     creerSignature('sig1');
@@ -228,7 +232,7 @@
     // SUPABASE
     // ============================================================
     const ENVOYER_PDF_MAIL = true;
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = creerClientSupabase();
 initSessionSuivi();
 chargerListeSaisisseurs();
 
@@ -265,8 +269,40 @@ chargerListeSaisisseurs();
             document.body.removeChild(overlay);
             if (error) throw error;
 
+            var avertissementMail = '';
             if (ENVOYER_PDF_MAIL) {
-                await sendToGoogle(data);
+                data.filename = buildFilename(data);
+                try {
+                    const pdfBytes = await genererPdfFormulaire();
+                    await envoyerMailFormulaire({
+                        sujet: 'Attestation CBS absent — ' + (data.nomChat || ''),
+                        corps: "Bonjour,\n\nVeuillez trouver ci-joint l'attestation d'absence de certificat de bonne santé.\n\nL'Arche de Mallo",
+                        pdfBytes: pdfBytes,
+                        pdfNomFichier: data.filename + '.pdf',
+                        emailClient: data.email,
+                        nomClient: ((data.prenomSignataire || '') + ' ' + (data.nomSignataire || '')).trim()
+                    });
+                    try {
+                        await enregistrerPdfDrive({
+                            onglet: 'Attestation CBS absent',
+                            prenom: data.prenomSignataire,
+                            nom: data.nomSignataire,
+                            animal: data.nomChat,
+                            dateDossier: data.dateFait || null,
+                            filename: data.filename,
+                            pdfBytes: pdfBytes,
+                            tableSource: 'attestations',
+                            enregistrementId: attestId,
+                            typeFichier: 'Attestation CBS absent'
+                        });
+                    } catch (eDrive) {
+                        console.error('Erreur dépôt Drive :', eDrive);
+                        avertissementMail += ' ⚠️ Le dépôt du PDF sur Drive a échoué (' + (eDrive.message || eDrive) + ').';
+                    }
+                } catch (e) {
+                    console.error('Erreur envoi PDF/mail :', e);
+                    avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué (' + (e.message || e) + '). L\'attestation est bien enregistrée — vous pouvez l\'imprimer avec le bouton "Imprimer" en attendant.';
+                }
             }
 
             formSaved = true;
@@ -274,7 +310,7 @@ chargerListeSaisisseurs();
             var btnPrint = document.querySelector('.btn-print');
             if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
             if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
-            afficherMessage('✅ Attestation enregistrée (id ' + attestId + ').');
+            afficherMessage('✅ Attestation enregistrée (id ' + attestId + ').' + avertissementMail);
         } catch (err) {
             document.body.removeChild(overlay);
             console.error(err);
@@ -286,6 +322,11 @@ chargerListeSaisisseurs();
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     initSelecteurAnimal({ inputId: 'nomChat', contexte: 'recherche' });
+    initSelecteurPersonne({
+        nomId: 'nomSignataire',
+        prenomId: 'prenomSignataire',
+        champs: { email: 'email' }
+    });
 });
 </script>
 

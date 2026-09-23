@@ -158,11 +158,14 @@
 </div><!-- /content -->
 </div><!-- /page-container -->
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
 <script src="config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
 <script src="selecteur-personne.js"></script>
+<script src="generer-pdf.js"></script>
+<script src="envoyer-mail.js"></script>
+<script src="stocker-pdf-drive.js"></script>
 <script>
     creerEntete({ dateId: 'dateFait', dateLabel: 'Date :' });
 creerSignature('sig1');
@@ -286,7 +289,7 @@ if (nbAutres > 0) {
     // SUPABASE
     // ============================================================
     const ENVOYER_PDF_MAIL = true;
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = creerClientSupabase();
 initSessionSuivi();
 chargerListeSaisisseurs();
 
@@ -328,9 +331,39 @@ chargerListeSaisisseurs();
             document.body.removeChild(overlay);
             if (error) throw error;
 
+            var avertissementMail = '';
             if (ENVOYER_PDF_MAIL) {
                 data.filename = buildFilename(data);
-                await sendToGoogle(data);
+                try {
+                    const pdfBytes = await genererPdfFormulaire();
+                    await envoyerMailFormulaire({
+                        sujet: 'Dépôt de chat(s) — ' + (data.nom || ''),
+                        corps: "Bonjour,\n\nVeuillez trouver ci-joint le formulaire de dépôt.\n\nL'Arche de Mallo",
+                        pdfBytes: pdfBytes,
+                        pdfNomFichier: data.filename + '.pdf',
+                        emailClient: data.email,
+                        nomClient: ((data.prenom || '') + ' ' + (data.nom || '')).trim()
+                    });
+                    try {
+                        await enregistrerPdfDrive({
+                            onglet: data.onglet,
+                            prenom: data.prenom,
+                            nom: data.nom,
+                            dateDossier: data.dateDepot || null,
+                            filename: data.filename,
+                            pdfBytes: pdfBytes,
+                            tableSource: 'depots_chat',
+                            enregistrementId: depotId,
+                            typeFichier: 'Dépôt de chat(s)'
+                        });
+                    } catch (eDrive) {
+                        console.error('Erreur dépôt Drive :', eDrive);
+                        avertissementMail += ' ⚠️ Le dépôt du PDF sur Drive a échoué (' + (eDrive.message || eDrive) + ').';
+                    }
+                } catch (e) {
+                    console.error('Erreur envoi PDF/mail :', e);
+                    avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué (' + (e.message || e) + ').';
+                }
             }
 
             formSaved = true;
@@ -338,7 +371,7 @@ chargerListeSaisisseurs();
             var btnPrint = document.querySelector('.btn-print');
             if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
             if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
-            afficherMessage('✅ Dépôt enregistré (id ' + depotId + ').');
+            afficherMessage('✅ Dépôt enregistré (id ' + depotId + ').' + avertissementMail);
         } catch (err) {
             document.body.removeChild(overlay);
             console.error(err);

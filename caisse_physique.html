@@ -247,12 +247,12 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
 <script src="compta-commun.js"></script>
 <script>
 // SUPABASE
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = creerClientSupabase();
 
 // Définition des coupures
 const BILLETS = [
@@ -331,8 +331,10 @@ async function demarrerApp(user) {
 
 // Reprend la session si déjà connecté (rafraîchissement de page)
 (async function initSession() {
-  const { data } = await supabaseClient.auth.getSession();
-  if (data.session) await demarrerApp(data.session.user);
+  try {
+    const { data } = await supabaseClient.auth.getSession();
+    if (data.session) await demarrerApp(data.session.user);
+  } catch (e) { afficherErreurChargement(e); }
 })();
 
 // ============================================================

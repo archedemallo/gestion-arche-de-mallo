@@ -256,12 +256,12 @@
 </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
 <script src="compta-commun.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = creerClientSupabase();
 
 let roleActuel = null;
 let allCaisse = [], allBanque = [], allFactures = [], allCheques = [], allRemiseDetails = [];
@@ -290,7 +290,7 @@ async function demarrerApp() {
   await chargerPeriodes();
   await loadData();
 }
-(async function initSession() { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(); })();
+(async function initSession() { try { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(); } catch (e) { afficherErreurChargement(e); } })();
 
 // Période par défaut : définie une seule fois dans Configuration
 async function chargerPeriodes() {
