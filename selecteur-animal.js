@@ -88,6 +88,14 @@ function initSelecteurAnimal(config) {
         }
     }
 
+    // Échappe les valeurs venant de la base avant de les insérer dans le
+    // HTML du menu déroulant (nom, numéro interne, couleur...) : sans ça,
+    // un nom d'animal contenant du HTML s'exécuterait au moment de
+    // l'affichage de la liste.
+    function echapper(s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
     function afficherResultats(animaux) {
         dropdown.innerHTML = '';
         if (animaux.length === 0) {
@@ -99,9 +107,9 @@ function initSelecteurAnimal(config) {
             var ligne = document.createElement('div');
             ligne.style.cssText = 'padding:8px 12px;cursor:pointer;font-size:14px;border-bottom:1px solid #f0f0f0;';
             var badge = a.statut_actuel === 'reserve' ? ' <span style="color:#9a3412;font-size:11px;">(réservé)</span>' : '';
-            var numero = a.numero_interne ? '<span style="color:#888;font-size:11px;">' + a.numero_interne + '</span> — ' : '';
-            ligne.innerHTML = numero + '<strong>' + a.nom_usuel + '</strong>' + badge +
-                (a.couleur ? ' — ' + a.couleur : '');
+            var numero = a.numero_interne ? '<span style="color:#888;font-size:11px;">' + echapper(a.numero_interne) + '</span> — ' : '';
+            ligne.innerHTML = numero + '<strong>' + echapper(a.nom_usuel) + '</strong>' + badge +
+                (a.couleur ? ' — ' + echapper(a.couleur) : '');
             ligne.addEventListener('mouseenter', function() { ligne.style.background = '#f5f5f5'; });
             ligne.addEventListener('mouseleave', function() { ligne.style.background = ''; });
             ligne.addEventListener('click', function() { choisir(a.id); });
@@ -176,6 +184,10 @@ function initSelecteurAnimal(config) {
 
     return {
         getAnimalId: function() { return animalIdChoisi; },
-        getReservationId: function() { return reservationIdChoisi; }
+        getReservationId: function() { return reservationIdChoisi; },
+        // Sélectionne un animal par son id, exactement comme un clic dans la
+        // liste déroulante (utilisé par le pré-remplissage automatique depuis
+        // formulaires_preremplis.html).
+        selectionner: function(animalId) { return choisir(animalId); }
     };
 }

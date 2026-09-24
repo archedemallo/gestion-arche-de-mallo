@@ -371,7 +371,7 @@ chargerListeSaisisseurs();
             var btnPrint = document.querySelector('.btn-print');
             if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
             if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
-            afficherMessage('✅ Dépôt enregistré (id ' + depotId + ').' + avertissementMail);
+            afficherMessage('Formulaire enregistré<br>Vous pouvez imprimer' + avertissementMail);
         } catch (err) {
             document.body.removeChild(overlay);
             console.error(err);

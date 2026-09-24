@@ -16,7 +16,8 @@
   .note-actions{display:flex;gap:4px;}
   .note-action-btn{background:none;border:none;cursor:pointer;color:#a08a50;font-size:12px;padding:2px 4px;}
   .note-action-btn.delete{color:var(--red);}
-  .note-textarea{flex:1;border:none;background:none;resize:none;font-size:12px;color:#4a3a20;font-family:'DM Sans',sans-serif;min-height:100px;}
+  .note-body{flex:1;display:flex;min-height:0;}
+  .note-textarea{width:100%;border:none;background:none;resize:none;font-size:12px;color:#4a3a20;font-family:'DM Sans',sans-serif;min-height:100px;overflow:hidden;}
   .note-textarea:focus{outline:none;}
   .note-footer{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:9px;color:#a08a50;}
   .note-save-indicator{opacity:0;transition:opacity 0.3s;color:var(--green);}
@@ -141,12 +142,22 @@ function renderGrid() {
           <button class="note-action-btn delete" title="Supprimer" onclick="deleteNote('${note.id}')"><i class="ti ti-trash"></i></button>
         </div>
       </div>
-      <textarea class="note-textarea" placeholder="Écris ici…" oninput="onTextChange('${note.id}', this)">${escH(note.texte)}</textarea>
+      <div class="note-body"><textarea class="note-textarea" placeholder="Écris ici…" oninput="onTextChange('${note.id}', this); redimensionnerNote(this)">${escH(note.texte)}</textarea></div>
       <div class="note-footer">
         <span>${formatMeta(note)}</span>
         <span class="note-save-indicator" id="saved-${note.id}"><i class="ti ti-check"></i> Sauvegardé</span>
       </div>
     </div>`).join('') + `<div class="note-add-card" onclick="addNote()"><i class="ti ti-plus" style="font-size:20px;"></i>Nouvelle note</div>`;
+  grid.querySelectorAll('.note-textarea').forEach(redimensionnerNote);
+}
+
+// Agrandit la zone de texte pour qu'elle affiche tout son contenu sans
+// barre de défilement, au lieu de rester à une hauteur fixe (voir
+// .note-body en CSS : le flex:1 est sur le conteneur parent, pas sur le
+// textarea, exprès pour que la hauteur fixée ici ne soit pas écrasée).
+function redimensionnerNote(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
 }
 
 function onTitleChange(id, value) { const n=notes.find(x=>x.id===id); if(!n)return; n.titre=value; scheduleSave(id); }

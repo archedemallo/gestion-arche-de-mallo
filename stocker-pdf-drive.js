@@ -40,7 +40,14 @@ async function enregistrerPdfDrive({ onglet, prenom, nom, animal, dateDossier, f
 
     var resp = await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // text/plain (et non application/json) exprès : avec un autre
+        // Content-Type, le navigateur enverrait une requête de
+        // pré-vérification CORS (OPTIONS) que l'Apps Script ne gère pas,
+        // et l'appel échouerait silencieusement. L'Apps Script lit le
+        // corps brut (e.postData.contents) et fait son propre
+        // JSON.parse(), donc l'en-tête déclaré n'a pas d'importance pour
+        // lui — seulement pour le navigateur.
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
             action:      'pdf',
             onglet:      onglet || '',

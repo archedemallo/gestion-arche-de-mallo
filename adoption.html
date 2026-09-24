@@ -787,8 +787,7 @@ function aperçuPhoto(input, previewId) {
                 redimensionnerImage(f, function(base64) {
                     fetch(APPS_SCRIPT_URL, {
                         method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'text/plain' },
                         body: JSON.stringify({
                             action:      'photo',
                             onglet:      'Adoption',
@@ -799,7 +798,17 @@ function aperçuPhoto(input, previewId) {
                             animal:      chat,
                             dateDossier: dateISODossier
                         })
-                    }).then(resolve).catch(resolve);
+                    }).then(async function(resp) {
+                        var result = {};
+                        try { result = await resp.json(); } catch (e) { /* réponse non-JSON */ }
+                        if (!resp.ok || result.ok === false) {
+                            console.error('[Photo] Échec de l\'envoi vers Drive :', result.error || ('HTTP ' + resp.status));
+                        }
+                        resolve();
+                    }).catch(function(e) {
+                        console.error('[Photo] Erreur réseau lors de l\'envoi :', e);
+                        resolve();
+                    });
                 });
             });
         }
@@ -1229,7 +1238,7 @@ async function _saveFormOriginal() {
         var btnPrint = document.querySelector('.btn-print');
         if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
         if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
-        afficherMessage('✅ Adoption enregistrée (id ' + adoptionId + ').' + avertissementMail);
+        afficherMessage('Formulaire enregistré<br>Vous pouvez imprimer' + avertissementMail);
     } catch (err) {
         document.body.removeChild(overlay);
         console.error(err);

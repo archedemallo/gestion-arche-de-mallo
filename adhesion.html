@@ -528,7 +528,7 @@ async function saveForm() {
             btnPrint.className = 'btn btn-print';
             btnPrint.disabled = false;
         }
-        afficherMessage('✅ Adhésion enregistrée.' + (ENVOYER_PDF_MAIL ? '<br>Vous pouvez maintenant imprimer si besoin.' : '') + avertissementMail);
+        afficherMessage('Formulaire enregistré<br>Vous pouvez imprimer' + avertissementMail);
     } catch (err) {
         document.body.removeChild(overlay);
         console.error(err);

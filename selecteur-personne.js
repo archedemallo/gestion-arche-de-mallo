@@ -87,6 +87,13 @@ function initSelecteurPersonne(config) {
             }
         }
 
+        // Échappe les valeurs venant de la base avant de les insérer dans le
+        // HTML du menu déroulant : sans ça, un nom ou une ville contenant du
+        // HTML s'exécuterait au moment de l'affichage de la liste.
+        function echapper(s) {
+            return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
         function afficherResultats(personnes) {
             dropdown.innerHTML = '';
             if (personnes.length === 0) {
@@ -98,7 +105,7 @@ function initSelecteurPersonne(config) {
                 var nomAff = p.type_personne === 'entreprise' ? (p.raison_sociale || '—') : ((p.prenom || '') + ' ' + (p.nom || '')).trim();
                 var ligne = document.createElement('div');
                 ligne.style.cssText = 'padding:8px 12px;cursor:pointer;font-size:14px;border-bottom:1px solid #f0f0f0;';
-                ligne.innerHTML = '<strong>' + nomAff + '</strong>' + (p.ville ? ' — ' + p.ville : '');
+                ligne.innerHTML = '<strong>' + echapper(nomAff) + '</strong>' + (p.ville ? ' — ' + echapper(p.ville) : '');
                 ligne.addEventListener('mouseenter', function() { ligne.style.background = '#f5f5f5'; });
                 ligne.addEventListener('mouseleave', function() { ligne.style.background = ''; });
                 ligne.addEventListener('click', function() {

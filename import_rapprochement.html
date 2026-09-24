@@ -56,7 +56,10 @@
   .info-box{background:var(--blue-bg);border:0.5px solid rgba(24,95,165,0.15);border-radius:var(--radius-sm);padding:8px 12px;font-size:11px;color:var(--blue);margin-bottom:12px;}
   #login-screen{max-width:340px;margin:80px auto;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:28px;}
   #login-screen input{width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-size:13px;}
-  #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+  #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}  .imp-tabs{display:flex;gap:8px;margin-bottom:16px;}
+  .imp-tab-btn{padding:8px 16px;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-weight:600;color:var(--text-2);cursor:pointer;}
+  .imp-tab-btn.active{background:var(--orange);color:white;border-color:var(--orange);}
+  .bulk-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11.5px;padding:8px 14px;background:rgba(201,107,42,0.06);border-bottom:0.5px solid var(--border);}
 </style>
 </head>
 <body>
@@ -113,6 +116,12 @@
 
     <div class="info-box"><i class="ti ti-info-circle"></i> Cette page importe un relevé bancaire (CSV ou Excel) puis vous laisse rapprocher chaque ligne avec un type de mouvement avant de l'envoyer en Caisse ou en Banque. Rien n'est créé tant que vous n'avez pas transféré la ligne.</div>
 
+    <div class="imp-tabs">
+      <div class="imp-tab-btn" id="tab-btn-import" onclick="switchImportTab('import')"><i class="ti ti-upload"></i> Import banque</div>
+      <div class="imp-tab-btn active" id="tab-btn-rappr" onclick="switchImportTab('rapprochement')"><i class="ti ti-arrows-exchange"></i> Rapprochement</div>
+    </div>
+
+    <div id="tab-import" class="hidden">
     <!-- ÉTAPE IMPORT -->
     <div class="steps">
       <div class="step" id="step-1"><span class="step-num">1</span> Fichier</div>
@@ -165,9 +174,12 @@
         <button class="btn btn-primary btn-sm" id="btn-confirm-import" onclick="confirmerImport()"><i class="ti ti-check"></i> Importer ces lignes</button>
       </div>
     </div>
+    <!-- fin onglet Import -->
+    </div>
 
+    <div id="tab-rapprochement">
     <!-- LISTE EN ATTENTE -->
-    <div class="kpi-row" id="kpi-row" style="margin-top:20px;"></div>
+    <div class="kpi-row" id="kpi-row"></div>
     <div class="list-card">
       <div class="list-head">
         <span style="font-size:13px;font-weight:600;">Lignes en attente de rapprochement</span>
@@ -181,8 +193,17 @@
           </select>
         </div>
       </div>
+      <div class="bulk-bar hidden" id="bulk-bar">
+        <span id="bulk-count" style="font-weight:600;">0 sélectionnée(s)</span>
+        <select class="f-select" id="bulk-type" style="min-width:180px;"></select>
+        <button class="btn btn-primary btn-sm" onclick="assignerEnMasse(this)"><i class="ti ti-check"></i> Affecter à ce type</button>
+        <button class="btn btn-secondary btn-sm" onclick="viderSelectionRappr()">Annuler la sélection</button>
+        <span id="bulk-err" class="hidden" style="color:var(--red);"></span>
+      </div>
       <div style="overflow-x:auto;max-height:500px;overflow-y:auto;" id="table-wrap"><div style="padding:24px;text-align:center;color:var(--text-3);">Chargement…</div></div>
     </div>
+    </div>
+    <!-- fin onglet Rapprochement -->
   </div>
 </div>
 </div>
@@ -226,6 +247,7 @@ const supabaseClient = creerClientSupabase();
 let roleActuel = null, typesEtDescriptions = [];
 let csvRows = [], csvHeaders = [], parsedPreview = [];
 let allImports = [], transferTarget = null, ignoreTarget = null;
+let selectionRappr = new Set();
 
 async function seConnecter() {
   document.getElementById('login-err').textContent = '';
@@ -257,6 +279,13 @@ async function chargerTypesEtDescriptions() {
   const { data: descs } = await supabaseClient.from('descriptions_mouvement').select('id, type_mouvement_id, valeur, ordre').order('ordre');
   typesEtDescriptions = (types||[]).map(t => ({...t, descriptions:(descs||[]).filter(d=>d.type_mouvement_id===t.id)}));
   document.getElementById('tr-type').innerHTML = '<option value="">— Choisir —</option>' + typesEtDescriptions.map(t=>`<option>${escH(t.valeur)}</option>`).join('');
+  document.getElementById('bulk-type').innerHTML = '<option value="">— Choisir un type —</option>' + typesEtDescriptions.map(t=>`<option>${escH(t.valeur)}</option>`).join('');
+}
+function switchImportTab(tab) {
+  document.getElementById('tab-import').classList.toggle('hidden', tab !== 'import');
+  document.getElementById('tab-rapprochement').classList.toggle('hidden', tab !== 'rapprochement');
+  document.getElementById('tab-btn-import').classList.toggle('active', tab === 'import');
+  document.getElementById('tab-btn-rappr').classList.toggle('active', tab === 'rapprochement');
 }
 function onTrTypeChange() {
   const t = typesEtDescriptions.find(x => x.valeur === document.getElementById('tr-type').value);
@@ -529,10 +558,19 @@ function renderTable() {
   let rows = allImports;
   if (destF) rows = rows.filter(r => r.destination === destF);
   if (statF) rows = rows.filter(r => r.statut === statF);
-  if (!rows.length) { document.getElementById('table-wrap').innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-3);font-size:12px;">Aucune ligne</div>'; return; }
 
+  // On ne garde dans la sélection que des lignes encore visibles et
+  // encore en attente (une ligne rapprochée/ignorée ou filtrée hors vue
+  // ne doit pas rester sélectionnée pour l'affectation en masse).
+  const idsVisiblesEnAttente = new Set(rows.filter(r => r.statut === 'en_attente').map(r => r.id));
+  selectionRappr.forEach(id => { if (!idsVisiblesEnAttente.has(id)) selectionRappr.delete(id); });
+
+  if (!rows.length) { document.getElementById('table-wrap').innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-3);font-size:12px;">Aucune ligne</div>'; majBulkBar(); return; }
+
+  const peutSelectionner = roleActuel === 'admin';
   const destLabel = { banque: 'Banque', caisse1: 'Caisse 1', caisse2: 'Caisse 2' };
   const trs = rows.map(r => `<tr>
+    ${peutSelectionner ? `<td>${r.statut==='en_attente' ? `<input type="checkbox" class="ligne-rappr-chk" data-id="${r.id}" ${selectionRappr.has(r.id)?'checked':''} onchange="onSelectRapprLigne('${r.id}', this.checked)" style="width:14px;height:14px;accent-color:var(--orange);">` : ''}</td>` : ''}
     <td>${formatDateFR(r.date_mouvement)}</td>
     <td>${escH(r.libelle||'')}</td>
     <td class="r ${r.montant>=0?'amount-c':'amount-d'}">${fmt(r.montant)}</td>
@@ -548,9 +586,72 @@ function renderTable() {
     </td>
   </tr>`).join('');
 
+  const enteteSelect = peutSelectionner ? `<th><input type="checkbox" id="select-all-rappr" onchange="toggleAllRappr(this.checked)" style="width:14px;height:14px;accent-color:var(--orange);" title="Tout sélectionner (lignes en attente visibles)"></th>` : '';
   document.getElementById('table-wrap').innerHTML = `<table><thead><tr>
-    <th>Date</th><th>Libellé</th><th class="r">Montant</th><th>Destination</th><th>Statut</th><th>Motif</th><th class="r">Actions</th>
+    ${enteteSelect}<th>Date</th><th>Libellé</th><th class="r">Montant</th><th>Destination</th><th>Statut</th><th>Motif</th><th class="r">Actions</th>
   </tr></thead><tbody>${trs}</tbody></table>`;
+  majBulkBar();
+}
+
+// ============================================================
+// SÉLECTION MULTIPLE + AFFECTATION EN MASSE
+// ============================================================
+function onSelectRapprLigne(id, checked) {
+  if (checked) selectionRappr.add(id); else selectionRappr.delete(id);
+  majBulkBar();
+}
+function toggleAllRappr(checked) {
+  document.querySelectorAll('.ligne-rappr-chk').forEach(cb => {
+    cb.checked = checked;
+    if (checked) selectionRappr.add(cb.dataset.id); else selectionRappr.delete(cb.dataset.id);
+  });
+  majBulkBar();
+}
+function viderSelectionRappr() {
+  selectionRappr.clear();
+  renderTable();
+}
+function majBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  const n = selectionRappr.size;
+  bar.classList.toggle('hidden', n === 0);
+  document.getElementById('bulk-count').textContent = n + ' sélectionnée(s)';
+  const selectAll = document.getElementById('select-all-rappr');
+  if (selectAll) {
+    const total = document.querySelectorAll('.ligne-rappr-chk').length;
+    selectAll.checked = total > 0 && n === total;
+  }
+}
+async function assignerEnMasse(btn) {
+  const type = document.getElementById('bulk-type').value;
+  const errEl = document.getElementById('bulk-err');
+  errEl.classList.add('hidden');
+  if (!type) { errEl.textContent = 'Choisissez un type de mouvement.'; errEl.classList.remove('hidden'); return; }
+  const ids = Array.from(selectionRappr);
+  if (!ids.length) return;
+  if (!confirm('Affecter ' + ids.length + ' ligne(s) au type "' + type + '" et les transférer ?')) return;
+
+  if (btn) btn.disabled = true;
+  let ok = 0, echecs = [];
+  for (const id of ids) {
+    try {
+      const { error } = await supabaseClient.rpc('transferer_import_rapprochement', {
+        p_id: id, p_type_mouvement: type,
+        p_description: null, p_nom_chat: null, p_numero_recu: null, p_fournisseur: null
+      });
+      if (error) throw error;
+      ok++;
+    } catch (e) { echecs.push(e.message || String(e)); }
+  }
+  if (btn) btn.disabled = false;
+  selectionRappr.clear();
+  await loadData();
+  if (echecs.length) {
+    errEl.textContent = ok + ' transférée(s), ' + echecs.length + ' échec(s) : ' + echecs[0];
+    errEl.classList.remove('hidden');
+  } else {
+    showToast(ok + ' ligne(s) transférée(s) !');
+  }
 }
 
 // ============================================================

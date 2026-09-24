@@ -681,7 +681,7 @@ function resetForm() {
     if (!confirm('Voulez-vous vraiment reinitialiser le formulaire ? Toutes les donnees saisies seront perdues.')) return;
 
     var today      = getTodayISO();
-    var excludeIds = ['dateNaissance', 'dateSterilisationPrevue', 'dateNaissancePersonne', 'dateVermifuge', 'prochainVermifuge','dateprochainAntiPuces', 'dateAntipuces', 'dateVaccin' ,'dateRappel', 'dateSterilisationCas1', 'dateLimiteSterilisation', 'dateCertificatVeto', 'date_debut', 'date_fin', 'dateNaissanceMembre'];
+    var excludeIds = ['dateNaissance', 'dateSterilisationPrevue', 'dateNaissancePersonne', 'dateVermifuge', 'prochainVermifuge','dateprochainAntiPuces', 'dateAntipuces', 'dateAntiPuces', 'dateVaccin' ,'dateRappel', 'dateSterilisationCas1', 'dateLimiteSterilisation', 'dateCertificatVeto', 'date_debut', 'date_fin', 'dateNaissanceMembre'];
 
     document.querySelectorAll('input.editable').forEach(function(input) {
         if (input.type === 'date') {
@@ -692,6 +692,7 @@ function resetForm() {
     });
 
     document.querySelectorAll('textarea.editable').forEach(function(t) { t.value = ''; });
+    document.querySelectorAll('select.editable').forEach(function(s) { s.value = ''; });
     document.querySelectorAll('.checkbox').forEach(function(cb) { cb.classList.remove('checked'); });
     document.querySelectorAll('input[type="checkbox"]').forEach(function(cb) { cb.checked = false; });
 
@@ -1068,19 +1069,22 @@ function appliquerPrefill() {
 
 async function envoyerPhotoAnimal(onglet, prenom, nom, nomAnimal, dateStr) {
     var input = document.getElementById('photoAnimal');
-    if (!input || !input.files || !input.files[0]) return;
+    if (!input || !input.files || !input.files[0]) return true;
     var date = dateStr || new Date().toISOString().split('T')[0];
     // Version "propre" (underscores) réservée UNIQUEMENT au nom de fichier.
     var prenomFichier = (prenom   || ''       ).replace(/\s+/g, '_');
     var nomFichier     = (nom     || 'Inconnu').replace(/\s+/g, '_');
     var animalFichier  = (nomAnimal || 'Animal').replace(/\s+/g, '_');
     var filename = [prenomFichier, nomFichier, animalFichier, 'Photo', date].filter(Boolean).join('_');
-    await new Promise(function(resolve) {
+    return await new Promise(function(resolve) {
         redimensionnerImage(input.files[0], function(base64) {
             fetch(window.APPS_SCRIPT_URL || APPS_SCRIPT_URL, {
                 method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
+                // text/plain exprès (voir sendToGoogle juste au-dessus) : évite
+                // la pré-vérification CORS que l'Apps Script ne gère pas.
+                // Contrairement à avant (mode:'no-cors'), on lit maintenant la
+                // réponse pour savoir si l'envoi a vraiment réussi côté Drive.
+                headers: { 'Content-Type': 'text/plain' },
                 body: JSON.stringify({
                     action:      'photo',
                     onglet:      onglet,
@@ -1092,7 +1096,19 @@ async function envoyerPhotoAnimal(onglet, prenom, nom, nomAnimal, dateStr) {
                     animal:      (nomAnimal || 'Animal').trim(),
                     dateDossier: date
                 })
-            }).then(resolve).catch(resolve);
+            }).then(async function(resp) {
+                var result = {};
+                try { result = await resp.json(); } catch (e) { /* réponse non-JSON */ }
+                if (!resp.ok || result.ok === false) {
+                    console.error('[Photo] Échec de l\'envoi vers Drive :', result.error || ('HTTP ' + resp.status));
+                    resolve(false);
+                } else {
+                    resolve(true);
+                }
+            }).catch(function(e) {
+                console.error('[Photo] Erreur réseau lors de l\'envoi :', e);
+                resolve(false);
+            });
         });
     });
 }

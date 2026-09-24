@@ -179,16 +179,19 @@
 </div><!-- /content -->
 </div><!-- /page-container -->
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
 <script src="config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
+<script src="generer-pdf.js"></script>
+<script src="envoyer-mail.js"></script>
+<script src="stocker-pdf-drive.js"></script>
 <script>
 // SUPABASE — remplace l'envoi vers Apps Script pour la génération du
 // numéro et son rattachement au don. PDF + mail restent sur Apps Script
 // (ENVOYER_PDF_MAIL=true), exactement comme les autres formulaires.
 const ENVOYER_PDF_MAIL = true;
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = creerClientSupabase();
 initSessionSuivi();
 
 creerSignature('sig1');
@@ -374,23 +377,18 @@ async function saveForm() {
     document.body.appendChild(overlay);
 
     try {
-        // Le numéro n'est tiré qu'une fois : si on ré-appuie sur Sauvegarder
-        // après avoir corrigé un champ manquant, on ne redemande pas de
-        // numéro (pas de trou inutile dans la numérotation).
+        // Un seul appel transactionnel : soit le numéro est alloué ET
+        // rattaché au don (si donIdPrefill), soit rien n'est consommé —
+        // plus de risque de trou si le réseau coupe entre les deux étapes.
         var champNumero = document.getElementById('numeroRecuFiscal');
         if (!champNumero.value) {
-            const { data: numero, error: errNumero } = await supabaseClient.rpc('numero_recu_fiscal_suivant', { p_type: 'particulier' });
+            const { data: numero, error: errNumero } = await supabaseClient.rpc('obtenir_numero_recu_fiscal', {
+                p_type: 'particulier',
+                p_don_id: donIdPrefill || null
+            });
             if (errNumero) throw errNumero;
             champNumero.value = numero;
             document.getElementById('numeroRecuFiscalAffiche').textContent = numero;
-        }
-
-        if (donIdPrefill) {
-            const { error: errRattachement } = await supabaseClient.rpc('enregistrer_numero_recu_fiscal', {
-                p_don_id: donIdPrefill,
-                p_numero: champNumero.value
-            });
-            if (errRattachement) throw errRattachement;
         }
 
         var data = collectFormData();
@@ -398,8 +396,38 @@ async function saveForm() {
         data.htmlContent = encodeBase64Unicode(buildHtmlWithData());
         data.filename = buildFilename(data);
 
+        var avertissementMail = '';
         if (ENVOYER_PDF_MAIL) {
-            await sendToGoogle(data);
+            try {
+                const pdfBytes = await genererPdfFormulaire();
+                await envoyerMailFormulaire({
+                    sujet: 'Reçu fiscal n°' + champNumero.value,
+                    corps: "Bonjour,\n\nVeuillez trouver ci-joint votre reçu fiscal. Merci pour votre soutien !\n\nL'Arche de Mallo",
+                    pdfBytes: pdfBytes,
+                    pdfNomFichier: data.filename + '.pdf',
+                    emailClient: data.email,
+                    nomClient: ((data.prenom || '') + ' ' + (data.nom || '')).trim()
+                });
+                try {
+                    await enregistrerPdfDrive({
+                        onglet: 'Reçu fiscal',
+                        prenom: data.prenom,
+                        nom: data.nom,
+                        dateDossier: data.dateSignature || null,
+                        filename: data.filename,
+                        pdfBytes: pdfBytes,
+                        tableSource: 'dons',
+                        enregistrementId: donIdPrefill,
+                        typeFichier: 'Reçu fiscal n°' + champNumero.value
+                    });
+                } catch (eDrive) {
+                    console.error('Erreur dépôt Drive :', eDrive);
+                    avertissementMail += ' ⚠️ Le dépôt du PDF sur Drive a échoué (' + (eDrive.message || eDrive) + ').';
+                }
+            } catch (e) {
+                console.error('Erreur envoi PDF/mail :', e);
+                avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué (' + (e.message || e) + ').';
+            }
         }
 
         document.body.removeChild(overlay);
@@ -408,7 +436,7 @@ async function saveForm() {
         var btnPrint = document.querySelector('.btn-print');
         if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
         if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
-        afficherMessage('✅ Reçu fiscal n°' + champNumero.value + ' enregistré.');
+        afficherMessage('Formulaire enregistré<br>Vous pouvez imprimer' + avertissementMail);
     } catch (err) {
         document.body.removeChild(overlay);
         console.error(err);
