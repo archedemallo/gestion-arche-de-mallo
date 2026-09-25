@@ -56,12 +56,12 @@
   <div id="resultat"></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
 <script src="selecteur-animal.js"></script>
 <script>
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = creerClientSupabase();
 initSessionSuivi();
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -102,6 +102,7 @@ function render(d) {
       <div><span class="lbl">Espèce / race :</span> ${escH(a.espece||'—')}${a.race?' — '+escH(a.race):''}</div>
       <div><span class="lbl">Sexe :</span> ${escH(a.sexe||'—')}</div>
       <div><span class="lbl">Couleur :</span> ${escH(a.couleur||'—')}</div>
+      <div><span class="lbl">Maman :</span> ${escH(a.nom_maman||'—')}</div>
       <div><span class="lbl">Naissance :</span> ${fmtDate(a.date_naissance)}${a.date_naissance_estimee?' (estimée)':''}</div>
       <div><span class="lbl">Puce :</span> ${escH(a.puce||'—')}</div>
       <div><span class="lbl">N° carnet de santé :</span> ${escH(a.numero_carnet_sante||'—')}</div>

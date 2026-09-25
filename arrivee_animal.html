@@ -43,8 +43,8 @@
   </div>
 </div>
 
-<div id="entete"></div>
 <div style="max-width:900px;margin:0 auto;padding:0 16px;">
+  <div id="entete"></div>
   <p style="font-size:11px;color:var(--grey);margin:-8px 0 12px;">Déclarer l'arrivée d'un nouvel animal (trappage, dépôt, abandon, saisie, naissance à l'association)</p>
 </div>
 
@@ -123,6 +123,11 @@
       </div>
     </div>
 
+    <div class="champ">
+      <label>Nom de la maman (si né à l'association)</label>
+      <input type="text" id="arr-nom-maman">
+    </div>
+
     <div class="ligne2">
       <div class="champ">
         <label>Nom de la personne à l'origine (ex. trappeur)</label>
@@ -150,12 +155,12 @@
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
 <script src="noms-chats.js"></script>
 <script>
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = creerClientSupabase();
 initSessionSuivi();
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -202,7 +207,8 @@ async function declarerArrivee() {
     p_sterilise: document.getElementById('arr-sterilise').checked,
     p_vermifuge: document.getElementById('arr-vermifuge').checked,
     p_antipuce: document.getElementById('arr-antipuce').checked,
-    p_autre_info: document.getElementById('arr-autre-info').value.trim() || null
+    p_autre_info: document.getElementById('arr-autre-info').value.trim() || null,
+    p_nom_maman: document.getElementById('arr-nom-maman').value.trim() || null
   });
 
   if (error) { msg.textContent = 'Erreur : ' + error.message; msg.className = 'msg err'; return; }
@@ -211,7 +217,7 @@ async function declarerArrivee() {
   msg.className = 'msg ok';
   invaliderCacheNomsAnimauxPresents();
 
-  ['arr-nom','arr-couleur','arr-puce','arr-nom-personne','arr-prenom-personne','arr-motif','arr-date-naissance','arr-autre-info']
+  ['arr-nom','arr-couleur','arr-puce','arr-nom-personne','arr-prenom-personne','arr-motif','arr-date-naissance','arr-autre-info','arr-nom-maman']
     .forEach(function(id) { document.getElementById(id).value = ''; });
   document.getElementById('arr-sexe').value = '';
   document.getElementById('arr-espece').value = 'chat';

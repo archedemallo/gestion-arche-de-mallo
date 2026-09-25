@@ -68,12 +68,12 @@
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
 <script src="selecteur-animal.js"></script>
 <script>
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = creerClientSupabase();
 initSessionSuivi();
 
 let animalSelectionneId = null;
@@ -118,6 +118,7 @@ function renderFiche(d) {
       <div><span class="lbl">Sexe :</span> ${escH(a.sexe||'—')}</div>
       <div><span class="lbl">Date de naissance :</span> ${naissance}</div>
       <div><span class="lbl">Couleur :</span> ${escH(a.couleur||'—')}</div>
+      <div><span class="lbl">Maman :</span> ${escH(a.nom_maman||'—')}</div>
       <div><span class="lbl">Puce :</span> ${escH(a.puce||'—')}</div>
       <div><span class="lbl">Arrivée :</span> ${fmtDate(a.date_arrivee)}${a.origine_arrivee?' — '+escH(a.origine_arrivee):''}</div>
       <div><span class="lbl">Décès :</span> ${a.date_deces?fmtDate(a.date_deces):'—'}</div>

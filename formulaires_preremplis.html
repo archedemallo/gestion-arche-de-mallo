@@ -56,7 +56,7 @@
   <p>Retrouvez une personne et/ou un chat déjà connus, copiez leurs infos, puis ouvrez le formulaire souhaité</p>
 </header>
 <div class="wrap">
-  <div class="note">Les champs des formulaires ne se remplissent pas encore tout seuls : cherchez ci-dessous, cliquez sur "📋 Copier", puis collez dans le formulaire ouvert. Dites-le si vous préférez un vrai remplissage automatique — ça demande d'adapter chaque formulaire.</div>
+  <div class="note">En ouvrant un formulaire ci-dessous, les informations déjà connues sont automatiquement remplies — il ne reste qu'à compléter le reste (et à modifier si besoin les zones déjà remplies).</div>
 
   <div class="cols">
     <div class="card">
@@ -81,36 +81,80 @@
     <h2 style="color:var(--orange);font-size:13px;margin:0 0 10px;">Ouvrir un formulaire vierge</h2>
     <div class="forms-hint" id="forms-hint">Choisissez d'abord une personne et/ou un animal ci-dessus pour activer les formulaires.</div>
     <div class="forms-grid" id="forms-grid">
-      <a href="adoption.html" target="_blank" class="disabled">🏠 Contrat de cession</a>
-      <a href="certificat_engagement.html" target="_blank" class="disabled">📜 Certificat d'engagement</a>
-      <a href="decharge_vaccin.html" target="_blank" class="disabled">💉 Décharge vaccin</a>
-      <a href="attestation_cbs_absent.html" target="_blank" class="disabled">🩺 Attestation CBS absent</a>
-      <a href="reservation.html" target="_blank" class="disabled">📅 Réservation</a>
-      <a href="adhesion.html" target="_blank" class="disabled">🎫 Adhésion</a>
-      <a href="don.html" target="_blank" class="disabled">💝 Don</a>
-      <a href="depot_chat.html" target="_blank" class="disabled">🏠 Dépôt chat</a>
-      <a href="abandon.html" target="_blank" class="disabled">💔 Abandon</a>
-      <a href="famille_accueil.html" target="_blank" class="disabled">🤝 Famille d'accueil</a>
-      <a href="pret_materiel.html" target="_blank" class="disabled">🪤 Prêt matériel</a>
-      <a href="retour_materiel.html" target="_blank" class="disabled">↩️ Retour matériel</a>
+      <a data-fichier="adoption.html" href="adoption.html" target="_blank" class="disabled">🏠 Contrat de cession</a>
+      <a data-fichier="certificat_engagement.html" href="certificat_engagement.html" target="_blank" class="disabled">📜 Certificat d'engagement</a>
+      <a data-fichier="decharge_vaccin.html" href="decharge_vaccin.html" target="_blank" class="disabled">💉 Décharge vaccin</a>
+      <a data-fichier="attestation_cbs_absent.html" href="attestation_cbs_absent.html" target="_blank" class="disabled">🩺 Attestation CBS absent</a>
+      <a data-fichier="reservation.html" href="reservation.html" target="_blank" class="disabled">📅 Réservation</a>
+      <a data-fichier="adhesion.html" href="adhesion.html" target="_blank" class="disabled">🎫 Adhésion</a>
+      <a data-fichier="don.html" href="don.html" target="_blank" class="disabled">💝 Don</a>
+      <a data-fichier="depot_chat.html" href="depot_chat.html" target="_blank" class="disabled">🏠 Dépôt chat</a>
+      <a data-fichier="abandon.html" href="abandon.html" target="_blank" class="disabled">💔 Abandon</a>
+      <a data-fichier="famille_accueil.html" href="famille_accueil.html" target="_blank" class="disabled">🤝 Famille d'accueil</a>
+      <a data-fichier="pret_materiel.html" href="pret_materiel.html" target="_blank" class="disabled">🪤 Prêt matériel</a>
+      <a data-fichier="retour_materiel.html" href="retour_materiel.html" target="_blank" class="disabled">↩️ Retour matériel</a>
     </div>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
 <script src="selecteur-animal.js"></script>
 <script>
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = creerClientSupabase();
 initSessionSuivi();
 
 function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
 
+// ---------- Correspondance champs personne/animal -> id des champs de chaque formulaire ----------
+// Clé = id du champ dans le formulaire cible, valeur = clé correspondante dans
+// personneChoisie / animalChoisi. `aAnimalId: true` signifie que le formulaire
+// a son propre sélecteur d'animal (nécessite l'id réel de l'animal, pas juste
+// du texte) : ces formulaires lisent le paramètre ?animalId= eux-mêmes.
+const MAPPING_FORMULAIRES = {
+  'adoption.html':              { personne: { nom:'nom', prenom:'prenom', adresse:'adresse', codePostal:'code_postal', ville:'ville', email:'email', portable:'telephone' }, aAnimalId: true },
+  'certificat_engagement.html': { personne: { nomAdoptant:'nom', prenomAdoptant:'prenom', adresseAdoptant:'adresse', codePostalAdoptant:'code_postal', villeAdoptant:'ville', email:'email', telephone:'telephone' } },
+  'decharge_vaccin.html':       { personne: { nomAdoptant:'nom', prenomAdoptant:'prenom', adresseAdoptant:'adresse', codePostalAdoptant:'code_postal', villeAdoptant:'ville', email:'email', telephone:'telephone' }, animal: { nomChat:'nom_usuel' } },
+  'attestation_cbs_absent.html':{ personne: { nomSignataire:'nom', prenomSignataire:'prenom' }, animal: { nomChat:'nom_usuel' } },
+  'reservation.html':           { personne: { nom:'nom', prenom:'prenom', adresseAdoptant:'adresse', codePostal:'code_postal', ville:'ville', email:'email', telephone:'telephone' }, aAnimalId: true },
+  'adhesion.html':               { personne: { nom:'nom', prenom:'prenom', adresse:'adresse', codePostal:'code_postal', ville:'ville', email:'email', portable:'telephone' } },
+  'don.html':                    { personne: { nom:'nom', prenom:'prenom', adresse:'adresse', codePostal:'code_postal', ville:'ville', email:'email', telephone:'telephone', raisonSociale:'raison_sociale' } },
+  'depot_chat.html':             { personne: { nom:'nom', prenom:'prenom', adresse:'adresse', codePostal:'code_postal', ville:'ville', email:'email', telephone:'telephone' } },
+  'abandon.html':                { personne: { nom:'nom', prenom:'prenom', adresse:'adresse', codePostal:'code_postal', ville:'ville', email:'email', telephone:'telephone' }, aAnimalId: true },
+  'famille_accueil.html':        { personne: { nom:'nom', prenom:'prenom', adresse:'adresse', code_postal:'code_postal', ville:'ville', email:'email', telephone:'telephone' }, aAnimalId: true },
+  'pret_materiel.html':          { personne: { nomEmprunteur:'nom', prenomEmprunteur:'prenom', adresseEmprunteur:'adresse', codePostalEmprunteur:'code_postal', villeEmprunteur:'ville', emailEmprunteur:'email', telephoneEmprunteur:'telephone' } },
+  'retour_materiel.html':        { personne: { nomEmprunteur:'nom', prenomEmprunteur:'prenom', emailEmprunteur:'email' } }
+};
+
+function construireUrlFormulaire(fichier) {
+  const cfg = MAPPING_FORMULAIRES[fichier] || {};
+  const champs = {};
+  if (personneChoisie && cfg.personne) {
+    Object.keys(cfg.personne).forEach(idChamp => {
+      const val = personneChoisie[cfg.personne[idChamp]];
+      if (val) champs[idChamp] = val;
+    });
+  }
+  if (animalChoisi && cfg.animal) {
+    Object.keys(cfg.animal).forEach(idChamp => {
+      const val = animalChoisi[cfg.animal[idChamp]];
+      if (val) champs[idChamp] = val;
+    });
+  }
+  const params = [];
+  if (Object.keys(champs).length) params.push('prefill=' + encodeURIComponent(JSON.stringify(champs)));
+  if (cfg.aAnimalId && animalIdChoisi) params.push('animalId=' + encodeURIComponent(animalIdChoisi));
+  return params.length ? (fichier + '?' + params.join('&')) : fichier;
+}
+
 // ---------- Activation des formulaires uniquement après sélection ----------
 function majAccesFormulaires() {
   const actif = !!(personneChoisie || animalChoisi);
-  document.querySelectorAll('#forms-grid a').forEach(a => a.classList.toggle('disabled', !actif));
+  document.querySelectorAll('#forms-grid a').forEach(a => {
+    a.classList.toggle('disabled', !actif);
+    a.href = construireUrlFormulaire(a.dataset.fichier);
+  });
   document.getElementById('forms-hint').style.display = actif ? 'none' : '';
 }
 
@@ -164,20 +208,23 @@ document.addEventListener('click', function(e) {
 
 // ---------- Animal (réutilise le sélecteur partagé) ----------
 let animalChoisi = null;
+let animalIdChoisi = null;
 document.addEventListener('DOMContentLoaded', function() {
   initSelecteurAnimal({
     inputId: 'recherche-animal',
     contexte: 'recherche',
     onSelect: async function(animalId) {
-      if (!animalId) { animalChoisi = null; document.getElementById('fiche-animal').innerHTML = '<div class="empty">Aucun animal sélectionné</div>'; majAccesFormulaires(); return; }
+      if (!animalId) { animalChoisi = null; animalIdChoisi = null; document.getElementById('fiche-animal').innerHTML = '<div class="empty">Aucun animal sélectionné</div>'; majAccesFormulaires(); return; }
       const { data, error } = await supabaseClient.rpc('obtenir_animal_pour_formulaire', { p_animal_id: animalId });
       if (error || !data) { console.error(error); return; }
       animalChoisi = data.animal;
+      animalIdChoisi = animalId;
       const a = animalChoisi;
       document.getElementById('fiche-animal').innerHTML = `
         <div><span class="lbl">Nom :</span> ${escH(a.nom_usuel||'—')}</div>
         <div><span class="lbl">Nom d'adoption :</span> ${escH(a.nom_adoption||'—')}</div>
         <div><span class="lbl">Couleur :</span> ${escH(a.couleur||'—')}</div>
+        <div><span class="lbl">Maman :</span> ${escH(a.nom_maman||'—')}</div>
         <div><span class="lbl">Puce :</span> ${escH(a.puce||'—')}</div>
         <div><span class="lbl">N° carnet de santé :</span> ${escH(a.numero_carnet_sante||'—')}</div>
         <button type="button" class="btn" onclick="copierAnimal()">📋 Copier</button>`;
