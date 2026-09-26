@@ -1,5 +1,5 @@
 -- ============================================================
--- 046_arrivee_animal_chaton.sql
+-- 047_arrivee_animal_chaton.sql
 -- ============================================================
 -- Ajoute une case "Chaton" au formulaire d'arrivée : colonne
 -- animaux.est_chaton + paramètre p_chaton sur creer_arrivee_animal().
