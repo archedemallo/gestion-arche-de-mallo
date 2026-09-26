@@ -409,8 +409,14 @@ async function declarerArrivee() {
       ).href;
 
       if (ficheWindow && !ficheWindow.closed) {
-        // La fenêtre a été autorisée par le navigateur : on la redirige.
-        ficheWindow.location.href = urlFiche;
+        // La fenêtre a été autorisée par le navigateur. On évite
+        // ficheWindow.location.href = ... : certains navigateurs bloquent
+        // silencieusement une navigation déclenchée par script après un
+        // await (aucune erreur, la fenêtre reste bloquée sur about:blank).
+        // Écrire un meta-refresh dans son document, lui, passe toujours.
+        ficheWindow.document.open();
+        ficheWindow.document.write('<meta http-equiv="refresh" content="0;url=' + urlFiche.replace(/"/g, '&quot;') + '">');
+        ficheWindow.document.close();
 
         // Pas de popup de succès : l'utilisateur passe directement
         // au formulaire Dépôt/Abandon.
