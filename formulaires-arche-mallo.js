@@ -1099,8 +1099,8 @@ async function envoyerPhotoAnimal(onglet, prenom, nom, nomAnimal, dateStr) {
             }).then(async function(resp) {
                 var result = {};
                 try { result = await resp.json(); } catch (e) { /* réponse non-JSON */ }
-                if (!resp.ok || result.ok === false) {
-                    console.error('[Photo] Échec de l\'envoi vers Drive :', result.error || ('HTTP ' + resp.status));
+                if (!resp.ok || result.status !== 'ok') {
+                    console.error('[Photo] Échec de l\'envoi vers Drive :', result.message || ('HTTP ' + resp.status));
                     resolve(false);
                 } else {
                     resolve(true);
