@@ -303,17 +303,12 @@ async function declarerArrivee() {
   const fichierPhoto = document.getElementById('photoAnimal').files[0];
   if (!fichierPhoto) { msg.textContent = 'La photo de l\'animal est obligatoire.'; msg.className = 'msg err'; return; }
 
-  // Pour Dépôt / Abandon, on prépare l'ouverture du formulaire détaillé.
-  // La fenêtre est ouverte immédiatement dans le geste du clic utilisateur
-  // afin d'éviter le blocage des popups après les await.
+  // Pour Dépôt / Abandon, on ouvre une fenêtre immédiatement dans le clic
+  // utilisateur. Elle sera ensuite redirigée vers le vrai fichier après
+  // l'enregistrement Supabase.
   let ficheWindow = null;
   if (origine === 'abandon' || origine === 'depot') {
     ficheWindow = window.open('about:blank', '_blank');
-    if (!ficheWindow) {
-      // Le navigateur a bloqué la popup : le formulaire sera proposé
-      // comme lien de secours dans la confirmation.
-      console.warn('La fenêtre du formulaire détaillé a été bloquée par le navigateur.');
-    }
   }
 
   document.getElementById('popup-loading').classList.add('show');
@@ -366,7 +361,7 @@ async function declarerArrivee() {
     }
 
     // Ouvre automatiquement le formulaire détaillé (abandon ou dépôt),
-    // pré-rempli avec les infos déjà saisies.
+    // pré-rempli avec les informations déjà saisies.
     const lienFiche = document.getElementById('popup-lien-fiche');
     lienFiche.style.display = 'none';
 
@@ -387,22 +382,31 @@ async function declarerArrivee() {
         ? 'abandon.html'
         : 'depot_chat.html';
 
-      const urlFiche = fichierCible + (paramsUrl.length ? '?' + paramsUrl.join('&') : '');
+      // Construit l'URL à partir du dossier réel de la page actuelle.
+      // Cela évite les problèmes de chemin relatif selon l'endroit
+      // depuis lequel le formulaire est lancé.
+      const urlFiche = new URL(
+        fichierCible + (paramsUrl.length ? '?' + paramsUrl.join('&') : ''),
+        window.location.href
+      ).href;
 
       if (ficheWindow && !ficheWindow.closed) {
-        ficheWindow.location.replace(urlFiche);
-        // On ne laisse pas la popup de succès ouverte :
-        // l'utilisateur passe directement au formulaire Dépôt/Abandon.
+        // La fenêtre a été autorisée par le navigateur : on la redirige.
+        ficheWindow.location.href = urlFiche;
+
+        // Pas de popup de succès : l'utilisateur passe directement
+        // au formulaire Dépôt/Abandon.
       } else {
-        // Popup bloquée : on fournit un lien cliquable.
-        document.getElementById('lien-fiche').href = urlFiche;
-        lienFiche.style.display = '';
-        document.getElementById('popup-succes').classList.add('show');
+        // Le navigateur a bloqué la nouvelle fenêtre.
+        // Navigation de secours garantie vers le formulaire demandé.
+        window.location.href = urlFiche;
+        return;
       }
     } else {
-      // Pour les autres origines, affichage normal de la confirmation.
+      // Pour les autres origines, afficher la confirmation.
       document.getElementById('popup-succes').classList.add('show');
     }
+
     invaliderCacheNomsAnimauxPresents();
 
     ['arr-nom','arr-couleur','arr-puce','arr-nom-personne','arr-prenom-personne','arr-motif','arr-date-naissance','arr-autre-info','arr-nom-maman']
