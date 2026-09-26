@@ -991,29 +991,32 @@ function renderFourFiche() {
     </tbody></table>`;
 }
 
+function matchTypeKeyword(type, keyword) {
+  return new RegExp('\\b' + keyword.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'i').test(type || '');
+}
 function _rowsTypePer(keyword, per) {
-  return [...allCaisse.filter(r=>(r.type_mouvement||'').toLowerCase().includes(keyword) && periodeNormaliser(r.periode)===periodeNormaliser(per)).map(r=>({...r,_src:'caisse'})),
-          ...allBanque.filter(r=>!r.ref_remise && (r.type_mouvement||'').toLowerCase().includes(keyword) && periodeNormaliser(r.periode)===periodeNormaliser(per)).map(r=>({...r,_src:'banque'}))];
+  return [...allCaisse.filter(r=>matchTypeKeyword(r.type_mouvement, keyword) && periodeNormaliser(r.periode)===periodeNormaliser(per)).map(r=>({...r,_src:'caisse'})),
+          ...allBanque.filter(r=>!r.ref_remise && matchTypeKeyword(r.type_mouvement, keyword) && periodeNormaliser(r.periode)===periodeNormaliser(per)).map(r=>({...r,_src:'banque'}))];
 }
 function _sumCredit(rows) { return rows.reduce((s,r)=>s+fmtN(r.credit),0); }
 function _entreesRemises(keyword, per) {
-  return allRemiseDetails.filter(r => periodeNormaliser(r.periode)===periodeNormaliser(per) && (r.type_mouvement||'').toLowerCase().includes(keyword))
+  return allRemiseDetails.filter(r => periodeNormaliser(r.periode)===periodeNormaliser(per) && matchTypeKeyword(r.type_mouvement, keyword))
     .map(r => ({ nom: r.donateur||'Anonyme', montant: fmtN(r.montant), date: r.date_remise }));
 }
 function _montantsParMois(keyword, mois12) {
   return mois12.map(m => {
     let tot = 0;
-    allCaisse.forEach(r => { if ((r.type_mouvement||'').toLowerCase().includes(keyword) && rowInMonth(r.date_mouvement,m.full)) tot+=fmtN(r.credit); });
-    allBanque.forEach(r => { if (!r.ref_remise && (r.type_mouvement||'').toLowerCase().includes(keyword) && rowInMonth(r.date_mouvement,m.full)) tot+=fmtN(r.credit); });
-    allRemiseDetails.forEach(r => { if ((r.type_mouvement||'').toLowerCase().includes(keyword) && rowInMonth(r.date_remise,m.full)) tot+=fmtN(r.montant); });
+    allCaisse.forEach(r => { if (matchTypeKeyword(r.type_mouvement, keyword) && rowInMonth(r.date_mouvement,m.full)) tot+=fmtN(r.credit); });
+    allBanque.forEach(r => { if (!r.ref_remise && matchTypeKeyword(r.type_mouvement, keyword) && rowInMonth(r.date_mouvement,m.full)) tot+=fmtN(r.credit); });
+    allRemiseDetails.forEach(r => { if (matchTypeKeyword(r.type_mouvement, keyword) && rowInMonth(r.date_remise,m.full)) tot+=fmtN(r.montant); });
     return tot;
   });
 }
 function _listePersonnes(keyword, per, cfg) {
   const map = {};
   const add = (nom,v) => { nom=nom||'Anonyme'; if(!map[nom])map[nom]={total:0,nb:0}; map[nom].total+=v; map[nom].nb++; };
-  allCaisse.filter(r=>(r.type_mouvement||'').toLowerCase().includes(keyword)&&periodeNormaliser(r.periode)===periodeNormaliser(per)).forEach(r=>add(cfg.getNom(r),fmtN(r.credit)));
-  allBanque.filter(r=>!r.ref_remise && (r.type_mouvement||'').toLowerCase().includes(keyword)&&periodeNormaliser(r.periode)===periodeNormaliser(per)).forEach(r=>add(cfg.getNom(r),fmtN(r.credit)));
+  allCaisse.filter(r=>matchTypeKeyword(r.type_mouvement, keyword)&&periodeNormaliser(r.periode)===periodeNormaliser(per)).forEach(r=>add(cfg.getNom(r),fmtN(r.credit)));
+  allBanque.filter(r=>!r.ref_remise && matchTypeKeyword(r.type_mouvement, keyword)&&periodeNormaliser(r.periode)===periodeNormaliser(per)).forEach(r=>add(cfg.getNom(r),fmtN(r.credit)));
   _entreesRemises(keyword,per).forEach(e=>add(e.nom,e.montant));
   return Object.entries(map).sort((a,b)=>b[1].total-a[1].total);
 }
