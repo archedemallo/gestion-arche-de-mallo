@@ -925,7 +925,7 @@ function getFourData() {
   const rows = [];
   allFactures.filter(r=>r.periode===activePer).forEach(r => { if(!r.fournisseur)return; const m=fmtN(r.montant_ttc); rows.push({fournisseur:r.fournisseur, source:'Facture', date:r.date_facture, libelle:r.commentaire||r.description||'', type_mvt:r.categorie||'', debit:m, credit:0}); });
   allCaisse.filter(r=>r.periode===activePer).forEach(r => { if(!r.fournisseur)return; rows.push({fournisseur:r.fournisseur, source:'Caisse', date:r.date_mouvement, libelle:r.libelle||'', type_mvt:r.type_mouvement||'', debit:fmtN(r.debit), credit:fmtN(r.credit)}); });
-  allBanque.filter(r=>r.periode===activePer).forEach(r => { if(!r.fournisseur)return; rows.push({fournisseur:r.fournisseur, source:'Banque', date:r.date_mouvement, libelle:r.libelle||'', type_mvt:r.type_mouvement||'', debit:fmtN(r.debit), credit:fmtN(r.credit)}); });
+  allBanque.filter(r=>r.periode===activePer).forEach(r => { if(!r.fournisseur)return; if(r.numero_facture||r.ref_cheque)return; rows.push({fournisseur:r.fournisseur, source:'Banque', date:r.date_mouvement, libelle:r.libelle||'', type_mvt:r.type_mouvement||'', debit:fmtN(r.debit), credit:fmtN(r.credit)}); });
   allCheques.filter(r=>r.periode===activePer).forEach(r => { if(!r.fournisseur)return; rows.push({fournisseur:r.fournisseur, source:'Chèque', date:r.date_emission, libelle:r.beneficiaire||'', type_mvt:r.type_mouvement||'', debit:fmtN(r.montant), credit:0}); });
   return rows;
 }
