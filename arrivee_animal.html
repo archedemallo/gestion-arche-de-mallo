@@ -320,12 +320,20 @@ async function declarerArrivee() {
   const fichierPhoto = document.getElementById('photoAnimal').files[0];
   if (!fichierPhoto) { msg.textContent = 'La photo de l\'animal est obligatoire.'; msg.className = 'msg err'; return; }
 
+  // Pour Dépôt / Abandon, on ouvre une fenêtre immédiatement dans le clic
+  // utilisateur. Elle sera ensuite redirigée vers le vrai fichier après
+  // l'enregistrement Supabase.
+  let ficheWindow = null;
+  if (origine === 'abandon' || origine === 'depot') {
+    ficheWindow = window.open('about:blank', '_blank');
+  }
+
   document.getElementById('popup-loading').classList.add('show');
 
   // Tout le traitement post-clic est protégé par try/catch/finally : sans
   // ça, la moindre erreur (ex. échec réseau lors de l'envoi de la photo)
   // interrompait le script en plein milieu, laissant la popup "en cours"
-  // ouverte indéfiniment.
+  // ouverte indéfiniment et l'onglet dépôt/abandon bloqué sur about:blank.
   try {
     const { data, error } = await supabaseClient.rpc('creer_arrivee_animal', {
       p_nom_usuel: nom,
@@ -380,6 +388,23 @@ async function declarerArrivee() {
       if (nomPersonne) champsPrefill.nom = nomPersonne;
       if (prenomPersonne) champsPrefill.prenom = prenomPersonne;
 
+      // Infos propres à l'animal — abandon.html a des champs dédiés
+      // (nomAnimal, identification, sexe, dateNaissance) que depot_chat.html
+      // n'a pas (formulaire limité à des compteurs), donc réservé à l'abandon.
+      if (origine === 'abandon') {
+        if (nom) champsPrefill.nomAnimal = nom;
+        const puce = document.getElementById('arr-puce').value.trim();
+        if (puce) champsPrefill.identification = puce;
+        const sexeVal = document.getElementById('arr-sexe').value;
+        if (sexeVal === 'M') champsPrefill.sexe = 'Mâle';
+        if (sexeVal === 'F') champsPrefill.sexe = 'Femelle';
+        const naissance = document.getElementById('arr-date-naissance').value;
+        if (naissance) {
+          const [aaaa, mm, jj] = naissance.split('-');
+          champsPrefill.dateNaissance = jj + '/' + mm + '/' + aaaa;
+        }
+      }
+
       const paramsUrl = [];
       if (Object.keys(champsPrefill).length) {
         paramsUrl.push('prefill=' + encodeURIComponent(JSON.stringify(champsPrefill)));
@@ -400,13 +425,18 @@ async function declarerArrivee() {
         window.location.href
       ).href;
 
-      // Pas de nouvel onglet : plus fiable qu'ouvrir une fenêtre au clic
-      // pour la rediriger ensuite (certains navigateurs bloquent
-      // silencieusement ce type de redirection différée, laissant un
-      // onglet coincé sur about:blank). On navigue directement la page
-      // en cours vers le formulaire détaillé.
-      window.location.href = urlFiche;
-      return;
+      if (ficheWindow && !ficheWindow.closed) {
+        // La fenêtre a été autorisée par le navigateur : on la redirige.
+        ficheWindow.location.href = urlFiche;
+
+        // Pas de popup de succès : l'utilisateur passe directement
+        // au formulaire Dépôt/Abandon.
+      } else {
+        // Le navigateur a bloqué la nouvelle fenêtre.
+        // Navigation de secours garantie vers le formulaire demandé.
+        window.location.href = urlFiche;
+        return;
+      }
     } else {
       // Pour les autres origines, afficher la confirmation.
       document.getElementById('popup-succes').classList.add('show');
@@ -435,6 +465,7 @@ async function declarerArrivee() {
 
   } catch (err) {
     console.error('Erreur lors de la déclaration d\'arrivée :', err);
+    if (ficheWindow) ficheWindow.close();
     msg.textContent = 'Erreur : ' + (err.message || err);
     msg.className = 'msg err';
   } finally {
