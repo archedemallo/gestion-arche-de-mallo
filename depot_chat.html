@@ -325,7 +325,10 @@ chargerListeSaisisseurs();
         data.signatureImage = getSignatureImage();
         data.htmlContent = encodeBase64Unicode(buildHtmlWithData());
 
-        afficherPopupChargement();
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:bold;font-family:Arial;';
+        overlay.innerHTML = '<div style="text-align:center">En cours...<br><br><small>Veuillez patienter</small></div>';
+        document.body.appendChild(overlay);
 
         try {
             const { data: depotId, error } = await supabaseClient.rpc('creer_depot_chat', {
@@ -343,7 +346,8 @@ chargerListeSaisisseurs();
                 p_nombre_autres: data.nombreAutres ? parseInt(data.nombreAutres) : 0,
                 p_preciser_autre: data.preciserAutre,
                 p_date_fait: data.dateFait || null,
-                p_saisi_par_id: data.saisiPar || null
+                p_saisi_par_id: data.saisiPar || null,
+                p_animal_id: animalIdDepot
             });
 
             document.body.removeChild(overlay);
@@ -376,11 +380,11 @@ chargerListeSaisisseurs();
                         });
                     } catch (eDrive) {
                         console.error('Erreur dépôt Drive :', eDrive);
-                        avertissementMail += ' ⚠️ Le dépôt du PDF sur Drive a échoué.';
+                        avertissementMail += ' ⚠️ Le dépôt du PDF sur Drive a échoué (' + (eDrive.message || eDrive) + ').';
                     }
                 } catch (e) {
                     console.error('Erreur envoi PDF/mail :', e);
-                    avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué.';
+                    avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué (' + (e.message || e) + ').';
                 }
             }
 
@@ -391,10 +395,9 @@ chargerListeSaisisseurs();
             if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
             afficherMessage('Formulaire enregistré<br>Vous pouvez imprimer' + avertissementMail);
         } catch (err) {
+            document.body.removeChild(overlay);
             console.error(err);
             alert('Erreur lors de la sauvegarde : ' + (err.message || err));
-        } finally {
-            masquerPopupChargement();
         }
     }
 </script>
@@ -407,6 +410,14 @@ document.addEventListener('DOMContentLoaded', function() {
         champs: { adresse:'adresse', codePostal:'code_postal', ville:'ville', email:'email', telephone:'telephone' }
     });
 });
+
+// Pré-remplissage de l'animal depuis arrivee_animal.html (?animalId=...) :
+// permet de rattacher ce dépôt à l'animal individuel déjà créé, pour qu'il
+// apparaisse dans l'historique de sa fiche (voir obtenir_fiche_animal /
+// depot_chat_animaux). Champ non visible dans le formulaire (celui-ci ne
+// recense les animaux que par compteur, sans nom) : uniquement transmis
+// avec l'enregistrement.
+var animalIdDepot = new URLSearchParams(window.location.search).get('animalId') || null;
 </script>
 
 </body>
