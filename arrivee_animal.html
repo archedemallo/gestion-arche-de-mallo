@@ -392,7 +392,7 @@ async function declarerArrivee() {
       if (Object.keys(champsPrefill).length) {
         paramsUrl.push('prefill=' + encodeURIComponent(JSON.stringify(champsPrefill)));
       }
-      if (origine === 'abandon' && data) {
+      if ((origine === 'abandon' || origine === 'depot') && data) {
         paramsUrl.push('animalId=' + encodeURIComponent(data));
       }
 
