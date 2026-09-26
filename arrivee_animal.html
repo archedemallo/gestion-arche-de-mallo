@@ -300,11 +300,11 @@ async function declarerArrivee() {
   const fichierPhoto = document.getElementById('photoAnimal').files[0];
   if (!fichierPhoto) { msg.textContent = 'La photo de l\'animal est obligatoire.'; msg.className = 'msg err'; return; }
 
-  // Fenêtre pré-ouverte pour le formulaire d'abandon détaillé (doit rester
-  // dans le même geste utilisateur synchrone que le clic, sinon le
-  // navigateur bloque le popup une fois qu'on est passé par un await)
+  // Fenêtre pré-ouverte pour le formulaire détaillé (abandon/dépôt) — doit
+  // rester dans le même geste utilisateur synchrone que le clic, sinon le
+  // navigateur bloque le popup une fois qu'on est passé par un await
   let ficheWindow = null;
-  if (origine === 'abandon') {
+  if (origine === 'abandon' || origine === 'depot') {
     ficheWindow = window.open('', '_blank');
   }
 
@@ -353,18 +353,18 @@ async function declarerArrivee() {
   document.getElementById('popup-succes').classList.add('show');
   invaliderCacheNomsAnimauxPresents();
 
-  // Ouvre automatiquement le formulaire d'abandon détaillé, pré-rempli
-  // avec les infos déjà saisies (nom/prénom + animal déjà sélectionné)
-  if (origine === 'abandon' && ficheWindow) {
+  // Ouvre automatiquement le formulaire détaillé (abandon ou dépôt),
+  // pré-rempli avec les infos déjà saisies
+  if ((origine === 'abandon' || origine === 'depot') && ficheWindow) {
     const champsPrefill = {};
     if (nomPersonne) champsPrefill.nom = nomPersonne;
     if (prenomPersonne) champsPrefill.prenom = prenomPersonne;
     const paramsUrl = [];
     if (Object.keys(champsPrefill).length) paramsUrl.push('prefill=' + encodeURIComponent(JSON.stringify(champsPrefill)));
-    if (data) paramsUrl.push('animalId=' + encodeURIComponent(data));
-    ficheWindow.location.href = 'abandon.html' + (paramsUrl.length ? '?' + paramsUrl.join('&') : '');
+    if (origine === 'abandon' && data) paramsUrl.push('animalId=' + encodeURIComponent(data));
+    const fichierCible = origine === 'abandon' ? 'abandon.html' : 'depot_chat.html';
+    ficheWindow.location.href = fichierCible + (paramsUrl.length ? '?' + paramsUrl.join('&') : '');
   }
-  // Dépôt : ouverture auto du formulaire détaillé en attente (formulaire dépôt à revoir d'abord)
 
   ['arr-nom','arr-couleur','arr-puce','arr-nom-personne','arr-prenom-personne','arr-motif','arr-date-naissance','arr-autre-info','arr-nom-maman']
     .forEach(function(id) { document.getElementById(id).value = ''; });
