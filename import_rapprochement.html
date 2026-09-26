@@ -169,7 +169,13 @@
       </div>
       <div class="preview-table" id="preview-wrap"></div>
       <div id="import-err" class="hidden" style="color:var(--red);font-size:11px;padding:8px 0;"></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap;">
+        <div class="form-group" style="flex:1;min-width:200px;">
+          <label class="form-label">Type de mouvement (optionnel)</label>
+          <select class="f-select" id="imp-type-mouvement" style="width:100%;" onchange="onImpTypeChange()">
+            <option value="">— Importer en attente (à rapprocher plus tard) —</option>
+          </select>
+        </div>
         <button class="btn btn-secondary btn-sm" onclick="annulerImport()">Annuler</button>
         <button class="btn btn-primary btn-sm" id="btn-confirm-import" onclick="confirmerImport()"><i class="ti ti-check"></i> Importer ces lignes</button>
       </div>
@@ -280,6 +286,12 @@ async function chargerTypesEtDescriptions() {
   typesEtDescriptions = (types||[]).map(t => ({...t, descriptions:(descs||[]).filter(d=>d.type_mouvement_id===t.id)}));
   document.getElementById('tr-type').innerHTML = '<option value="">— Choisir —</option>' + typesEtDescriptions.map(t=>`<option>${escH(t.valeur)}</option>`).join('');
   document.getElementById('bulk-type').innerHTML = '<option value="">— Choisir un type —</option>' + typesEtDescriptions.map(t=>`<option>${escH(t.valeur)}</option>`).join('');
+  document.getElementById('imp-type-mouvement').innerHTML = '<option value="">— Importer en attente (à rapprocher plus tard) —</option>' + typesEtDescriptions.map(t=>`<option>${escH(t.valeur)}</option>`).join('');
+}
+function onImpTypeChange() {
+  const type = document.getElementById('imp-type-mouvement').value;
+  const btn = document.getElementById('btn-confirm-import');
+  btn.innerHTML = type ? '<i class="ti ti-check"></i> Importer et affecter à ce type' : '<i class="ti ti-check"></i> Importer ces lignes';
 }
 function switchImportTab(tab) {
   document.getElementById('tab-import').classList.toggle('hidden', tab !== 'import');
@@ -507,14 +519,16 @@ function updateSelCount() {
 async function confirmerImport() {
   const selection = parsedPreview.filter(r => r.selected);
   if (!selection.length) { showImportErr('Sélectionnez au moins une ligne à importer.'); return; }
+  const typeChoisi = document.getElementById('imp-type-mouvement').value;
   const btn = document.getElementById('btn-confirm-import'); btn.disabled = true;
   try {
-    const { data, error } = await supabaseClient.rpc('importer_lignes_rapprochement', {
-      p_destination: document.getElementById('imp-destination').value,
-      p_lignes: selection.map(r => ({ date: r.date, libelle: r.libelle, montant: r.montant, periode: document.getElementById('imp-periode').value }))
-    });
+    const lignes = selection.map(r => ({ date: r.date, libelle: r.libelle, montant: r.montant, periode: document.getElementById('imp-periode').value }));
+    const rpcName = typeChoisi ? 'importer_et_transferer_lignes' : 'importer_lignes_rapprochement';
+    const rpcParams = { p_destination: document.getElementById('imp-destination').value, p_lignes: lignes };
+    if (typeChoisi) rpcParams.p_type_mouvement = typeChoisi;
+    const { data, error } = await supabaseClient.rpc(rpcName, rpcParams);
     if (error) throw error;
-    showToast(data + ' ligne(s) importée(s) !');
+    showToast(data + (typeChoisi ? ' ligne(s) importée(s) et affectée(s) !' : ' ligne(s) importée(s) !'));
     annulerImport();
     await loadData();
   } catch(e) { showImportErr('Erreur : ' + (e.message||'?')); }
@@ -527,6 +541,8 @@ function annulerImport() {
   document.getElementById('card-mapping').classList.add('hidden');
   document.getElementById('card-upload').classList.remove('hidden');
   document.getElementById('select-bar').classList.add('hidden');
+  document.getElementById('imp-type-mouvement').value = '';
+  onImpTypeChange();
   ['step-1','step-2','step-3'].forEach(id => document.getElementById(id).classList.remove('active','done'));
   document.getElementById('step-1').classList.add('active');
   document.getElementById('import-err').classList.add('hidden');
