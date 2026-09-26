@@ -1,8 +1,10 @@
 -- ============================================================
 -- 047_arrivee_animal_chaton.sql
 -- ============================================================
--- Ajoute une case "Chaton" au formulaire d'arrivée : colonne
+-- Ajoute le toggle "Chat / Chaton" au formulaire d'arrivée : colonne
 -- animaux.est_chaton + paramètre p_chaton sur creer_arrivee_animal().
+-- Renumérotée en 047 (la précédente proposition 046 entrait en
+-- collision avec 046_statuts_exclut_relache.sql).
 -- ============================================================
 
 alter table animaux add column if not exists est_chaton boolean not null default false;
