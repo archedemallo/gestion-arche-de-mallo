@@ -50,6 +50,13 @@
   </div>
 </div>
 
+<div id="popup-loading" class="popup-overlay">
+  <div class="popup-box">
+    <div class="popup-icon">⏳</div>
+    <p>Enregistrement en cours…<br>Merci de patienter.</p>
+  </div>
+</div>
+
 <div id="popup-succes" class="popup-overlay">
   <div class="popup-box">
     <div class="popup-icon">✅</div>
@@ -253,7 +260,7 @@ async function aperçuPhoto(input, previewId) {
   const reader = new FileReader();
   reader.onload = function(e) {
     preview._photoBase64 = e.target.result;
-    preview.innerHTML = '<img src="' + e.target.result + '" style="max-width:200px;max-height:150px;border:1px solid #ccc;border-radius:4px;display:block;" alt="Photo animal">' +
+    preview.innerHTML = '<img src="' + e.target.result + '" style="max-width:300px;max-height:225px;border:1px solid #ccc;border-radius:4px;display:block;" alt="Photo animal">' +
       '<span style="font-size:10px;color:var(--green);display:block;margin-top:2px;">✔ ' + file.name + '</span>';
     document.getElementById('btn_voir_animal').style.display = 'inline-block';
   };
@@ -293,6 +300,16 @@ async function declarerArrivee() {
   const fichierPhoto = document.getElementById('photoAnimal').files[0];
   if (!fichierPhoto) { msg.textContent = 'La photo de l\'animal est obligatoire.'; msg.className = 'msg err'; return; }
 
+  // Fenêtre pré-ouverte pour le formulaire d'abandon détaillé (doit rester
+  // dans le même geste utilisateur synchrone que le clic, sinon le
+  // navigateur bloque le popup une fois qu'on est passé par un await)
+  let ficheWindow = null;
+  if (origine === 'abandon') {
+    ficheWindow = window.open('', '_blank');
+  }
+
+  document.getElementById('popup-loading').classList.add('show');
+
   const { data, error } = await supabaseClient.rpc('creer_arrivee_animal', {
     p_nom_usuel: nom,
     p_origine_arrivee: origine,
@@ -313,13 +330,18 @@ async function declarerArrivee() {
     p_nom_maman: document.getElementById('arr-nom-maman').value.trim() || null
   });
 
-  if (error) { msg.textContent = 'Erreur : ' + error.message; msg.className = 'msg err'; return; }
+  if (error) {
+    document.getElementById('popup-loading').classList.remove('show');
+    if (ficheWindow) ficheWindow.close();
+    msg.textContent = 'Erreur : ' + error.message; msg.className = 'msg err'; return;
+  }
 
   const photoOk = await envoyerPhotoAnimal('Arrivee_Animal',
     document.getElementById('arr-prenom-personne').value.trim(),
     document.getElementById('arr-nom-personne').value.trim(),
     nom, date);
 
+  document.getElementById('popup-loading').classList.remove('show');
   msg.textContent = '';
   msg.className = 'msg';
   if (!photoOk) {
@@ -333,14 +355,14 @@ async function declarerArrivee() {
 
   // Ouvre automatiquement le formulaire d'abandon détaillé, pré-rempli
   // avec les infos déjà saisies (nom/prénom + animal déjà sélectionné)
-  if (origine === 'abandon') {
+  if (origine === 'abandon' && ficheWindow) {
     const champsPrefill = {};
     if (nomPersonne) champsPrefill.nom = nomPersonne;
     if (prenomPersonne) champsPrefill.prenom = prenomPersonne;
     const paramsUrl = [];
     if (Object.keys(champsPrefill).length) paramsUrl.push('prefill=' + encodeURIComponent(JSON.stringify(champsPrefill)));
     if (data) paramsUrl.push('animalId=' + encodeURIComponent(data));
-    window.open('abandon.html' + (paramsUrl.length ? '?' + paramsUrl.join('&') : ''), '_blank');
+    ficheWindow.location.href = 'abandon.html' + (paramsUrl.length ? '?' + paramsUrl.join('&') : '');
   }
   // Dépôt : ouverture auto du formulaire détaillé en attente (formulaire dépôt à revoir d'abord)
 
