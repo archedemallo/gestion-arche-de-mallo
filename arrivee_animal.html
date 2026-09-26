@@ -16,6 +16,7 @@
   .champ{margin-bottom:10px;}
   .champ label{display:block;font-size:11px;color:var(--grey);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:3px;}
   .champ label .req{color:var(--red);}
+  .champ label.btn{color:#fff;text-transform:none;letter-spacing:normal;margin-bottom:0;}
   .champ input, .champ select, .champ textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--warm);border-radius:6px;font-size:13px;background:#fff;font-family:inherit;}
   .champ textarea{resize:vertical;min-height:56px;}
   .ligne2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
@@ -102,7 +103,7 @@
     <div class="ligne2">
       <div class="champ">
         <label>Origine <span class="req">*</span></label>
-        <select id="arr-origine">
+        <select id="arr-origine" onchange="appliquerOrigine()">
           <option value="">— Choisir —</option>
           <option value="trappage">Trappage</option>
           <option value="depot">Dépôt</option>
@@ -128,7 +129,7 @@
       </div>
     </div>
 
-    <div class="champ">
+    <div class="champ" id="bloc-deja-fait">
       <label>Déjà fait à l'arrivée</label>
       <div class="cases">
         <label><input type="checkbox" id="arr-sterilise"> Stérilisé</label>
@@ -138,22 +139,22 @@
     </div>
 
     <div class="champ">
-      <label>Nom de la maman (si né à l'association)</label>
+      <label>Nom de la maman (si connue)</label>
       <input type="text" id="arr-nom-maman">
     </div>
 
-    <div class="ligne2">
+    <div class="ligne2" id="bloc-personne-origine">
       <div class="champ">
-        <label>Nom de la personne à l'origine (ex. trappeur)</label>
+        <label>Nom de la personne à l'origine <span class="req" id="req-nom-personne" style="display:none;">*</span></label>
         <input type="text" id="arr-nom-personne">
       </div>
       <div class="champ">
-        <label>Prénom</label>
+        <label>Prénom <span class="req" id="req-prenom-personne" style="display:none;">*</span></label>
         <input type="text" id="arr-prenom-personne">
       </div>
     </div>
-    <div class="champ">
-      <label>Motif / précisions</label>
+    <div class="champ" id="bloc-motif">
+      <label id="lbl-motif">Motif / précisions <span class="req" id="req-motif" style="display:none;">*</span></label>
       <input type="text" id="arr-motif">
     </div>
     <div class="champ">
@@ -192,7 +193,58 @@ document.addEventListener('DOMContentLoaded', function() {
   creerEntete({ dateId: 'dateRef', dateLabel: 'Date :', titre: 'Nouvelle arrivée' });
   chargerListeSaisisseurs();
   document.getElementById('arr-date').valueAsDate = new Date();
+  appliquerOrigine();
 });
+
+// Adapte les champs visibles/obligatoires du formulaire selon l'origine choisie
+function appliquerOrigine() {
+  const origine = document.getElementById('arr-origine').value;
+
+  const blocDejaFait   = document.getElementById('bloc-deja-fait');
+  const blocPersonne   = document.getElementById('bloc-personne-origine');
+  const blocMotif      = document.getElementById('bloc-motif');
+  const lblMotif       = document.getElementById('lbl-motif');
+  const reqNomPersonne = document.getElementById('req-nom-personne');
+  const reqPrenomPers  = document.getElementById('req-prenom-personne');
+  const reqMotif       = document.getElementById('req-motif');
+  const champNomPers   = document.getElementById('arr-nom-personne');
+  const champPrenomPers= document.getElementById('arr-prenom-personne');
+  const champMotif     = document.getElementById('arr-motif');
+
+  // État par défaut : tout visible, rien obligatoire, libellé standard
+  blocDejaFait.style.display = '';
+  blocPersonne.style.display = '';
+  blocMotif.style.display = '';
+  reqNomPersonne.style.display = 'none';
+  reqPrenomPers.style.display = 'none';
+  reqMotif.style.display = 'none';
+  lblMotif.firstChild.textContent = 'Motif / précisions ';
+  champMotif.placeholder = '';
+
+  if (origine === 'ne_a_association') {
+    blocDejaFait.style.display = 'none';
+    blocPersonne.style.display = 'none';
+    blocMotif.style.display = 'none';
+    champNomPers.value = '';
+    champPrenomPers.value = '';
+    champMotif.value = '';
+  } else if (origine === 'depot' || origine === 'abandon') {
+    blocDejaFait.style.display = 'none';
+    blocMotif.style.display = 'none';
+    champMotif.value = '';
+    reqNomPersonne.style.display = '';
+    reqPrenomPers.style.display = '';
+  } else if (origine === 'trappage') {
+    reqNomPersonne.style.display = '';
+    reqPrenomPers.style.display = '';
+    reqMotif.style.display = '';
+    lblMotif.firstChild.textContent = 'Commune ';
+    champMotif.placeholder = "Commune où l'animal a été trappé";
+  } else if (origine === 'saisie') {
+    reqNomPersonne.style.display = '';
+    reqPrenomPers.style.display = '';
+  }
+}
 
 async function aperçuPhoto(input, previewId) {
   const preview = document.getElementById(previewId);
@@ -225,10 +277,19 @@ async function declarerArrivee() {
   const couleur = document.getElementById('arr-couleur').value.trim();
   const saisiPar = document.getElementById('saisiPar').value;
 
+  const nomPersonne = document.getElementById('arr-nom-personne').value.trim();
+  const prenomPersonne = document.getElementById('arr-prenom-personne').value.trim();
+  const motif = document.getElementById('arr-motif').value.trim();
+
   if (!nom) { msg.textContent = 'Le nom est obligatoire.'; msg.className = 'msg err'; return; }
   if (!origine) { msg.textContent = "L'origine est obligatoire."; msg.className = 'msg err'; return; }
   if (!couleur) { msg.textContent = 'La couleur est obligatoire.'; msg.className = 'msg err'; return; }
   if (!saisiPar) { msg.textContent = '"Saisi par" est obligatoire.'; msg.className = 'msg err'; return; }
+  if (origine === 'trappage' || origine === 'depot' || origine === 'abandon' || origine === 'saisie') {
+    if (!nomPersonne) { msg.textContent = "Le nom de la personne à l'origine est obligatoire."; msg.className = 'msg err'; return; }
+    if (!prenomPersonne) { msg.textContent = 'Le prénom est obligatoire.'; msg.className = 'msg err'; return; }
+  }
+  if (origine === 'trappage' && !motif) { msg.textContent = 'La commune est obligatoire.'; msg.className = 'msg err'; return; }
   const fichierPhoto = document.getElementById('photoAnimal').files[0];
   if (!fichierPhoto) { msg.textContent = 'La photo de l\'animal est obligatoire.'; msg.className = 'msg err'; return; }
 
@@ -270,6 +331,19 @@ async function declarerArrivee() {
   document.getElementById('popup-succes').classList.add('show');
   invaliderCacheNomsAnimauxPresents();
 
+  // Ouvre automatiquement le formulaire d'abandon détaillé, pré-rempli
+  // avec les infos déjà saisies (nom/prénom + animal déjà sélectionné)
+  if (origine === 'abandon') {
+    const champsPrefill = {};
+    if (nomPersonne) champsPrefill.nom = nomPersonne;
+    if (prenomPersonne) champsPrefill.prenom = prenomPersonne;
+    const paramsUrl = [];
+    if (Object.keys(champsPrefill).length) paramsUrl.push('prefill=' + encodeURIComponent(JSON.stringify(champsPrefill)));
+    if (data) paramsUrl.push('animalId=' + encodeURIComponent(data));
+    window.open('abandon.html' + (paramsUrl.length ? '?' + paramsUrl.join('&') : ''), '_blank');
+  }
+  // Dépôt : ouverture auto du formulaire détaillé en attente (formulaire dépôt à revoir d'abord)
+
   ['arr-nom','arr-couleur','arr-puce','arr-nom-personne','arr-prenom-personne','arr-motif','arr-date-naissance','arr-autre-info','arr-nom-maman']
     .forEach(function(id) { document.getElementById(id).value = ''; });
   document.getElementById('arr-sexe').value = '';
@@ -285,6 +359,7 @@ async function declarerArrivee() {
   document.getElementById('photoAnimal').value = '';
   document.getElementById('preview_Animal').innerHTML = '';
   document.getElementById('btn_voir_animal').style.display = 'none';
+  appliquerOrigine();
 }
 </script>
 </body>
