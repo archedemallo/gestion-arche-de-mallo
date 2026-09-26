@@ -28,6 +28,12 @@
   .msg{font-size:12px;margin-top:8px;min-height:16px;}
   .msg.ok{color:var(--green);} .msg.err{color:var(--red);}
   #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+  .popup-overlay{position:fixed;inset:0;background:rgba(61,43,31,0.45);z-index:9999;display:none;align-items:center;justify-content:center;}
+  .popup-overlay.show{display:flex;}
+  .popup-box{background:#fff;border-radius:12px;padding:28px 24px;max-width:320px;width:90%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.18);}
+  .popup-box .popup-icon{font-size:38px;color:var(--green);margin-bottom:10px;}
+  .popup-box p{font-size:14px;margin:0 0 16px;color:var(--brown);}
+  .popup-box button{padding:8px 22px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;}
 </style>
 </head>
 <body>
@@ -40,6 +46,14 @@
     <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
     <div id="login-err"></div>
     <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+
+<div id="popup-succes" class="popup-overlay">
+  <div class="popup-box">
+    <div class="popup-icon">✅</div>
+    <p>Arrivée enregistrée avec succès.</p>
+    <button type="button" onclick="document.getElementById('popup-succes').classList.remove('show')">OK</button>
   </div>
 </div>
 
@@ -146,6 +160,17 @@
       <label>Autre info</label>
       <textarea id="arr-autre-info" placeholder="Toute autre information utile sur l'animal…"></textarea>
     </div>
+    <div class="champ">
+      <label>Photo de l'animal *</label>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <label class="btn" style="cursor:pointer;">
+          📷 Prendre en photo
+          <input type="file" accept="image/*" capture="environment" id="photoAnimal" style="display:none;" onchange="aperçuPhoto(this, 'preview_Animal')">
+        </label>
+        <button type="button" class="btn" id="btn_voir_animal" style="display:none;" onclick="ouvrirPhoto('preview_Animal')">Voir la photo</button>
+      </div>
+      <div id="preview_Animal" style="margin-top:6px;"></div>
+    </div>
 
     <button type="button" class="btn" onclick="declarerArrivee()">Enregistrer l'arrivée</button>
     <div id="arr-msg" class="msg"></div>
@@ -169,6 +194,20 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('arr-date').valueAsDate = new Date();
 });
 
+async function aperçuPhoto(input, previewId) {
+  const preview = document.getElementById(previewId);
+  if (!preview || !input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    preview._photoBase64 = e.target.result;
+    preview.innerHTML = '<img src="' + e.target.result + '" style="max-width:200px;max-height:150px;border:1px solid #ccc;border-radius:4px;display:block;" alt="Photo animal">' +
+      '<span style="font-size:10px;color:var(--green);display:block;margin-top:2px;">✔ ' + file.name + '</span>';
+    document.getElementById('btn_voir_animal').style.display = 'inline-block';
+  };
+  reader.readAsDataURL(file);
+}
+
 async function suggererNomArrivee() {
   const champ = document.getElementById('arr-nom');
   const nom = await proposerNomAleatoireChat(champ.value.trim());
@@ -190,6 +229,8 @@ async function declarerArrivee() {
   if (!origine) { msg.textContent = "L'origine est obligatoire."; msg.className = 'msg err'; return; }
   if (!couleur) { msg.textContent = 'La couleur est obligatoire.'; msg.className = 'msg err'; return; }
   if (!saisiPar) { msg.textContent = '"Saisi par" est obligatoire.'; msg.className = 'msg err'; return; }
+  const fichierPhoto = document.getElementById('photoAnimal').files[0];
+  if (!fichierPhoto) { msg.textContent = 'La photo de l\'animal est obligatoire.'; msg.className = 'msg err'; return; }
 
   const { data, error } = await supabaseClient.rpc('creer_arrivee_animal', {
     p_nom_usuel: nom,
@@ -213,8 +254,20 @@ async function declarerArrivee() {
 
   if (error) { msg.textContent = 'Erreur : ' + error.message; msg.className = 'msg err'; return; }
 
-  msg.textContent = 'Arrivée enregistrée.';
-  msg.className = 'msg ok';
+  const photoOk = await envoyerPhotoAnimal('Arrivee_Animal',
+    document.getElementById('arr-prenom-personne').value.trim(),
+    document.getElementById('arr-nom-personne').value.trim(),
+    nom, date);
+
+  msg.textContent = '';
+  msg.className = 'msg';
+  if (!photoOk) {
+    document.getElementById('popup-succes').querySelector('p').textContent =
+      "Arrivée enregistrée, mais l'envoi de la photo a échoué — à reprendre plus tard si besoin.";
+  } else {
+    document.getElementById('popup-succes').querySelector('p').textContent = 'Arrivée enregistrée avec succès.';
+  }
+  document.getElementById('popup-succes').classList.add('show');
   invaliderCacheNomsAnimauxPresents();
 
   ['arr-nom','arr-couleur','arr-puce','arr-nom-personne','arr-prenom-personne','arr-motif','arr-date-naissance','arr-autre-info','arr-nom-maman']
@@ -222,11 +275,16 @@ async function declarerArrivee() {
   document.getElementById('arr-sexe').value = '';
   document.getElementById('arr-espece').value = 'chat';
   document.getElementById('arr-origine').value = '';
-  document.getElementById('saisiPar').value = '';
+  var champSaisiPar = document.getElementById('saisiPar');
+  champSaisiPar.selectedIndex = 0;
+  champSaisiPar.value = '';
   document.getElementById('arr-sterilise').checked = false;
   document.getElementById('arr-vermifuge').checked = false;
   document.getElementById('arr-antipuce').checked = false;
   document.getElementById('arr-date').valueAsDate = new Date();
+  document.getElementById('photoAnimal').value = '';
+  document.getElementById('preview_Animal').innerHTML = '';
+  document.getElementById('btn_voir_animal').style.display = 'none';
 }
 </script>
 </body>
