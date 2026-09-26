@@ -1106,7 +1106,9 @@ async function envoyerPhotoAnimal(onglet, prenom, nom, nomAnimal, dateStr) {
     var filename = [prenomFichier, nomFichier, animalFichier, 'Photo', date].filter(Boolean).join('_');
     return await new Promise(function(resolve) {
         redimensionnerImage(input.files[0], function(base64) {
-            fetch(window.APPS_SCRIPT_URL || APPS_SCRIPT_URL, {
+            var url = window.APPS_SCRIPT_URL || (typeof APPS_SCRIPT_URL !== 'undefined' ? APPS_SCRIPT_URL : null);
+            if (!url) { console.error('[Photo] APPS_SCRIPT_URL non défini (config.js chargé ?) — envoi photo annulé.'); resolve(false); return; }
+            fetch(url, {
                 method: 'POST',
                 // text/plain exprès (voir sendToGoogle juste au-dessus) : évite
                 // la pré-vérification CORS que l'Apps Script ne gère pas.
