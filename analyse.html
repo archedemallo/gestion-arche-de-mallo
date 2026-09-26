@@ -531,12 +531,18 @@ function typesDisponibles() {
   const set = new Set();
   allCaisse.forEach(r => r.type_mouvement && set.add(r.type_mouvement));
   allBanque.forEach(r => r.type_mouvement && set.add(r.type_mouvement));
+  allCheques.forEach(r => r.type_mouvement && set.add(r.type_mouvement));
+  allRemiseDetails.forEach(r => r.type_mouvement && set.add(r.type_mouvement));
+  allFactures.forEach(r => r.categorie && set.add(r.categorie));
   return [...set].sort((a,b)=>a.localeCompare(b,'fr'));
 }
 function descriptionsDisponibles() {
   const set = new Set();
   allCaisse.forEach(r => r.description && set.add(r.description));
   allBanque.forEach(r => r.description && set.add(r.description));
+  allCheques.forEach(r => r.description && set.add(r.description));
+  allRemiseDetails.forEach(r => r.description && set.add(r.description));
+  allFactures.forEach(r => r.description && set.add(r.description));
   return [...set].sort((a,b)=>a.localeCompare(b,'fr'));
 }
 function renderAgConfigPanel() {
@@ -606,12 +612,12 @@ function ajouterAgCategorie() {
 }
 
 function computeAgResults() {
-  const caisse1 = allCaisse.filter(r => r.caisse==='caisse1' && r.periode===activePer);
-  const caisse2 = allCaisse.filter(r => r.caisse==='caisse2' && r.periode===activePer);
-  const banque = allBanque.filter(r => r.periode===activePer);
-  const cheques = allCheques.filter(r => r.periode===activePer);
-  const remises = allRemiseDetails.filter(r => r.periode===activePer);
-  const factures = allFactures.filter(r => r.periode===activePer);
+  const caisse1 = allCaisse.filter(r => r.caisse==='caisse1' && periodeNormaliser(r.periode)===periodeNormaliser(activePer));
+  const caisse2 = allCaisse.filter(r => r.caisse==='caisse2' && periodeNormaliser(r.periode)===periodeNormaliser(activePer));
+  const banque = allBanque.filter(r => periodeNormaliser(r.periode)===periodeNormaliser(activePer));
+  const cheques = allCheques.filter(r => periodeNormaliser(r.periode)===periodeNormaliser(activePer));
+  const remises = allRemiseDetails.filter(r => periodeNormaliser(r.periode)===periodeNormaliser(activePer));
+  const factures = allFactures.filter(r => periodeNormaliser(r.periode)===periodeNormaliser(activePer));
 
   // Quand une ligne banque/caisse est rapprochée d'une facture ou d'un
   // chèque, on classe avec les infos de la FACTURE/du CHÈQUE, pas de la
@@ -624,9 +630,18 @@ function computeAgResults() {
   const chequesParId = {}; allCheques.forEach(c => { chequesParId[c.id] = c; });
   function resoudre(r) {
     if (r.ref_cheque && chequesParId[r.ref_cheque]) { const c = chequesParId[r.ref_cheque]; return { type: c.type_mouvement, description: c.description, ignorer: false }; }
-    if (r.lien_facture && facturesParNumero[r.lien_facture]) { const f = facturesParNumero[r.lien_facture]; return { type: f.categorie, description: f.description, ignorer: false }; }
+    const numFact = (r.numero_facture || '').split(',')[0].trim();
+    if (numFact && facturesParNumero[numFact]) { const f = facturesParNumero[numFact]; return { type: f.categorie, description: f.description, ignorer: false }; }
     return { type: r.type_mouvement, description: r.description, ignorer: false };
   }
+  // Une facture/un chèque déjà rapproché(e) d'une ligne banque de la période
+  // est déjà compté(e) une fois via cette ligne (reclassée par resoudre()
+  // ci-dessus) — le recompter depuis la source 'factures'/'cheques' brute
+  // (ex. la catégorie "Factures diverses", sans filtre de type) le
+  // doublonnerait. On exclut donc ici les factures/chèques déjà rapprochés.
+  const facturesRapprochees = new Set();
+  const chequesRapproches = new Set();
+  banque.forEach(r => { (r.numero_facture||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(n=>facturesRapprochees.add(n)); if (r.ref_cheque) chequesRapproches.add(r.ref_cheque); });
 
   return agConfig.map(cat => {
     const srcs = cat.sources || ['banque','caisse'];
@@ -640,9 +655,9 @@ function computeAgResults() {
     if (srcs.includes('caisse')) caisse1.forEach(r => { if (r.ref_remise) return; const {type,description} = resoudre(r); if (matchType(type) && matchDescription(description)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Caisse 1',date:r.date_mouvement,libelle:r.libelle,type,montant:v});} } });
     if (srcs.includes('caisse2')) caisse2.forEach(r => { if (r.ref_remise) return; const {type,description} = resoudre(r); if (matchType(type) && matchDescription(description)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Caisse 2',date:r.date_mouvement,libelle:r.libelle,type,montant:v});} } });
     if (srcs.includes('banque')) banque.forEach(r => { if (r.ref_remise) return; const {type,description} = resoudre(r); if (matchType(type) && matchDescription(description)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Banque',date:r.date_mouvement,libelle:r.libelle_complementaire||r.description||r.libelle,type,montant:v});} } });
-    if (srcs.includes('cheques')) cheques.forEach(r => { if (matchType(r.type_mouvement) && matchDescription(r.description)) { const v=-fmtN(r.montant); if(v){total+=v;ops.push({src:'Chèque',date:r.date_emission,libelle:r.beneficiaire,type:r.type_mouvement,montant:v});} } });
+    if (srcs.includes('cheques')) cheques.forEach(r => { if (chequesRapproches.has(r.id)) return; if (matchType(r.type_mouvement) && matchDescription(r.description)) { const v=-fmtN(r.montant); if(v){total+=v;ops.push({src:'Chèque',date:r.date_emission,libelle:r.beneficiaire,type:r.type_mouvement,montant:v});} } });
     if (srcs.includes('remises')) remises.forEach(r => { if (matchType(r.type_mouvement) && matchDescription(r.description)) { const v=fmtN(r.montant); if(v){total+=v;ops.push({src:'Remise',date:r.date_remise,libelle:r.donateur||r.description,type:r.type_mouvement,montant:v});} } });
-    if (srcs.includes('factures')) factures.forEach(r => { if (matchType(r.categorie) && matchDescription(r.description)) { const v=-fmtN(r.montant_ttc); if(v){total+=v;ops.push({src:'Facture',date:r.date_facture,libelle:r.description||r.fournisseur,type:r.categorie,montant:v});} } });
+    if (srcs.includes('factures')) factures.forEach(r => { if (r.numero_facture && facturesRapprochees.has(r.numero_facture)) return; if (matchType(r.categorie) && matchDescription(r.description)) { const v=-fmtN(r.montant_ttc); if(v){total+=v;ops.push({src:'Facture',date:r.date_facture,libelle:r.description||r.fournisseur,type:r.categorie,montant:v});} } });
 
     return { ...cat, total, ops };
   });
@@ -748,7 +763,7 @@ function renderChatGlobal() {
   const caisse=getChatRows('caisse'), banque=getChatRows('banque'), factures=getChatRows('factures');
   let depC=0, depB=0, depF=0; const byType={};
   caisse.forEach(r => { if (isTypeChat(r.type_mouvement)) { const d=fmtN(r.debit); depC+=d; byType[r.type_mouvement]=(byType[r.type_mouvement]||0)+d; } });
-  banque.forEach(r => { if (isTypeChat(r.type_mouvement)) { const d=fmtN(r.debit); depB+=d; byType[r.type_mouvement]=(byType[r.type_mouvement]||0)+d; } });
+  banque.forEach(r => { if (r.numero_facture) return; if (isTypeChat(r.type_mouvement)) { const d=fmtN(r.debit); depB+=d; byType[r.type_mouvement]=(byType[r.type_mouvement]||0)+d; } });
   factures.forEach(r => { if (isTypeChat(r.categorie)) { const m=fmtN(r.montant_ttc); depF+=m; byType[r.categorie]=(byType[r.categorie]||0)+m; } });
   const total = depC+depB+depF;
   const names = [...canonicalChatNames().values()];
@@ -756,7 +771,7 @@ function renderChatGlobal() {
   const chatRecap = names.sort((a,b)=>a.localeCompare(b,'fr')).map(name => {
     let dep=0, rec=0;
     caisse.forEach(r => { dep+=chatShareForName(r.nom_chat, fmtN(r.debit), name); rec+=chatShareForName(r.nom_chat, fmtN(r.credit), name); });
-    banque.forEach(r => { dep+=chatShareForName(r.nom_chat, fmtN(r.debit), name); rec+=chatShareForName(r.nom_chat, fmtN(r.credit), name); });
+    banque.forEach(r => { if (r.ref_cheque || r.ref_remise) return; dep+=chatShareForName(r.nom_chat, fmtN(r.debit), name); rec+=chatShareForName(r.nom_chat, fmtN(r.credit), name); });
     getChatRows('cheques').forEach(r => { dep+=chatShareForName(r.nom_chat, fmtN(r.montant), name); });
     getChatRows('remises').forEach(r => { dep+=chatShareForName(r.nom_chat, fmtN(r.montant), name); });
     return { name, dep, rec, net: rec-dep };
@@ -785,7 +800,7 @@ function renderChatDetail() {
   if (!name) { wrap.innerHTML = '<div class="empty-state">Choisissez un chat</div>'; return; }
   const ops = [];
   getChatRows('caisse').forEach(r => { const d=chatShareForName(r.nom_chat,fmtN(r.debit),name), c=chatShareForName(r.nom_chat,fmtN(r.credit),name); if(d||c) ops.push({date:r.date_mouvement,src:'Caisse',libelle:r.libelle,dep:d,rec:c}); });
-  getChatRows('banque').forEach(r => { const d=chatShareForName(r.nom_chat,fmtN(r.debit),name), c=chatShareForName(r.nom_chat,fmtN(r.credit),name); if(d||c) ops.push({date:r.date_mouvement,src:'Banque',libelle:r.libelle,dep:d,rec:c}); });
+  getChatRows('banque').forEach(r => { if (r.ref_cheque || r.ref_remise) return; const d=chatShareForName(r.nom_chat,fmtN(r.debit),name), c=chatShareForName(r.nom_chat,fmtN(r.credit),name); if(d||c) ops.push({date:r.date_mouvement,src:'Banque',libelle:r.libelle,dep:d,rec:c}); });
   getChatRows('cheques').forEach(r => { const d=chatShareForName(r.nom_chat,fmtN(r.montant),name); if(d) ops.push({date:r.date_emission,src:'Chèque',libelle:r.beneficiaire,dep:d,rec:0}); });
   getChatRows('remises').forEach(r => { const d=chatShareForName(r.nom_chat,fmtN(r.montant),name); if(d) ops.push({date:r.date_remise,src:'Remise',libelle:r.donateur,dep:d,rec:0}); });
   ops.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
@@ -889,7 +904,7 @@ function calcMoyCout() {
   let total=0; const byType={};
   const add=(t,v)=>{ if(moyCostTypes.has(t)){total+=v;byType[t]=(byType[t]||0)+v;} };
   getMoyRows('caisse').forEach(r=>add((r.description||'').trim(), fmtN(r.debit)));
-  getMoyRows('banque').forEach(r=>add((r.description||'').trim(), fmtN(r.debit)));
+  getMoyRows('banque').forEach(r=>{ if(!r.numero_facture) add((r.description||'').trim(), fmtN(r.debit)); });
   getMoyRows('factures').forEach(r=>add((r.description||'').trim(), fmtN(r.montant_ttc)));
   const noms = [...(_moyCanonicalChatNames()).values()];
   const nbChats = noms.length;
@@ -923,10 +938,10 @@ function renderMoyennes() {
 
 function getFourData() {
   const rows = [];
-  allFactures.filter(r=>r.periode===activePer).forEach(r => { if(!r.fournisseur)return; const m=fmtN(r.montant_ttc); rows.push({fournisseur:r.fournisseur, source:'Facture', date:r.date_facture, libelle:r.commentaire||r.description||'', type_mvt:r.categorie||'', debit:m, credit:0}); });
-  allCaisse.filter(r=>r.periode===activePer).forEach(r => { if(!r.fournisseur)return; rows.push({fournisseur:r.fournisseur, source:'Caisse', date:r.date_mouvement, libelle:r.libelle||'', type_mvt:r.type_mouvement||'', debit:fmtN(r.debit), credit:fmtN(r.credit)}); });
-  allBanque.filter(r=>r.periode===activePer).forEach(r => { if(!r.fournisseur)return; if(r.numero_facture||r.ref_cheque)return; rows.push({fournisseur:r.fournisseur, source:'Banque', date:r.date_mouvement, libelle:r.libelle||'', type_mvt:r.type_mouvement||'', debit:fmtN(r.debit), credit:fmtN(r.credit)}); });
-  allCheques.filter(r=>r.periode===activePer).forEach(r => { if(!r.fournisseur)return; rows.push({fournisseur:r.fournisseur, source:'Chèque', date:r.date_emission, libelle:r.beneficiaire||'', type_mvt:r.type_mouvement||'', debit:fmtN(r.montant), credit:0}); });
+  allFactures.filter(r=>periodeNormaliser(r.periode)===periodeNormaliser(activePer)).forEach(r => { if(!r.fournisseur)return; const m=fmtN(r.montant_ttc); rows.push({fournisseur:r.fournisseur, source:'Facture', date:r.date_facture, libelle:r.commentaire||r.description||'', type_mvt:r.categorie||'', debit:m, credit:0}); });
+  allCaisse.filter(r=>periodeNormaliser(r.periode)===periodeNormaliser(activePer)).forEach(r => { if(!r.fournisseur)return; rows.push({fournisseur:r.fournisseur, source:'Caisse', date:r.date_mouvement, libelle:r.libelle||'', type_mvt:r.type_mouvement||'', debit:fmtN(r.debit), credit:fmtN(r.credit)}); });
+  allBanque.filter(r=>periodeNormaliser(r.periode)===periodeNormaliser(activePer)).forEach(r => { if(!r.fournisseur)return; if(r.numero_facture||r.ref_cheque)return; rows.push({fournisseur:r.fournisseur, source:'Banque', date:r.date_mouvement, libelle:r.libelle||'', type_mvt:r.type_mouvement||'', debit:fmtN(r.debit), credit:fmtN(r.credit)}); });
+  allCheques.filter(r=>periodeNormaliser(r.periode)===periodeNormaliser(activePer)).forEach(r => { if(!r.fournisseur)return; rows.push({fournisseur:r.fournisseur, source:'Chèque', date:r.date_emission, libelle:r.beneficiaire||'', type_mvt:r.type_mouvement||'', debit:fmtN(r.montant), credit:0}); });
   return rows;
 }
 function aggregateFournisseurs(rows) {
@@ -977,19 +992,19 @@ function renderFourFiche() {
 }
 
 function _rowsTypePer(keyword, per) {
-  return [...allCaisse.filter(r=>(r.type_mouvement||'').toLowerCase().includes(keyword) && r.periode===per).map(r=>({...r,_src:'caisse'})),
-          ...allBanque.filter(r=>(r.type_mouvement||'').toLowerCase().includes(keyword) && r.periode===per).map(r=>({...r,_src:'banque'}))];
+  return [...allCaisse.filter(r=>(r.type_mouvement||'').toLowerCase().includes(keyword) && periodeNormaliser(r.periode)===periodeNormaliser(per)).map(r=>({...r,_src:'caisse'})),
+          ...allBanque.filter(r=>!r.ref_remise && (r.type_mouvement||'').toLowerCase().includes(keyword) && periodeNormaliser(r.periode)===periodeNormaliser(per)).map(r=>({...r,_src:'banque'}))];
 }
 function _sumCredit(rows) { return rows.reduce((s,r)=>s+fmtN(r.credit),0); }
 function _entreesRemises(keyword, per) {
-  return allRemiseDetails.filter(r => r.periode===per && (r.type_mouvement||'').toLowerCase().includes(keyword))
+  return allRemiseDetails.filter(r => periodeNormaliser(r.periode)===periodeNormaliser(per) && (r.type_mouvement||'').toLowerCase().includes(keyword))
     .map(r => ({ nom: r.donateur||'Anonyme', montant: fmtN(r.montant), date: r.date_remise }));
 }
 function _montantsParMois(keyword, mois12) {
   return mois12.map(m => {
     let tot = 0;
     allCaisse.forEach(r => { if ((r.type_mouvement||'').toLowerCase().includes(keyword) && rowInMonth(r.date_mouvement,m.full)) tot+=fmtN(r.credit); });
-    allBanque.forEach(r => { if ((r.type_mouvement||'').toLowerCase().includes(keyword) && rowInMonth(r.date_mouvement,m.full)) tot+=fmtN(r.credit); });
+    allBanque.forEach(r => { if (!r.ref_remise && (r.type_mouvement||'').toLowerCase().includes(keyword) && rowInMonth(r.date_mouvement,m.full)) tot+=fmtN(r.credit); });
     allRemiseDetails.forEach(r => { if ((r.type_mouvement||'').toLowerCase().includes(keyword) && rowInMonth(r.date_remise,m.full)) tot+=fmtN(r.montant); });
     return tot;
   });
@@ -997,8 +1012,8 @@ function _montantsParMois(keyword, mois12) {
 function _listePersonnes(keyword, per, cfg) {
   const map = {};
   const add = (nom,v) => { nom=nom||'Anonyme'; if(!map[nom])map[nom]={total:0,nb:0}; map[nom].total+=v; map[nom].nb++; };
-  allCaisse.filter(r=>(r.type_mouvement||'').toLowerCase().includes(keyword)&&r.periode===per).forEach(r=>add(cfg.getNom(r),fmtN(r.credit)));
-  allBanque.filter(r=>(r.type_mouvement||'').toLowerCase().includes(keyword)&&r.periode===per).forEach(r=>add(cfg.getNom(r),fmtN(r.credit)));
+  allCaisse.filter(r=>(r.type_mouvement||'').toLowerCase().includes(keyword)&&periodeNormaliser(r.periode)===periodeNormaliser(per)).forEach(r=>add(cfg.getNom(r),fmtN(r.credit)));
+  allBanque.filter(r=>!r.ref_remise && (r.type_mouvement||'').toLowerCase().includes(keyword)&&periodeNormaliser(r.periode)===periodeNormaliser(per)).forEach(r=>add(cfg.getNom(r),fmtN(r.credit)));
   _entreesRemises(keyword,per).forEach(e=>add(e.nom,e.montant));
   return Object.entries(map).sort((a,b)=>b[1].total-a[1].total);
 }
@@ -1041,7 +1056,7 @@ function renderSubventions() { _renderDonSection('subventions-inner','subvention
 function renderAdhesions() { _renderDonSection('adhesions-inner','adh','ti ti-id-badge','Total adhésions','chart-adhesions',CFG_ADH); }
 
 function renderAdoptions() {
-  const rows = [...allCaisse.filter(r=>r.periode===activePer), ...allBanque.filter(r=>r.periode===activePer)]
+  const rows = [...allCaisse.filter(r=>periodeNormaliser(r.periode)===periodeNormaliser(activePer)), ...allBanque.filter(r=>periodeNormaliser(r.periode)===periodeNormaliser(activePer))]
     .filter(r => (r.type_mouvement||'').toLowerCase().includes('adopt'))
     .sort((a,b) => (b.date_mouvement||'').localeCompare(a.date_mouvement||''));
   let listeHtml;
@@ -1066,13 +1081,13 @@ let evenementsConfig = null, evenementActif = 'global';
 function _normCat(s) { return normFold(s); }
 function _evenementsData() {
   const map = {};
-  [...allCaisse.filter(r=>r.periode===activePer), ...allBanque.filter(r=>r.periode===activePer)].forEach(r => {
+  [...allCaisse.filter(r=>periodeNormaliser(r.periode)===periodeNormaliser(activePer)), ...allBanque.filter(r=>!r.ref_remise && periodeNormaliser(r.periode)===periodeNormaliser(activePer))].forEach(r => {
     if (!_normCat(r.type_mouvement).includes('evenement')) return;
     const name = r.description || r.libelle || 'Événement';
     if (!map[name]) map[name] = { entrees:0, sorties:0, mouvements:[] };
     map[name].entrees += fmtN(r.credit); map[name].sorties += fmtN(r.debit); map[name].mouvements.push(r);
   });
-  allRemiseDetails.filter(r=>r.periode===activePer).forEach(r => {
+  allRemiseDetails.filter(r=>periodeNormaliser(r.periode)===periodeNormaliser(activePer)).forEach(r => {
     if (!_normCat(r.type_mouvement).includes('evenement')) return;
     const name = r.description || r.type_mouvement || 'Événement';
     if (!map[name]) map[name] = { entrees:0, sorties:0, mouvements:[] };
