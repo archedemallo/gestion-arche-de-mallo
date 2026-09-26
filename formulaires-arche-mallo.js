@@ -661,6 +661,34 @@ function afficherMessage(texte, type) {
 
 
 // ============================================================
+// Popup "enregistrement en cours" — réutilisable, idempotente
+// (peut être appelée/masquée plusieurs fois sans planter, contrairement
+// aux overlays "fait maison" par page qui provoquaient des erreurs
+// removeChild quand elles étaient retirées deux fois).
+// ============================================================
+var _popupChargementEl = null;
+
+function afficherPopupChargement(texte) {
+    if (_popupChargementEl) return;
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(61,43,31,0.45);z-index:99999;display:flex;align-items:center;justify-content:center;';
+    var boite = document.createElement('div');
+    boite.style.cssText = 'background:white;border-radius:12px;padding:28px 24px;max-width:320px;width:90%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.18);font-family:Calibri,Arial,sans-serif;';
+    boite.innerHTML = '<div style="font-size:38px;margin-bottom:10px;">⏳</div>' +
+        '<p style="font-size:14px;margin:0;color:#3d2b1f;">' + (texte || 'Enregistrement en cours…') + '<br>Merci de patienter.</p>';
+    overlay.appendChild(boite);
+    document.body.appendChild(overlay);
+    _popupChargementEl = overlay;
+}
+
+function masquerPopupChargement() {
+    if (_popupChargementEl && _popupChargementEl.parentNode) {
+        _popupChargementEl.parentNode.removeChild(_popupChargementEl);
+    }
+    _popupChargementEl = null;
+}
+
+// ============================================================
 // BOUTON IMPRIMER
 // ============================================================
 function printForm() {

@@ -367,10 +367,7 @@ chargerListeSaisisseurs();
         var defauts = [data.defauts1, data.defauts2].filter(Boolean).join('; ');
         var problemeSante = [data.problemeSante1, data.problemeSante2].filter(Boolean).join('; ');
 
-        var overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:bold;font-family:Arial;';
-        overlay.innerHTML = '<div style="text-align:center">En cours...<br><br><small>Veuillez patienter</small></div>';
-        document.body.appendChild(overlay);
+        afficherPopupChargement();
 
         try {
             const { data: abandonId, error } = await supabaseClient.rpc('creer_abandon', {
@@ -443,7 +440,7 @@ chargerListeSaisisseurs();
             console.error(err);
             alert('Erreur lors de la sauvegarde : ' + (err.message || err));
         } finally {
-            document.body.removeChild(overlay);
+            masquerPopupChargement();
         }
     }
 </script>
