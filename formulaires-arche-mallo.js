@@ -755,6 +755,27 @@ function getTodayISO() {
 }
 
 // ============================================================
+// SAISIE EN MAJUSCULES
+// Tous les champs texte des formulaires Suivi (class "editable")
+// sont automatiquement passés en majuscules pendant la saisie.
+// Exclus : email, date, number, file, checkbox, radio et les
+// <select> (valeurs figées, pas de texte libre à transformer).
+// ============================================================
+document.addEventListener('input', function(e) {
+    var el = e.target;
+    if (!el.classList || !el.classList.contains('editable')) return;
+    if (el.tagName === 'SELECT') return;
+    if (el.tagName === 'INPUT' && ['email', 'date', 'number', 'file', 'checkbox', 'radio'].indexOf(el.type) !== -1) return;
+
+    var start = el.selectionStart;
+    var end   = el.selectionEnd;
+    el.value  = el.value.toUpperCase();
+    if (start !== null && end !== null && typeof el.setSelectionRange === 'function') {
+        el.setSelectionRange(start, end);
+    }
+});
+
+// ============================================================
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
@@ -1106,9 +1127,7 @@ async function envoyerPhotoAnimal(onglet, prenom, nom, nomAnimal, dateStr) {
     var filename = [prenomFichier, nomFichier, animalFichier, 'Photo', date].filter(Boolean).join('_');
     return await new Promise(function(resolve) {
         redimensionnerImage(input.files[0], function(base64) {
-            var url = window.APPS_SCRIPT_URL || (typeof APPS_SCRIPT_URL !== 'undefined' ? APPS_SCRIPT_URL : null);
-            if (!url) { console.error('[Photo] APPS_SCRIPT_URL non défini (config.js chargé ?) — envoi photo annulé.'); resolve(false); return; }
-            fetch(url, {
+            fetch(window.APPS_SCRIPT_URL || APPS_SCRIPT_URL, {
                 method: 'POST',
                 // text/plain exprès (voir sendToGoogle juste au-dessus) : évite
                 // la pré-vérification CORS que l'Apps Script ne gère pas.
