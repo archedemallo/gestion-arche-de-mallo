@@ -261,7 +261,7 @@
     var selecteurAnimal = initSelecteurAnimal({
         inputId: 'nomAnimal',
         contexte: 'recherche',
-        champsModifiables: { identification: 'puce' }
+        champsModifiables: { identification: 'puce', dateNaissance: 'date_naissance' }
     });
 
     var today = new Date().toISOString().split('T')[0];
@@ -347,6 +347,22 @@
 initSessionSuivi();
 chargerListeSaisisseurs();
 
+    // Le champ "Date de naissance / âge approximatif" est un texte libre
+    // (utile quand l'âge exact d'un animal abandonné est inconnu), mais
+    // creer_abandon() attend un vrai paramètre SQL de type date : on ne
+    // peut lui envoyer que ce qui ressemble réellement à une date
+    // (JJ/MM/AAAA ou AAAA-MM-JJ), sinon l'enregistrement plante. Un texte
+    // comme "environ 2 ans" reste visible sur le document imprimé/PDF,
+    // mais n'est alors pas reporté sur la fiche de l'animal.
+    function parseDateNaissanceLibre(texte) {
+        if (!texte) return null;
+        var s = String(texte).trim();
+        var m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+        if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+        return null;
+    }
+
     async function saveForm() {
         var missing = validateRequiredFields();
         if (missing.length > 0) {
@@ -362,12 +378,20 @@ chargerListeSaisisseurs();
         data.signatureImage = getSignatureImage();
         data.htmlContent = encodeBase64Unicode(buildHtmlWithData());
 
+        var dateNaissanceValide = parseDateNaissanceLibre(data.dateNaissance);
+        if (data.dateNaissance && !dateNaissanceValide) {
+            if (!confirm('La date de naissance ("' + data.dateNaissance + '") n\'est pas une date reconnue (JJ/MM/AAAA) : elle restera sur le document imprimé, mais ne sera pas enregistrée sur la fiche de l\'animal. Continuer ?')) return;
+        }
+
         var causeAbandon = [data.causeAbandon1, data.causeAbandon2].filter(Boolean).join('; ');
         var qualites = [data.qualites1, data.qualites2].filter(Boolean).join('; ');
         var defauts = [data.defauts1, data.defauts2].filter(Boolean).join('; ');
         var problemeSante = [data.problemeSante1, data.problemeSante2].filter(Boolean).join('; ');
 
-        afficherPopupChargement();
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:bold;font-family:Arial;';
+        overlay.innerHTML = '<div style="text-align:center">En cours...<br><br><small>Veuillez patienter</small></div>';
+        document.body.appendChild(overlay);
 
         try {
             const { data: abandonId, error } = await supabaseClient.rpc('creer_abandon', {
@@ -379,7 +403,7 @@ chargerListeSaisisseurs();
                 p_telephone: data.telephone,
                 p_email: data.email,
                 p_nom_animal: data.nomAnimal,
-                p_date_naissance_animal: data.dateNaissance || null,
+                p_date_naissance_animal: dateNaissanceValide,
                 p_identification: data.identification,
                 p_cause_abandon: causeAbandon || null,
                 p_qualites: qualites || null,
@@ -392,6 +416,7 @@ chargerListeSaisisseurs();
                 p_animal_id: selecteurAnimal.getAnimalId()
             });
 
+            document.body.removeChild(overlay);
             if (error) throw error;
 
             var avertissementMail = '';
@@ -422,11 +447,11 @@ chargerListeSaisisseurs();
                         });
                     } catch (eDrive) {
                         console.error('Erreur dépôt Drive :', eDrive);
-                        avertissementMail += ' ⚠️ Le dépôt du PDF sur Drive a échoué.';
+                        avertissementMail += ' ⚠️ Le dépôt du PDF sur Drive a échoué (' + (eDrive.message || eDrive) + ').';
                     }
                 } catch (e) {
                     console.error('Erreur envoi PDF/mail :', e);
-                    avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué.';
+                    avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué (' + (e.message || e) + ').';
                 }
             }
 
@@ -437,10 +462,9 @@ chargerListeSaisisseurs();
             if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
             afficherMessage('Formulaire enregistré<br>Vous pouvez imprimer' + avertissementMail);
         } catch (err) {
+            document.body.removeChild(overlay);
             console.error(err);
             alert('Erreur lors de la sauvegarde : ' + (err.message || err));
-        } finally {
-            masquerPopupChargement();
         }
     }
 </script>
