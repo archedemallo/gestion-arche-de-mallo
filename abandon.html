@@ -395,7 +395,6 @@ chargerListeSaisisseurs();
                 p_animal_id: selecteurAnimal.getAnimalId()
             });
 
-            document.body.removeChild(overlay);
             if (error) throw error;
 
             var avertissementMail = '';
@@ -441,9 +440,10 @@ chargerListeSaisisseurs();
             if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
             afficherMessage('Formulaire enregistré<br>Vous pouvez imprimer' + avertissementMail);
         } catch (err) {
-            document.body.removeChild(overlay);
             console.error(err);
             alert('Erreur lors de la sauvegarde : ' + (err.message || err));
+        } finally {
+            document.body.removeChild(overlay);
         }
     }
 </script>
