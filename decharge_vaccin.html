@@ -318,7 +318,10 @@ chargerListeSaisisseurs();
         var data = collectFormData();
         data.signatureImage = getSignatureImage();
 
-        afficherPopupChargement();
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:bold;font-family:Arial;';
+        overlay.innerHTML = '<div style="text-align:center">En cours...<br><br><small>Veuillez patienter</small></div>';
+        document.body.appendChild(overlay);
 
         try {
             const { data: decId, error } = await supabaseClient.rpc('creer_decharge_vaccin', {
@@ -368,11 +371,11 @@ chargerListeSaisisseurs();
                         });
                     } catch (eDrive) {
                         console.error('Erreur dépôt Drive :', eDrive);
-                        avertissementMail += ' ⚠️ Le dépôt du PDF sur Drive a échoué.';
+                        avertissementMail += ' ⚠️ Le dépôt du PDF sur Drive a échoué (' + (eDrive.message || eDrive) + ').';
                     }
                 } catch (e) {
                     console.error('Erreur envoi PDF/mail :', e);
-                    avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué. La décharge est bien enregistrée — vous pouvez l\'imprimer avec le bouton "Imprimer" en attendant.';
+                    avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué (' + (e.message || e) + '). La décharge est bien enregistrée — vous pouvez l\'imprimer avec le bouton "Imprimer" en attendant.';
                 }
             }
 
@@ -383,17 +386,20 @@ chargerListeSaisisseurs();
             if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
             afficherMessage('Formulaire enregistré<br>Vous pouvez imprimer' + avertissementMail);
         } catch (err) {
+            document.body.removeChild(overlay);
             console.error(err);
             alert('Erreur lors de la sauvegarde : ' + (err.message || err));
-        } finally {
-            masquerPopupChargement();
         }
     }
 </script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    initSelecteurAnimal({ inputId: 'nomChat', contexte: 'recherche' });
+    initSelecteurAnimal({
+        inputId: 'nomChat',
+        contexte: 'recherche',
+        champsVerrouilles: { dateNaissanceChat: 'date_naissance' }
+    });
     initSelecteurPersonne({
         nomId: 'nomAdoptant',
         prenomId: 'prenomAdoptant',
