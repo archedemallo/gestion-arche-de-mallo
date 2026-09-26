@@ -32,26 +32,36 @@ function _chargerHtml2Pdf() {
 }
 
 /**
- * Récupère le contenu de tous les blocs "@media print { ... }" des
- * feuilles de style de la page courante, et les renvoie comme règles
- * CSS normales (sans la condition @media). Le rendu hors-écran utilisé
- * pour fabriquer le PDF n'est jamais en "mode impression" au sens du
- * navigateur — sans ça, les réglages spécifiques à l'impression
- * (marges, taille de police, mise en page de l'entête...) seraient
- * ignorés et le PDF ne ressemblerait pas à ce que produit "Imprimer".
+ * Récupère TOUT le CSS de la page courante (règles normales + celles de
+ * "@media print", ces dernières sans leur condition) et le renvoie comme
+ * un unique bloc de règles normales, les règles d'impression en dernier
+ * (donc prioritaires à spécificité égale, comme le ferait le mode
+ * impression du navigateur).
+ *
+ * Le rendu hors-écran (iframe isolé, voir plus bas) ne recharge pas de
+ * façon fiable les feuilles de style externes (ex: formulaires-arche-
+ * mallo.css) : la résolution d'URL relative dans un iframe "srcdoc" est
+ * inconstante selon les navigateurs. Sans tout ce CSS réinjecté en
+ * clair, la mise en forme de base disparaît (largeurs de champs,
+ * position des boutons flottants...) et le PDF ne ressemble plus du
+ * tout à ce qui s'affiche à l'écran — d'où l'inlining complet plutôt
+ * que de compter sur le chargement de la feuille externe.
  */
-function _reglesImpressionEnClair() {
-    let regles = '';
+function _reglesCompletesEnClair() {
+    let base = '';
+    let impression = '';
     for (const feuille of document.styleSheets) {
-        let lignes;
-        try { lignes = feuille.cssRules; } catch (e) { continue; } // feuille externe/CORS, ignorée
-        for (const regle of lignes) {
+        let regles;
+        try { regles = feuille.cssRules; } catch (e) { continue; } // feuille externe/CORS, ignorée
+        for (const regle of regles) {
             if (regle instanceof CSSMediaRule && /print/i.test(regle.media.mediaText)) {
-                for (const interieure of regle.cssRules) regles += interieure.cssText + '\n';
+                for (const interieure of regle.cssRules) impression += interieure.cssText + '\n';
+            } else {
+                base += regle.cssText + '\n';
             }
         }
     }
-    return regles;
+    return base + '\n' + impression;
 }
 
 /**
@@ -62,7 +72,7 @@ async function genererPdfFormulaire() {
     await _chargerHtml2Pdf();
 
     let htmlComplet = buildHtmlWithData();
-    htmlComplet = htmlComplet.replace('<head>', '<head><style>' + _reglesImpressionEnClair() + '</style>');
+    htmlComplet = htmlComplet.replace('<head>', '<head><style>' + _reglesCompletesEnClair() + '</style>');
 
     // Rendu hors-écran, dans un iframe isolé — n'affecte jamais la page en cours.
     const iframe = document.createElement('iframe');
@@ -74,13 +84,23 @@ async function genererPdfFormulaire() {
         // Laisse le temps aux images (signature, photo de l'animal) de se poser.
         await new Promise((r) => setTimeout(r, 300));
 
+        // Filet de sécurité : même si le CSS d'impression échouait à masquer
+        // les boutons flottants et autres éléments "no-print", on les
+        // retire physiquement du DOM avant la capture — ils ne peuvent
+        // alors plus apparaître dans le PDF, quelle que soit la raison
+        // pour laquelle le display:none n'aurait pas été appliqué.
+        const doc = iframe.contentDocument;
+        doc.querySelectorAll('.buttons, .no-print, .signature-pad-wrap, .signature-controls, button').forEach(function(el) {
+            el.remove();
+        });
+
         const worker = window.html2pdf().set({
             margin: 8,
             filename: 'formulaire.pdf',
             html2canvas: { scale: 2, useCORS: true, windowWidth: 900, backgroundColor: '#ffffff' },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
             pagebreak: { mode: ['css', 'legacy'] }
-        }).from(iframe.contentDocument.body);
+        }).from(doc.body);
 
         const arrayBuffer = await worker.outputPdf('arraybuffer');
         return new Uint8Array(arrayBuffer);
