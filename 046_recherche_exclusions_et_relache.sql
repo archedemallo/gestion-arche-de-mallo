@@ -12,6 +12,8 @@
 --    relâché directement après évaluation, sans passer par 'au_veto'.
 -- ============================================================
 
+drop function if exists rechercher_animaux(text, text);
+
 create or replace function rechercher_animaux(
     p_recherche text,
     p_contexte text default 'adoption'
