@@ -62,8 +62,8 @@ async function enregistrerPdfDrive({ onglet, prenom, nom, animal, dateDossier, f
 
     var result = {};
     try { result = await resp.json(); } catch (e) { /* réponse non-JSON, traité ci-dessous */ }
-    if (!resp.ok || !result.ok || !result.url) {
-        throw new Error(result.error || ('Échec du dépôt sur Drive (HTTP ' + resp.status + ')'));
+    if (!resp.ok || result.status !== 'ok' || !result.url) {
+        throw new Error(result.message || ('Échec du dépôt sur Drive (HTTP ' + resp.status + ')'));
     }
 
     const { error } = await supabaseClient.from('soumission_fichiers').insert({
