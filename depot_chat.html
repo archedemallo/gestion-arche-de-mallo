@@ -83,24 +83,25 @@
         atteste avoir déposé ce jour
         <input type="date" class="editable editable-date" id="dateDepot"> :
     </p>
+    <p class="no-print" style="font-size:11px;color:#888;margin:0 0 4px;">Un seul animal par formulaire de dépôt.</p>
 
     <table style="border-collapse:collapse; margin-top:10px; margin-left:10px;">
         <tr>
             <td style="padding:4px 8px 4px 0; white-space:nowrap;">
                 &#8226; &nbsp;
-                <input type="number" class="editable editable-num" id="nombreChats" min="0" value="0" data-label="Nombre de chats">
+                <input type="number" class="editable editable-num" id="nombreChats" min="0" max="1" value="0" data-label="Nombre de chats" oninput="limiterUnAnimal(this)">
                 &nbsp; chat(s)
             </td>
             <td style="padding:4px 8px; color:#666;">et/ou</td>
             <td style="padding:4px 0; white-space:nowrap;">
-                <input type="number" class="editable editable-num" id="nombreChatons" min="0" value="0" data-label="Nombre de chatons">
+                <input type="number" class="editable editable-num" id="nombreChatons" min="0" max="1" value="0" data-label="Nombre de chatons" oninput="limiterUnAnimal(this)">
                 &nbsp; chaton(s) errant(s),
             </td>
         </tr>
         <tr>
             <td colspan="3" style="padding:4px 0; white-space:nowrap;">
                 &#8226; &nbsp;
-                <input type="number" class="editable editable-num" id="nombreAutres" min="0" value="0" data-label="Nombre d'autres animaux" oninput="togglePreciserAutre()">
+                <input type="number" class="editable editable-num" id="nombreAutres" min="0" max="1" value="0" data-label="Nombre d'autres animaux" oninput="limiterUnAnimal(this); togglePreciserAutre()">
                 &nbsp; autre(s) animal(aux) errant(s)
                 &nbsp;
                 <span style="white-space:nowrap;">
@@ -185,6 +186,21 @@ creerSignature('sig1');
         if (champ) champ.value = (prenom + ' ' + nom).trim();
     }
 
+    // Un seul animal maximum par formulaire de dépôt : borne ce champ à 0/1
+    // et remet les deux autres à 0 dès qu'un animal est renseigné.
+    function limiterUnAnimal(champ) {
+        var val = parseInt(champ.value) || 0;
+        if (val > 1) val = 1;
+        if (val < 0) val = 0;
+        champ.value = val;
+        if (val === 1) {
+            ['nombreChats', 'nombreChatons', 'nombreAutres'].forEach(function(id) {
+                var autre = document.getElementById(id);
+                if (autre && autre !== champ) autre.value = 0;
+            });
+        }
+    }
+
     // Grise/active le champ "préciser" selon la valeur de nombreAutres
     function togglePreciserAutre() {
         var nb = parseInt(document.getElementById('nombreAutres').value) || 0;
@@ -262,6 +278,11 @@ var elAutres  = document.getElementById('nombreAutres');
 
 if (nbChats === 0 && nbChatons === 0 && nbAutres === 0) {
     missing.push('Au moins un animal doit être renseigné (chat, chaton ou autre)');
+    if (elChats)   elChats.style.borderBottom   = '2px solid red';
+    if (elChatons) elChatons.style.borderBottom = '2px solid red';
+    if (elAutres)  elAutres.style.borderBottom  = '2px solid red';
+} else if ((nbChats + nbChatons + nbAutres) > 1) {
+    missing.push('Un seul animal maximum par formulaire de dépôt');
     if (elChats)   elChats.style.borderBottom   = '2px solid red';
     if (elChatons) elChatons.style.borderBottom = '2px solid red';
     if (elAutres)  elAutres.style.borderBottom  = '2px solid red';
