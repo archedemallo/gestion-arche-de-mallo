@@ -294,11 +294,11 @@ chargerListeSaisisseurs();
                         });
                     } catch (eDrive) {
                         console.error('Erreur dépôt Drive :', eDrive);
-                        avertissementMail += ' ⚠️ Le dépôt du PDF sur Drive a échoué (' + (eDrive.message || eDrive) + ').';
+                        avertissementMail += ' ⚠️ Le dépôt du PDF sur Drive a échoué.';
                     }
                 } catch (e) {
                     console.error('Erreur envoi PDF/mail :', e);
-                    avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué (' + (e.message || e) + '). L\'attestation est bien enregistrée — vous pouvez l\'imprimer avec le bouton "Imprimer" en attendant.';
+                    avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué. L\'attestation est bien enregistrée — vous pouvez l\'imprimer avec le bouton "Imprimer" en attendant.';
                 }
             }
 
