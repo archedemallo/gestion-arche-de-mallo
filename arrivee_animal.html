@@ -61,6 +61,9 @@
   <div class="popup-box">
     <div class="popup-icon">✅</div>
     <p>Arrivée enregistrée avec succès.</p>
+    <p id="popup-lien-fiche" style="display:none;margin-top:-8px;">
+      <a href="#" id="lien-fiche" target="_blank" style="color:var(--orange);font-weight:bold;">→ Ouvrir le formulaire</a>
+    </p>
     <button type="button" onclick="document.getElementById('popup-succes').classList.remove('show')">OK</button>
   </div>
 </div>
@@ -300,88 +303,133 @@ async function declarerArrivee() {
   const fichierPhoto = document.getElementById('photoAnimal').files[0];
   if (!fichierPhoto) { msg.textContent = 'La photo de l\'animal est obligatoire.'; msg.className = 'msg err'; return; }
 
-  // Fenêtre pré-ouverte pour le formulaire détaillé (abandon/dépôt) — doit
-  // rester dans le même geste utilisateur synchrone que le clic, sinon le
-  // navigateur bloque le popup une fois qu'on est passé par un await
+  // Pour Dépôt / Abandon, on prépare l'ouverture du formulaire détaillé.
+  // La fenêtre est ouverte immédiatement dans le geste du clic utilisateur
+  // afin d'éviter le blocage des popups après les await.
   let ficheWindow = null;
   if (origine === 'abandon' || origine === 'depot') {
-    ficheWindow = window.open('', '_blank');
+    ficheWindow = window.open('about:blank', '_blank');
+    if (!ficheWindow) {
+      // Le navigateur a bloqué la popup : le formulaire sera proposé
+      // comme lien de secours dans la confirmation.
+      console.warn('La fenêtre du formulaire détaillé a été bloquée par le navigateur.');
+    }
   }
 
   document.getElementById('popup-loading').classList.add('show');
 
-  const { data, error } = await supabaseClient.rpc('creer_arrivee_animal', {
-    p_nom_usuel: nom,
-    p_origine_arrivee: origine,
-    p_date_arrivee: date || null,
-    p_couleur: couleur,
-    p_date_naissance: document.getElementById('arr-date-naissance').value || null,
-    p_puce: document.getElementById('arr-puce').value.trim() || null,
-    p_nom_personne: document.getElementById('arr-nom-personne').value.trim() || null,
-    p_prenom_personne: document.getElementById('arr-prenom-personne').value.trim() || null,
-    p_motif: document.getElementById('arr-motif').value.trim() || null,
-    p_saisi_par_id: saisiPar,
-    p_sexe: document.getElementById('arr-sexe').value || null,
-    p_espece: document.getElementById('arr-espece').value || 'chat',
-    p_sterilise: document.getElementById('arr-sterilise').checked,
-    p_vermifuge: document.getElementById('arr-vermifuge').checked,
-    p_antipuce: document.getElementById('arr-antipuce').checked,
-    p_autre_info: document.getElementById('arr-autre-info').value.trim() || null,
-    p_nom_maman: document.getElementById('arr-nom-maman').value.trim() || null
-  });
+  // Tout le traitement post-clic est protégé par try/catch/finally : sans
+  // ça, la moindre erreur (ex. échec réseau lors de l'envoi de la photo)
+  // interrompait le script en plein milieu, laissant la popup "en cours"
+  // ouverte indéfiniment et l'onglet dépôt/abandon bloqué sur about:blank.
+  try {
+    const { data, error } = await supabaseClient.rpc('creer_arrivee_animal', {
+      p_nom_usuel: nom,
+      p_origine_arrivee: origine,
+      p_date_arrivee: date || null,
+      p_couleur: couleur,
+      p_date_naissance: document.getElementById('arr-date-naissance').value || null,
+      p_puce: document.getElementById('arr-puce').value.trim() || null,
+      p_nom_personne: document.getElementById('arr-nom-personne').value.trim() || null,
+      p_prenom_personne: document.getElementById('arr-prenom-personne').value.trim() || null,
+      p_motif: document.getElementById('arr-motif').value.trim() || null,
+      p_saisi_par_id: saisiPar,
+      p_sexe: document.getElementById('arr-sexe').value || null,
+      p_espece: document.getElementById('arr-espece').value || 'chat',
+      p_sterilise: document.getElementById('arr-sterilise').checked,
+      p_vermifuge: document.getElementById('arr-vermifuge').checked,
+      p_antipuce: document.getElementById('arr-antipuce').checked,
+      p_autre_info: document.getElementById('arr-autre-info').value.trim() || null,
+      p_nom_maman: document.getElementById('arr-nom-maman').value.trim() || null
+    });
 
-  if (error) {
-    document.getElementById('popup-loading').classList.remove('show');
+    if (error) throw error;
+
+    let photoOk = true;
+    try {
+      photoOk = await envoyerPhotoAnimal('Arrivee_Animal',
+        document.getElementById('arr-prenom-personne').value.trim(),
+        document.getElementById('arr-nom-personne').value.trim(),
+        nom, date);
+    } catch (ePhoto) {
+      console.error('Erreur envoi photo :', ePhoto);
+      photoOk = false;
+    }
+
+    msg.textContent = '';
+    msg.className = 'msg';
+    if (!photoOk) {
+      document.getElementById('popup-succes').querySelector('p').textContent =
+        "Arrivée enregistrée, mais l'envoi de la photo a échoué — à reprendre plus tard si besoin.";
+    } else {
+      document.getElementById('popup-succes').querySelector('p').textContent = 'Arrivée enregistrée avec succès.';
+    }
+
+    // Ouvre automatiquement le formulaire détaillé (abandon ou dépôt),
+    // pré-rempli avec les infos déjà saisies.
+    const lienFiche = document.getElementById('popup-lien-fiche');
+    lienFiche.style.display = 'none';
+
+    if (origine === 'abandon' || origine === 'depot') {
+      const champsPrefill = {};
+      if (nomPersonne) champsPrefill.nom = nomPersonne;
+      if (prenomPersonne) champsPrefill.prenom = prenomPersonne;
+
+      const paramsUrl = [];
+      if (Object.keys(champsPrefill).length) {
+        paramsUrl.push('prefill=' + encodeURIComponent(JSON.stringify(champsPrefill)));
+      }
+      if (origine === 'abandon' && data) {
+        paramsUrl.push('animalId=' + encodeURIComponent(data));
+      }
+
+      const fichierCible = origine === 'abandon'
+        ? 'abandon.html'
+        : 'depot_chat.html';
+
+      const urlFiche = fichierCible + (paramsUrl.length ? '?' + paramsUrl.join('&') : '');
+
+      if (ficheWindow && !ficheWindow.closed) {
+        ficheWindow.location.replace(urlFiche);
+        // On ne laisse pas la popup de succès ouverte :
+        // l'utilisateur passe directement au formulaire Dépôt/Abandon.
+      } else {
+        // Popup bloquée : on fournit un lien cliquable.
+        document.getElementById('lien-fiche').href = urlFiche;
+        lienFiche.style.display = '';
+        document.getElementById('popup-succes').classList.add('show');
+      }
+    } else {
+      // Pour les autres origines, affichage normal de la confirmation.
+      document.getElementById('popup-succes').classList.add('show');
+    }
+    invaliderCacheNomsAnimauxPresents();
+
+    ['arr-nom','arr-couleur','arr-puce','arr-nom-personne','arr-prenom-personne','arr-motif','arr-date-naissance','arr-autre-info','arr-nom-maman']
+      .forEach(function(id) { document.getElementById(id).value = ''; });
+    document.getElementById('arr-sexe').value = '';
+    document.getElementById('arr-espece').value = 'chat';
+    document.getElementById('arr-origine').value = '';
+    var champSaisiPar = document.getElementById('saisiPar');
+    champSaisiPar.selectedIndex = 0;
+    champSaisiPar.value = '';
+    document.getElementById('arr-sterilise').checked = false;
+    document.getElementById('arr-vermifuge').checked = false;
+    document.getElementById('arr-antipuce').checked = false;
+    document.getElementById('arr-date').valueAsDate = new Date();
+    document.getElementById('photoAnimal').value = '';
+    document.getElementById('preview_Animal').innerHTML = '';
+    document.getElementById('btn_voir_animal').style.display = 'none';
+    appliquerOrigine();
+
+  } catch (err) {
+    console.error('Erreur lors de la déclaration d\'arrivée :', err);
     if (ficheWindow) ficheWindow.close();
-    msg.textContent = 'Erreur : ' + error.message; msg.className = 'msg err'; return;
+    msg.textContent = 'Erreur : ' + (err.message || err);
+    msg.className = 'msg err';
+  } finally {
+    document.getElementById('popup-loading').classList.remove('show');
   }
-
-  const photoOk = await envoyerPhotoAnimal('Arrivee_Animal',
-    document.getElementById('arr-prenom-personne').value.trim(),
-    document.getElementById('arr-nom-personne').value.trim(),
-    nom, date);
-
-  document.getElementById('popup-loading').classList.remove('show');
-  msg.textContent = '';
-  msg.className = 'msg';
-  if (!photoOk) {
-    document.getElementById('popup-succes').querySelector('p').textContent =
-      "Arrivée enregistrée, mais l'envoi de la photo a échoué — à reprendre plus tard si besoin.";
-  } else {
-    document.getElementById('popup-succes').querySelector('p').textContent = 'Arrivée enregistrée avec succès.';
-  }
-  document.getElementById('popup-succes').classList.add('show');
-  invaliderCacheNomsAnimauxPresents();
-
-  // Ouvre automatiquement le formulaire détaillé (abandon ou dépôt),
-  // pré-rempli avec les infos déjà saisies
-  if ((origine === 'abandon' || origine === 'depot') && ficheWindow) {
-    const champsPrefill = {};
-    if (nomPersonne) champsPrefill.nom = nomPersonne;
-    if (prenomPersonne) champsPrefill.prenom = prenomPersonne;
-    const paramsUrl = [];
-    if (Object.keys(champsPrefill).length) paramsUrl.push('prefill=' + encodeURIComponent(JSON.stringify(champsPrefill)));
-    if (origine === 'abandon' && data) paramsUrl.push('animalId=' + encodeURIComponent(data));
-    const fichierCible = origine === 'abandon' ? 'abandon.html' : 'depot_chat.html';
-    ficheWindow.location.href = fichierCible + (paramsUrl.length ? '?' + paramsUrl.join('&') : '');
-  }
-
-  ['arr-nom','arr-couleur','arr-puce','arr-nom-personne','arr-prenom-personne','arr-motif','arr-date-naissance','arr-autre-info','arr-nom-maman']
-    .forEach(function(id) { document.getElementById(id).value = ''; });
-  document.getElementById('arr-sexe').value = '';
-  document.getElementById('arr-espece').value = 'chat';
-  document.getElementById('arr-origine').value = '';
-  var champSaisiPar = document.getElementById('saisiPar');
-  champSaisiPar.selectedIndex = 0;
-  champSaisiPar.value = '';
-  document.getElementById('arr-sterilise').checked = false;
-  document.getElementById('arr-vermifuge').checked = false;
-  document.getElementById('arr-antipuce').checked = false;
-  document.getElementById('arr-date').valueAsDate = new Date();
-  document.getElementById('photoAnimal').value = '';
-  document.getElementById('preview_Animal').innerHTML = '';
-  document.getElementById('btn_voir_animal').style.display = 'none';
-  appliquerOrigine();
 }
 </script>
 </body>
