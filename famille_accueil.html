@@ -421,13 +421,15 @@ chargerListeSaisisseurs();
 
     // Envoi photo après sauvegarde réussie
     async function postSavePhotos(data, filename) {
+        var prenomEl = document.getElementById('prenom');
         var nomEl    = document.getElementById('nomComplet') || document.getElementById('nom');
         var animalEl = document.getElementById('nom_animal');
         var dateEl   = document.getElementById('date_fait') || document.getElementById('dateFait');
-        var nom    = nomEl    ? nomEl.value    : '';
-        var animal = animalEl ? animalEl.value : '';
-        var date   = dateEl   ? dateEl.value   : '';
-        await envoyerPhotoAnimal('Famille_Accueil_Provisoire', nom, animal, date);
+        await envoyerPhotoAnimal('Famille_Accueil_Provisoire',
+            prenomEl ? prenomEl.value : '',
+            nomEl    ? nomEl.value    : '',
+            animalEl ? animalEl.value : '',
+            dateEl   ? dateEl.value   : '');
     }
 </script>
 

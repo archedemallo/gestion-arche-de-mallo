@@ -1209,7 +1209,7 @@ async function _saveFormOriginal() {
                 });
                 try {
                     await enregistrerPdfDrive({
-                        onglet: 'Adoption',
+                        onglet: data.onglet,
                         prenom: data.prenom,
                         nom: data.nom,
                         animal: data.nomAdoption || data.nomUsuel,
@@ -1228,6 +1228,16 @@ async function _saveFormOriginal() {
                 console.error('Erreur envoi PDF/mail :', e);
                 avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué. L\'adoption est bien enregistrée — vous pouvez imprimer le contrat avec le bouton "Imprimer" en attendant.';
             }
+            // ← AJOUTÉ : la photo de l'animal (prise plus haut dans le
+            // formulaire, incluse dans le PDF) n'était jamais envoyée
+            // séparément vers le Drive — contrairement à reservation.html
+            // et famille_accueil.html qui appellent déjà ce hook.
+            try {
+                await postSavePhotos(data, data.filename);
+            } catch (ePhoto) {
+                console.error('Erreur envoi photo :', ePhoto);
+                avertissementMail += ' ⚠️ L\'envoi de la photo a échoué.';
+            }
         }
 
         formSaved = true;
@@ -1242,6 +1252,20 @@ async function _saveFormOriginal() {
     } finally {
         masquerPopupChargement();
     }
+}
+
+// ← AJOUTÉ : envoi de la photo de l'animal après sauvegarde réussie
+// (même mécanisme que reservation.html / famille_accueil.html).
+async function postSavePhotos(data, filename) {
+    var prenomEl = document.getElementById('prenom');
+    var nomEl2   = document.getElementById('nom');
+    var animalEl = document.getElementById('nomAdoption') || document.getElementById('nomUsuel');
+    var dateEl   = document.getElementById('dateFait');
+    await envoyerPhotoAnimal(data.onglet,
+        prenomEl ? prenomEl.value : '',
+        nomEl2   ? nomEl2.value   : '',
+        animalEl ? animalEl.value : '',
+        dateEl   ? dateEl.value   : '');
 }
 
 saveForm = async function() {
