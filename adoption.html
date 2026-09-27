@@ -160,6 +160,7 @@ AVEC <input type="text" class="editable editable-medium" id="produitAntiPuces" d
         <span class="blue">
         Date vaccin Secundo / Rappel : </span><input type="date" class="editable editable-date" id="dateRappel">
     </p>
+</div>
 <br>
 	
 	
@@ -742,10 +743,16 @@ function aperçuPhoto(input, previewId) {
 // retirée d'ici pour éviter la duplication.
 
     // Redimensionner une image avant envoi (max 1200px, qualité 0.7)
+    // ← onerror ajoutés : sans eux, une image illisible ne rappelait jamais
+    // callback() et bloquait la promesse appelante indéfiniment, ce qui
+    // laissait envoyerPhotos._enCours coincé à true pour le reste de la
+    // session (plus aucune photo n'était alors envoyée, sans erreur visible).
     function redimensionnerImage(file, callback) {
         var reader = new FileReader();
+        reader.onerror = function() { callback(null); };
         reader.onload = function(e) {
             var img = new Image();
+            img.onerror = function() { callback(null); };
             img.onload = function() {
                 var canvas = document.createElement('canvas');
                 var max = 1200;
@@ -787,42 +794,54 @@ function aperçuPhoto(input, previewId) {
         var dateAdoptionEl = document.getElementById('dateAdoption');
         var dateISODossier = (dateAdoptionEl && dateAdoptionEl.value) || new Date().toISOString().split('T')[0];
 
-        for (var i = 0; i < photos.length; i++) {
-            var input = document.getElementById(photos[i].id);
-            if (!input || !input.files || !input.files[0]) continue;
-            var file     = input.files[0];
-            var filename = nom + '_' + chat + '_' + photos[i].type + '_' + date;
-            await new Promise(function(resolve) {
-                var f = file, fn = filename;
-                redimensionnerImage(f, function(base64) {
-                    fetch(APPS_SCRIPT_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'text/plain' },
-                        body: JSON.stringify({
-                            action:      'photo',
-                            onglet:      'Adoption',
-                            filename:    fn,
-                            imageBase64: base64,
-                            mimeType:    'image/jpeg',
-                            personne:    nom,
-                            animal:      chat,
-                            dateDossier: dateISODossier
-                        })
-                    }).then(async function(resp) {
-                        var result = {};
-                        try { result = await resp.json(); } catch (e) { /* réponse non-JSON */ }
-                        if (!resp.ok || result.status !== 'ok') {
-                            console.error('[Photo] Échec de l\'envoi vers Drive :', result.message || ('HTTP ' + resp.status));
+        // ← try/finally ajouté : si une photo bloque (image illisible,
+        // callback jamais appelé faute de gestion d'erreur), _enCours
+        // doit quand même repasser à false, sinon TOUTES les sauvegardes
+        // suivantes de la session sautent l'envoi des photos en silence.
+        try {
+            for (var i = 0; i < photos.length; i++) {
+                var input = document.getElementById(photos[i].id);
+                if (!input || !input.files || !input.files[0]) continue;
+                var file     = input.files[0];
+                var filename = nom + '_' + chat + '_' + photos[i].type + '_' + date;
+                await new Promise(function(resolve) {
+                    var f = file, fn = filename;
+                    redimensionnerImage(f, function(base64) {
+                        if (!base64) {
+                            console.error('[Photo] Image illisible, envoi ignoré :', fn);
+                            resolve();
+                            return;
                         }
-                        resolve();
-                    }).catch(function(e) {
-                        console.error('[Photo] Erreur réseau lors de l\'envoi :', e);
-                        resolve();
+                        fetch(APPS_SCRIPT_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain' },
+                            body: JSON.stringify({
+                                action:      'photo',
+                                onglet:      'Adoption',
+                                filename:    fn,
+                                imageBase64: base64,
+                                mimeType:    'image/jpeg',
+                                personne:    nom,
+                                animal:      chat,
+                                dateDossier: dateISODossier
+                            })
+                        }).then(async function(resp) {
+                            var result = {};
+                            try { result = await resp.json(); } catch (e) { /* réponse non-JSON */ }
+                            if (!resp.ok || result.status !== 'ok') {
+                                console.error('[Photo] Échec de l\'envoi vers Drive :', result.message || ('HTTP ' + resp.status));
+                            }
+                            resolve();
+                        }).catch(function(e) {
+                            console.error('[Photo] Erreur réseau lors de l\'envoi :', e);
+                            resolve();
+                        });
                     });
                 });
-            });
+            }
+        } finally {
+            envoyerPhotos._enCours = false;   // ← toujours libéré, même en cas de souci
         }
-		envoyerPhotos._enCours = false;   // ← libérer à la fin
     }
 
 	// signature obligatoire
@@ -1238,16 +1257,12 @@ async function _saveFormOriginal() {
                 console.error('Erreur envoi PDF/mail :', e);
                 avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué. L\'adoption est bien enregistrée — vous pouvez imprimer le contrat avec le bouton "Imprimer" en attendant.';
             }
-            // ← AJOUTÉ : la photo de l'animal (prise plus haut dans le
-            // formulaire, incluse dans le PDF) n'était jamais envoyée
-            // séparément vers le Drive — contrairement à reservation.html
-            // et famille_accueil.html qui appellent déjà ce hook.
-            try {
-                await postSavePhotos(data, data.filename);
-            } catch (ePhoto) {
-                console.error('Erreur envoi photo :', ePhoto);
-                avertissementMail += ' ⚠️ L\'envoi de la photo a échoué.';
-            }
+            // NOTE : postSavePhotos()/envoyerPhotoAnimal() a été retiré d'ici.
+            // Il faisait doublon avec envoyerPhotos() (appelée juste après la
+            // sauvegarde, dans le wrapper saveForm ci-dessous), qui envoie déjà
+            // TOUTES les photos, y compris celle de l'animal. Les deux appels
+            // envoyaient donc deux fois la même photo — et un seul point
+            // d'envoi (envoyerPhotos) est suffisant et plus simple à fiabiliser.
         }
 
         formSaved = true;
@@ -1262,20 +1277,6 @@ async function _saveFormOriginal() {
     } finally {
         masquerPopupChargement();
     }
-}
-
-// ← AJOUTÉ : envoi de la photo de l'animal après sauvegarde réussie
-// (même mécanisme que reservation.html / famille_accueil.html).
-async function postSavePhotos(data, filename) {
-    var prenomEl = document.getElementById('prenom');
-    var nomEl2   = document.getElementById('nom');
-    var animalEl = document.getElementById('nomAdoption') || document.getElementById('nomUsuel');
-    var dateEl   = document.getElementById('dateFait');
-    await envoyerPhotoAnimal(data.onglet,
-        prenomEl ? prenomEl.value : '',
-        nomEl2   ? nomEl2.value   : '',
-        animalEl ? animalEl.value : '',
-        dateEl   ? dateEl.value   : '');
 }
 
 saveForm = async function() {
