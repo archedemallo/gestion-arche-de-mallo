@@ -266,6 +266,25 @@
 </head>
 <body>
 
+<script>
+  // Cache-busting : force le navigateur à toujours recharger la dernière
+  // version de maintenance-config.js (sinon l'ancien réglage reste actif
+  // après une modification, à cause du cache du navigateur / de GitHub Pages).
+  document.write('<script src="maintenance-config.js?v=' + Date.now() + '"><\/script>');
+</script>
+
+<script>
+  // Réglage dans maintenance-config.js — seul fichier à modifier.
+  if (typeof MAINTENANCE !== 'undefined' && MAINTENANCE.active) {
+    const params = new URLSearchParams({
+      jour: MAINTENANCE.jour, debut: MAINTENANCE.debut, fin: MAINTENANCE.fin
+    }).toString();
+    window.location.href = "maintenance.html?" + params;
+  }
+</script>    
+    
+    
+    
 <!-- EN-TÊTE -->
 <header>
     <img src="logo_arche.png" alt="Logo L'Arche de Mallo" class="logo-header">
