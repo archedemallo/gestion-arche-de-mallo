@@ -320,20 +320,8 @@ async function declarerArrivee() {
   const fichierPhoto = document.getElementById('photoAnimal').files[0];
   if (!fichierPhoto) { msg.textContent = 'La photo de l\'animal est obligatoire.'; msg.className = 'msg err'; return; }
 
-  // Pour Dépôt / Abandon, on ouvre une fenêtre immédiatement dans le clic
-  // utilisateur. Elle sera ensuite redirigée vers le vrai fichier après
-  // l'enregistrement Supabase.
-  let ficheWindow = null;
-  if (origine === 'abandon' || origine === 'depot') {
-    ficheWindow = window.open('about:blank', '_blank');
-  }
-
   document.getElementById('popup-loading').classList.add('show');
 
-  // Tout le traitement post-clic est protégé par try/catch/finally : sans
-  // ça, la moindre erreur (ex. échec réseau lors de l'envoi de la photo)
-  // interrompait le script en plein milieu, laissant la popup "en cours"
-  // ouverte indéfiniment et l'onglet dépôt/abandon bloqué sur about:blank.
   try {
     const { data, error } = await supabaseClient.rpc('creer_arrivee_animal', {
       p_nom_usuel: nom,
@@ -378,19 +366,14 @@ async function declarerArrivee() {
       document.getElementById('popup-succes').querySelector('p').textContent = 'Arrivée enregistrée avec succès.';
     }
 
-    // Ouvre automatiquement le formulaire détaillé (abandon ou dépôt),
-    // pré-rempli avec les informations déjà saisies.
-    const lienFiche = document.getElementById('popup-lien-fiche');
-    lienFiche.style.display = 'none';
+    invaliderCacheNomsAnimauxPresents();
 
+    // Gestion de l'ouverture automatique post-sauvegarde (similaire au reçu fiscal de Dons)
     if (origine === 'abandon' || origine === 'depot') {
       const champsPrefill = {};
       if (nomPersonne) champsPrefill.nom = nomPersonne;
       if (prenomPersonne) champsPrefill.prenom = prenomPersonne;
 
-      // Infos propres à l'animal — abandon.html a des champs dédiés
-      // (nomAnimal, identification, sexe, dateNaissance) que depot_chat.html
-      // n'a pas (formulaire limité à des compteurs), donc réservé à l'abandon.
       if (origine === 'abandon') {
         if (nom) champsPrefill.nomAnimal = nom;
         const puce = document.getElementById('arr-puce').value.trim();
@@ -409,40 +392,25 @@ async function declarerArrivee() {
       if (Object.keys(champsPrefill).length) {
         paramsUrl.push('prefill=' + encodeURIComponent(JSON.stringify(champsPrefill)));
       }
-      if ((origine === 'abandon' || origine === 'depot') && data) {
+      if (data) {
         paramsUrl.push('animalId=' + encodeURIComponent(data));
       }
 
-      const fichierCible = origine === 'abandon'
-        ? 'abandon.html'
-        : 'depot_chat.html';
+      const fichierCible = origine === 'abandon' ? 'abandon.html' : 'depot_chat.html';
+      const urlFiche = fichierCible + (paramsUrl.length ? '?' + paramsUrl.join('&') : '');
 
-      // Construit l'URL à partir du dossier réel de la page actuelle.
-      // Cela évite les problèmes de chemin relatif selon l'endroit
-      // depuis lequel le formulaire est lancé.
-      const urlFiche = new URL(
-        fichierCible + (paramsUrl.length ? '?' + paramsUrl.join('&') : ''),
-        window.location.href
-      ).href;
-
-      if (ficheWindow && !ficheWindow.closed) {
-        // La fenêtre a été autorisée par le navigateur : on la redirige.
-        ficheWindow.location.href = urlFiche;
-
-        // Pas de popup de succès : l'utilisateur passe directement
-        // au formulaire Dépôt/Abandon.
-      } else {
-        // Le navigateur a bloqué la nouvelle fenêtre.
-        // Navigation de secours garantie vers le formulaire demandé.
-        window.location.href = urlFiche;
-        return;
+      const fenetre = window.open(urlFiche, '_blank');
+      if (!fenetre) {
+        // Fallback si le popup est bloqué par le navigateur
+        const lienFiche = document.getElementById('popup-lien-fiche');
+        const lien = document.getElementById('lien-fiche');
+        lien.href = urlFiche;
+        lienFiche.style.display = 'block';
+        document.getElementById('popup-succes').classList.add('show');
       }
     } else {
-      // Pour les autres origines, afficher la confirmation.
       document.getElementById('popup-succes').classList.add('show');
     }
-
-    invaliderCacheNomsAnimauxPresents();
 
     ['arr-nom','arr-couleur','arr-puce','arr-nom-personne','arr-prenom-personne','arr-motif','arr-date-naissance','arr-autre-info','arr-nom-maman']
       .forEach(function(id) { document.getElementById(id).value = ''; });
@@ -465,7 +433,6 @@ async function declarerArrivee() {
 
   } catch (err) {
     console.error('Erreur lors de la déclaration d\'arrivée :', err);
-    if (ficheWindow) ficheWindow.close();
     msg.textContent = 'Erreur : ' + (err.message || err);
     msg.className = 'msg err';
   } finally {
