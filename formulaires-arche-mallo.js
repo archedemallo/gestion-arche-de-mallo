@@ -1014,10 +1014,15 @@ function ouvrirPhoto(previewId) {
     w.document.close();
 }
 
+// ← onerror ajoutés (voir même correctif dans adoption.html) : sans eux,
+// une image illisible ne rappelait jamais callback() et bloquait
+// indéfiniment la promesse appelante côté formulaire.
 function redimensionnerImage(file, callback) {
     var reader = new FileReader();
+    reader.onerror = function() { callback(null); };
     reader.onload = function(e) {
         var img = new Image();
+        img.onerror = function() { callback(null); };
         img.onload = function() {
             var canvas = document.createElement('canvas');
             var max = 1200;
@@ -1159,6 +1164,11 @@ async function envoyerPhotoAnimal(onglet, prenom, nom, nomAnimal, dateStr) {
     var filename = [prenomFichier, nomFichier, animalFichier, 'Photo', date].filter(Boolean).join('_');
     return await new Promise(function(resolve) {
         redimensionnerImage(input.files[0], function(base64) {
+            if (!base64) {
+                console.error('[Photo] Image illisible, envoi ignoré :', filename);
+                resolve(false);
+                return;
+            }
             fetch(window.APPS_SCRIPT_URL || APPS_SCRIPT_URL, {
                 method: 'POST',
                 // text/plain exprès (voir sendToGoogle juste au-dessus) : évite
