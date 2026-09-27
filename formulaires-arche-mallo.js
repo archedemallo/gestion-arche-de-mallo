@@ -5,6 +5,36 @@
 // APPS_SCRIPT_URL est défini dans config.js
 
 // ============================================================
+// ← AJOUTÉ : MAJUSCULE AUTOMATIQUE SUR LES CHAMPS TEXTE LIBRES
+// Remplace les oninput="this.value=this.value.toUpperCase()" qui étaient
+// codés en dur champ par champ dans chaque formulaire. Un seul écouteur
+// délégué ici s'applique à tous les <input type="text" class="editable">
+// et <textarea class="editable"> de tous les formulaires, présents et
+// futurs — plus rien à ajouter dans les fichiers HTML.
+// Exclus : email (la casse a un sens dans une adresse mail) et tout champ
+// marqué data-no-uppercase="true" si besoin d'une exception ponctuelle.
+// La position du curseur est préservée pour ne pas gêner la saisie.
+// ============================================================
+document.addEventListener('input', function(e) {
+    var el = e.target;
+    if (!el.classList || !el.classList.contains('editable')) return;
+    if (el.getAttribute('data-no-uppercase') === 'true') return;
+
+    var estChampTexte = el.tagName === 'TEXTAREA' ||
+        (el.tagName === 'INPUT' && el.type === 'text');
+    if (!estChampTexte) return;
+
+    var upper = el.value.toUpperCase();
+    if (upper === el.value) return;
+
+    var debut = el.selectionStart, fin = el.selectionEnd;
+    el.value = upper;
+    if (debut !== null && debut !== undefined && el.setSelectionRange) {
+        el.setSelectionRange(debut, fin);
+    }
+});
+
+// ============================================================
 // EN-TÊTE ASSOCIATION
 // ============================================================
 function creerEntete(options) {
