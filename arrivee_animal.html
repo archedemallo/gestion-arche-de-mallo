@@ -81,7 +81,7 @@
     <div class="champ">
       <label>Nom de l'animal <span class="req">*</span></label>
       <div style="display:flex;gap:8px;">
-        <input type="text" id="arr-nom" style="flex:0 0 70%;min-width:0;">
+        <input type="text" id="arr-nom" data-uppercase="true" style="flex:0 0 70%;min-width:0;">
         <button type="button" class="btn" style="flex:0 0 30%;padding:8px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" onclick="suggererNomArrivee()">🎲 Nom aléatoire</button>
       </div>
     </div>
@@ -137,11 +137,11 @@
     <div class="ligne2">
       <div class="champ">
         <label>Couleur <span class="req">*</span></label>
-        <input type="text" id="arr-couleur">
+        <input type="text" id="arr-couleur" data-uppercase="true">
       </div>
       <div class="champ">
         <label>Puce</label>
-        <input type="text" id="arr-puce">
+        <input type="text" id="arr-puce" data-uppercase="true">
       </div>
     </div>
 
@@ -156,26 +156,26 @@
 
     <div class="champ">
       <label>Nom de la maman (si connue)</label>
-      <input type="text" id="arr-nom-maman">
+      <input type="text" id="arr-nom-maman" data-uppercase="true">
     </div>
 
     <div class="ligne2" id="bloc-personne-origine">
       <div class="champ">
         <label>Nom de la personne à l'origine <span class="req" id="req-nom-personne" style="display:none;">*</span></label>
-        <input type="text" id="arr-nom-personne">
+        <input type="text" id="arr-nom-personne" data-uppercase="true">
       </div>
       <div class="champ">
         <label>Prénom <span class="req" id="req-prenom-personne" style="display:none;">*</span></label>
-        <input type="text" id="arr-prenom-personne">
+        <input type="text" id="arr-prenom-personne" data-uppercase="true">
       </div>
     </div>
     <div class="champ" id="bloc-motif">
       <label id="lbl-motif">Motif / précisions <span class="req" id="req-motif" style="display:none;">*</span></label>
-      <input type="text" id="arr-motif">
+      <input type="text" id="arr-motif" data-uppercase="true">
     </div>
     <div class="champ">
       <label>Autre info</label>
-      <textarea id="arr-autre-info" placeholder="Toute autre information utile sur l'animal…"></textarea>
+      <textarea id="arr-autre-info" data-uppercase="true" placeholder="Toute autre information utile sur l'animal…"></textarea>
     </div>
     <div class="champ">
       <label>Photo de l'animal *</label>
