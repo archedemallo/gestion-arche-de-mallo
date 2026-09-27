@@ -398,6 +398,19 @@ async function declarerArrivee() {
         }
       }
 
+      if (origine === 'depot') {
+        const especeVal = document.getElementById('arr-espece').value;
+        const estChaton = document.getElementById('arr-chaton').checked;
+        if (especeVal === 'chat') {
+          if (estChaton) champsPrefill.nombreChatons = 1;
+          else champsPrefill.nombreChats = 1;
+        } else {
+          champsPrefill.nombreAutres = 1;
+          const labelsEspece = { chien: 'Chien', lapin: 'Lapin', autre: '' };
+          champsPrefill.preciserAutre = labelsEspece[especeVal] !== undefined ? labelsEspece[especeVal] : especeVal;
+        }
+      }
+
       const paramsUrl = [];
       if (Object.keys(champsPrefill).length) {
         paramsUrl.push('prefill=' + encodeURIComponent(JSON.stringify(champsPrefill)));
