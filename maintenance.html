@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L'Arche de Mallo - Maintenance en cours</title>
+<style>
+  :root {
+    --orange: #e8752f;
+    --orange-dark: #c85f20;
+    --brun: #4a3428;
+    --creme: #fdf6ee;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, var(--creme) 0%, #f5e6d3 100%);
+    color: var(--brun);
+    padding: 20px;
+  }
+  .card {
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(74, 52, 40, 0.15);
+    padding: 48px 40px;
+    max-width: 520px;
+    text-align: center;
+  }
+  .icon {
+    font-size: 56px;
+    margin-bottom: 16px;
+  }
+  h1 {
+    font-size: 24px;
+    margin: 0 0 12px;
+    color: var(--orange-dark);
+  }
+  p {
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0 0 8px;
+  }
+  .creneau {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 14px 24px;
+    background: var(--creme);
+    border: 2px solid var(--orange);
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--brun);
+  }
+  .footer {
+    margin-top: 28px;
+    font-size: 13px;
+    color: #9a8a7d;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🔧🐾</div>
+    <h1>Site temporairement en maintenance</h1>
+    <p>Nous améliorons actuellement l'outil de L'Arche de Mallo.</p>
+    <p>Merci de votre patience, le site sera de nouveau disponible très bientôt.</p>
+    <div class="creneau" id="creneau">Retour prévu prochainement</div>
+    <div class="footer">L'Arche de Mallo</div>
+  </div>
+
+  <script>
+    // Lit les informations transmises depuis index.html (jour, debut, fin)
+    const params = new URLSearchParams(window.location.search);
+    const jour = params.get('jour');
+    const debut = params.get('debut');
+    const fin = params.get('fin');
+
+    if (jour && debut && fin) {
+      document.getElementById('creneau').textContent =
+        'Maintenance : ' + jour + ', de ' + debut + ' à ' + fin;
+    }
+  </script>
+</body>
+</html>
