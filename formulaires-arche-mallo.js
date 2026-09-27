@@ -17,7 +17,9 @@
 // ============================================================
 document.addEventListener('input', function(e) {
     var el = e.target;
-    if (!el.classList || !el.classList.contains('editable')) return;
+    var cible = (el.classList && el.classList.contains('editable')) ||
+                el.getAttribute('data-uppercase') === 'true';
+    if (!cible) return;
     if (el.getAttribute('data-no-uppercase') === 'true') return;
 
     var estChampTexte = el.tagName === 'TEXTAREA' ||
