@@ -1231,3 +1231,23 @@ async function chargerListeSaisisseurs(selectId) {
     select.innerHTML = '<option value="">— Choisir —</option>' +
         (res.data || []).map(function(u) { return '<option value="' + u.id + '">' + u.nom.replace(/</g,'&lt;') + '</option>'; }).join('');
 }
+
+// ============================================================================
+// GESTION DES MAJUSCULES (Champs spécifiques)
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+    // Liste des IDs ou classes devant être forcés en majuscules
+    var champsMaj = ['nom', 'nomAdoptant', 'nomProprietaire', 'nomComplet', 'ville', 'commune', 'nomChat', 'nomAnimal'];
+    
+    champsMaj.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', function(e) {
+                var start = this.selectionStart;
+                var end = this.selectionEnd;
+                this.value = this.value.toUpperCase();
+                this.setSelectionRange(start, end);
+            });
+        }
+    });
+});
