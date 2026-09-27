@@ -143,6 +143,20 @@ var CHAMPS_EXCLUS_RESUME = [
     'photoReservation', 'donId', 'adoptionId', 'saisiPar', 'montantAdhesion'
 ];
 
+// Champs représentant un montant d'argent, à exclure du résumé envoyé par
+// mail (demande : plus aucun montant — adhésion, adoption, don... — ne doit
+// apparaître dans les mails). Complète le filtre générique /montant/i
+// ci-dessous pour les champs qui ne contiennent pas le mot "montant" dans
+// leur id.
+var CHAMPS_MONTANT_EXCLUS_RESUME = [
+    'cotisationAdherent', 'tarifParticulier', 'totalParticipation',
+    'donBienfaiteur', 'donSympatisant', 'resteAPayer'
+];
+
+function estChampMontant(key) {
+    return /montant/i.test(key) || CHAMPS_MONTANT_EXCLUS_RESUME.indexOf(key) !== -1;
+}
+
 function construireCorpsMail(data) {
     data = data || {};
     var now = formatDateHeureFR(new Date());
@@ -168,6 +182,7 @@ function construireCorpsMail(data) {
     Object.keys(data).forEach(function(k) {
         if (CHAMPS_EXCLUS_RESUME.indexOf(k) !== -1) return;
         if (k.charAt(0) === '_') return; // champs internes (ex. _adoptionId)
+        if (estChampMontant(k)) return;  // aucun montant dans les mails
         var val = data[k];
         if (val === null || val === undefined || String(val).trim() === '') return;
         if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
