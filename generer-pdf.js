@@ -94,8 +94,74 @@ async function genererPdfFormulaire() {
             el.remove();
         });
 
+        const MARGE_MM          = 8;
+        const PAGE_LARGEUR_MM   = 210;   // A4 portrait
+        const PAGE_HAUTEUR_MM   = 297;
+        const LARGEUR_UTILE_MM  = PAGE_LARGEUR_MM - 2 * MARGE_MM;
+        const HAUTEUR_UTILE_MM  = PAGE_HAUTEUR_MM - 2 * MARGE_MM;
+
+        // html2pdf.js bundle les deux librairies dont il dépend ; selon les
+        // versions du CDN elles sont exposées soit sous window.jspdf.jsPDF
+        // (UMD récent), soit directement sous window.jsPDF (plus ancien).
+        const jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+
+        // ← AJOUTÉ : pagination manuelle, à la place du découpeur interne
+        // de html2pdf.js (pagebreak mode 'css'/'legacy'). Ce découpeur est
+        // connu pour être instable quand le contenu dépasse une page de
+        // peu (petite tranche de reliquat sur la dernière page) : selon
+        // les essais, il duplique la même image sur 2 pages, ou plante
+        // (RangeError: Maximum call stack size exceeded) — observé en
+        // reproduisant le pipeline en local avec la vraie version 0.10.1.
+        // Ici, on capture UNE SEULE FOIS le rendu complet avec html2canvas,
+        // puis on découpe NOUS-MÊMES ce canevas en tranches de la hauteur
+        // exacte d'une page A4, collées une par une dans le PDF avec
+        // jsPDF — un mécanisme simple et entièrement déterministe.
+        if (window.html2canvas && jsPDFCtor) {
+            const canvas = await window.html2canvas(doc.body, {
+                scale: 2, useCORS: true, windowWidth: 900, backgroundColor: '#ffffff'
+            });
+
+            const largeurCanvasPx = canvas.width;
+            const hauteurCanvasPx = canvas.height;
+            const mmParPx         = LARGEUR_UTILE_MM / largeurCanvasPx;
+            const hauteurPageEnPx = Math.floor(HAUTEUR_UTILE_MM / mmParPx);
+
+            const pdf = new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+            let positionY    = 0;
+            let premierePage = true;
+            while (positionY < hauteurCanvasPx) {
+                const hauteurTrancheEnPx = Math.min(hauteurPageEnPx, hauteurCanvasPx - positionY);
+
+                const trancheCanvas = document.createElement('canvas');
+                trancheCanvas.width  = largeurCanvasPx;
+                trancheCanvas.height = hauteurTrancheEnPx;
+                trancheCanvas.getContext('2d').drawImage(
+                    canvas,
+                    0, positionY, largeurCanvasPx, hauteurTrancheEnPx,
+                    0, 0, largeurCanvasPx, hauteurTrancheEnPx
+                );
+
+                if (!premierePage) pdf.addPage();
+                pdf.addImage(
+                    trancheCanvas.toDataURL('image/jpeg', 0.95), 'JPEG',
+                    MARGE_MM, MARGE_MM,
+                    LARGEUR_UTILE_MM, hauteurTrancheEnPx * mmParPx
+                );
+
+                positionY   += hauteurTrancheEnPx;
+                premierePage = false;
+            }
+
+            return new Uint8Array(pdf.output('arraybuffer'));
+        }
+
+        // ← Filet de sécurité : si ce build de html2pdf.js n'expose pas
+        // html2canvas/jsPDF globalement (ça peut changer selon les
+        // versions livrées par le CDN), on retombe sur l'ancien
+        // comportement plutôt que de tout casser.
         const worker = window.html2pdf().set({
-            margin: 8,
+            margin: MARGE_MM,
             filename: 'formulaire.pdf',
             html2canvas: { scale: 2, useCORS: true, windowWidth: 900, backgroundColor: '#ffffff' },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
