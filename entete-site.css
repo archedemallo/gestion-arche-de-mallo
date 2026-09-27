@@ -1,0 +1,53 @@
+/* ============================================================
+   EN-TÊTE DE SITE PARTAGÉ — L'Arche de Mallo
+   Utilisé sur toutes les pages "Formulaires / Outils"
+   (les pages Compta gardent leur propre en-tête, voir compta-style.css)
+   ============================================================ */
+
+.entete-site {
+    background: #ffffff;
+    border-bottom: 3px solid #c96b2a;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    box-shadow: 0 2px 12px rgba(61, 43, 31, 0.08);
+}
+
+.entete-site-lien {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    text-decoration: none;
+    color: inherit;
+}
+
+.entete-site-logo {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.entete-site-texte h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 16px;
+    color: #3d2b1f;
+    line-height: 1.15;
+    margin: 0;
+}
+
+.entete-site-texte p {
+    font-size: 11px;
+    color: #8a7968;
+    margin: 2px 0 0;
+}
+
+/* Jamais dans les documents imprimés (contrats, listes, reçus...) */
+@media print {
+    .entete-site {
+        display: none !important;
+    }
+}
