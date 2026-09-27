@@ -350,7 +350,7 @@ chargerListeSaisisseurs();
                     const pdfBytes = await genererPdfFormulaire();
                     await envoyerMailFormulaire({
                         sujet: 'Décharge 2ème vaccin — ' + (data.nomChat || ''),
-                        corps: "Bonjour,\n\nVeuillez trouver ci-joint la décharge relative au 2ème vaccin.\n\nL'Arche de Mallo",
+                        corps: construireCorpsMail(data),
                         pdfBytes: pdfBytes,
                         pdfNomFichier: data.filename + '.pdf',
                         emailClient: data.email,

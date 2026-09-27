@@ -426,7 +426,7 @@ chargerListeSaisisseurs();
                     const pdfBytes = await genererPdfFormulaire();
                     await envoyerMailFormulaire({
                         sujet: 'Abandon — ' + (data.nomAnimal || ''),
-                        corps: "Bonjour,\n\nVeuillez trouver ci-joint le formulaire d'abandon.\n\nL'Arche de Mallo",
+                        corps: construireCorpsMail(data),
                         pdfBytes: pdfBytes,
                         pdfNomFichier: data.filename + '.pdf',
                         emailClient: data.email,

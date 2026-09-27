@@ -641,7 +641,7 @@ chargerListeSaisisseurs();
                     const pdfBytes = await genererPdfFormulaire();
                     await envoyerMailFormulaire({
                         sujet: 'Réservation — ' + (data.nomChat || ''),
-                        corps: "Bonjour,\n\nVeuillez trouver ci-joint le contrat de réservation.\n\nL'Arche de Mallo",
+                        corps: construireCorpsMail(data),
                         pdfBytes: pdfBytes,
                         pdfNomFichier: data.filename + '.pdf',
                         emailClient: data.email,

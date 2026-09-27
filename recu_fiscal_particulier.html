@@ -399,7 +399,7 @@ async function saveForm() {
                 const pdfBytes = await genererPdfFormulaire();
                 await envoyerMailFormulaire({
                     sujet: 'Reçu fiscal n°' + champNumero.value,
-                    corps: "Bonjour,\n\nVeuillez trouver ci-joint votre reçu fiscal. Merci pour votre soutien !\n\nL'Arche de Mallo",
+                    corps: construireCorpsMail(data),
                     pdfBytes: pdfBytes,
                     pdfNomFichier: data.filename + '.pdf',
                     emailClient: data.email,

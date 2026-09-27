@@ -1201,7 +1201,7 @@ async function _saveFormOriginal() {
                 const pdfBytes = await genererPdfFormulaire();
                 await envoyerMailFormulaire({
                     sujet: 'Contrat de cession — ' + (data.nomAdoption || data.nomUsuel || ''),
-                    corps: "Bonjour,\n\nVeuillez trouver ci-joint le contrat de cession à charge.\n\nL'Arche de Mallo",
+                    corps: construireCorpsMail(data),
                     pdfBytes: pdfBytes,
                     pdfNomFichier: data.filename + '.pdf',
                     emailClient: data.email,

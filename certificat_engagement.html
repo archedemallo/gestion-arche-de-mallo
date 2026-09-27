@@ -345,7 +345,7 @@ async function saveForm() {
                 const pdfBytes = await genererPdfFormulaire();
                 await envoyerMailFormulaire({
                     sujet: "Certificat d'engagement — " + (data.nomAdoptant || ''),
-                    corps: "Bonjour,\n\nVeuillez trouver ci-joint votre certificat d'engagement.\n\nL'Arche de Mallo",
+                    corps: construireCorpsMail(data),
                     pdfBytes: pdfBytes,
                     pdfNomFichier: data.filename + '.pdf',
                     emailClient: data.email,

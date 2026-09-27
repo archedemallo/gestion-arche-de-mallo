@@ -374,7 +374,7 @@ chargerListeSaisisseurs();
                     const pdfBytes = await genererPdfFormulaire();
                     await envoyerMailFormulaire({
                         sujet: "Famille d'accueil — " + (data.nom_animal || ''),
-                        corps: "Bonjour,\n\nVeuillez trouver ci-joint le formulaire de famille d'accueil.\n\nL'Arche de Mallo",
+                        corps: construireCorpsMail(data),
                         pdfBytes: pdfBytes,
                         pdfNomFichier: data.filename + '.pdf',
                         emailClient: data.email,

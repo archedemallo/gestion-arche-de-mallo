@@ -381,7 +381,7 @@ chargerListeSaisisseurs();
                     const pdfBytes = await genererPdfFormulaire();
                     await envoyerMailFormulaire({
                         sujet: 'Retour de matériel — ' + (data.nomEmprunteur || ''),
-                        corps: "Bonjour,\n\nVeuillez trouver ci-joint le formulaire de retour de matériel.\n\nL'Arche de Mallo",
+                        corps: construireCorpsMail(data),
                         pdfBytes: pdfBytes,
                         pdfNomFichier: data.filename + '.pdf',
                         emailClient: data.emailEmprunteur,
