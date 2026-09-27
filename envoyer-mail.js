@@ -140,7 +140,7 @@ var LIBELLES_CHAMPS = {
 // Clés techniques à ne jamais afficher dans le résumé
 var CHAMPS_EXCLUS_RESUME = [
     'onglet', 'htmlContent', 'signatureImage', 'action', 'filename',
-    'photoReservation', 'donId', 'adoptionId', 'saisiPar'
+    'photoReservation', 'donId', 'adoptionId', 'saisiPar', 'montantAdhesion'
 ];
 
 function construireCorpsMail(data) {
