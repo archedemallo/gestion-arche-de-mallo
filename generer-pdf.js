@@ -83,6 +83,96 @@ function _canvasQuasiVide(canvas) {
     return nonBlancs / (px.length / 4) < 0.01;
 }
 
+/** Lit une URL et la renvoie sous forme de data: URI (pour l'inclure dans un SVG autonome). */
+async function _urlEnDataUri(url) {
+    const rep = await fetch(url);
+    if (!rep.ok) throw new Error('HTTP ' + rep.status + ' ' + url);
+    const blob = await rep.blob();
+    return await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = () => reject(new Error('lecture impossible ' + url));
+        r.readAsDataURL(blob);
+    });
+}
+
+/**
+ * Capture le document via un SVG <foreignObject> (rendu natif du navigateur),
+ * images et fonds CSS incorporés en data: URI. Sert de méthode principale ;
+ * html2canvas n'est plus qu'un repli.
+ */
+async function _capturerViaSvg(doc, largeur, hauteur, echelle) {
+    const clone = doc.documentElement.cloneNode(true);
+    clone.querySelectorAll('script, iframe, link[rel="stylesheet"]').forEach(function(e) { e.remove(); });
+
+    const base = window.location.href;
+    const cache = {};
+    async function versData(u) {
+        if (!u || /^data:/i.test(u)) return u;
+        const abs = new URL(u, base).href;
+        if (!cache[abs]) cache[abs] = _urlEnDataUri(abs);
+        return cache[abs];
+    }
+
+    for (const img of clone.querySelectorAll('img')) {
+        const src = img.getAttribute('src');
+        if (src) img.setAttribute('src', await versData(src));
+    }
+    for (const st of clone.querySelectorAll('style')) {
+        let css = st.textContent;
+        const urls = new Set();
+        css.replace(/url\(\s*['"]?([^'")]+)['"]?\s*\)/g, function(m, u) { if (!/^data:/i.test(u)) urls.add(u); return m; });
+        for (const u of urls) {
+            let d = '';
+            try { d = await versData(u); } catch (e) { d = ''; }
+            css = css.split(u).join(d || 'about:blank');
+        }
+        st.textContent = css;
+    }
+
+    // Reporte l'état des champs (valeurs saisies, cases cochées) sur la copie.
+    const orig = doc.documentElement.querySelectorAll('input, textarea, select');
+    const copies = clone.querySelectorAll('input, textarea, select');
+    orig.forEach(function(o, i) {
+        const c = copies[i];
+        if (!c) return;
+        if (o.tagName === 'INPUT') {
+            if (o.type === 'checkbox' || o.type === 'radio') {
+                if (o.checked) c.setAttribute('checked', 'checked'); else c.removeAttribute('checked');
+            } else c.setAttribute('value', o.value);
+        }
+        else if (o.tagName === 'TEXTAREA') c.textContent = o.value;
+        else if (o.tagName === 'SELECT') {
+            c.querySelectorAll('option').forEach(function(op) {
+                op.removeAttribute('selected');
+                if (op.value === o.value) op.setAttribute('selected', 'selected');
+            });
+        }
+    });
+
+    const xhtml = new XMLSerializer().serializeToString(clone);
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + largeur + '" height="' + hauteur + '">' +
+                '<foreignObject x="0" y="0" width="100%" height="100%">' + xhtml + '</foreignObject></svg>';
+    const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+
+    const img = await new Promise(function(resolve, reject) {
+        const i = new Image();
+        i.onload = function() { resolve(i); };
+        i.onerror = function() { reject(new Error('rendu SVG impossible')); };
+        i.src = url;
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width  = Math.round(largeur * echelle);
+    canvas.height = Math.round(hauteur * echelle);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.scale(echelle, echelle);
+    ctx.drawImage(img, 0, 0, largeur, hauteur);
+    return canvas;
+}
+
 /**
  * Génère le PDF du formulaire actuellement rempli.
  * @returns {Promise<Uint8Array>} le PDF, prêt à passer à envoyerMailFormulaire().
@@ -143,22 +233,34 @@ async function genererPdfFormulaire() {
         // puis on découpe NOUS-MÊMES ce canevas en tranches de la hauteur
         // exacte d'une page A4, collées une par une dans le PDF avec
         // jsPDF — un mécanisme simple et entièrement déterministe.
-        if (window.html2canvas && jsPDFCtor) {
+        if (jsPDFCtor) {
             // Hauteur réelle du document rendu : l'iframe et la "fenêtre"
-            // de html2canvas doivent l'englober entièrement.
+            // de capture doivent l'englober entièrement.
             const hauteurDoc = Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight);
             iframe.style.height = hauteurDoc + 'px';
             await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-            const canvas = await window.html2canvas(doc.body, {
-                scale: 2, useCORS: true, backgroundColor: '#ffffff',
-                windowWidth: 900, windowHeight: hauteurDoc,
-                x: 0, y: 0, scrollX: 0, scrollY: 0
-            });
+            // Méthode principale : capture via SVG ; repli : html2canvas.
+            let canvas = null;
+            try {
+                canvas = await _capturerViaSvg(doc, 900, hauteurDoc, 2);
+                if (_canvasQuasiVide(canvas)) canvas = null;
+            } catch (e) {
+                console.warn('[PDF] Capture SVG impossible, essai avec html2canvas :', e);
+                canvas = null;
+            }
+            if (!canvas && window.html2canvas) {
+                canvas = await window.html2canvas(doc.body, {
+                    scale: 2, useCORS: true, backgroundColor: '#ffffff',
+                    windowWidth: 900, windowHeight: hauteurDoc,
+                    x: 0, y: 0, scrollX: 0, scrollY: 0
+                });
+                if (_canvasQuasiVide(canvas)) canvas = null;
+            }
 
             // Garde-fou : un rendu quasi vide (capture ratée) ne doit
             // jamais partir par mail comme s'il s'agissait du vrai document.
-            if (_canvasQuasiVide(canvas)) {
+            if (!canvas) {
                 throw new Error('La capture du formulaire est vide — PDF non généré.');
             }
 
@@ -168,6 +270,20 @@ async function genererPdfFormulaire() {
             const hauteurPageEnPx = Math.floor(HAUTEUR_UTILE_MM / mmParPx);
 
             const pdf = new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+            // Léger dépassement d'une page (< 12 %) : on réduit l'image pour
+            // tenir sur une seule page plutôt que d'avoir une page de reliquat.
+            const hauteurTotaleMm = hauteurCanvasPx * mmParPx;
+            if (hauteurTotaleMm > HAUTEUR_UTILE_MM && hauteurTotaleMm <= HAUTEUR_UTILE_MM * 1.12) {
+                const facteur = HAUTEUR_UTILE_MM / hauteurTotaleMm;
+                const largeurMm = LARGEUR_UTILE_MM * facteur;
+                pdf.addImage(
+                    canvas.toDataURL('image/jpeg', 0.95), 'JPEG',
+                    MARGE_MM + (LARGEUR_UTILE_MM - largeurMm) / 2, MARGE_MM,
+                    largeurMm, HAUTEUR_UTILE_MM
+                );
+                return new Uint8Array(pdf.output('arraybuffer'));
+            }
 
             let positionY    = 0;
             let premierePage = true;
