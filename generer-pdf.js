@@ -65,6 +65,25 @@ function _reglesCompletesEnClair() {
 }
 
 /**
+ * true si le canevas est (quasi) entièrement blanc : on échantillonne une
+ * version réduite et on compte les pixels non blancs. Un vrai formulaire
+ * (texte, cadres, logo) en contient nettement plus de 1 %.
+ */
+function _canvasQuasiVide(canvas) {
+    const petit = document.createElement('canvas');
+    petit.width  = 120;
+    petit.height = Math.max(1, Math.round(120 * canvas.height / canvas.width));
+    const ctx = petit.getContext('2d');
+    ctx.drawImage(canvas, 0, 0, petit.width, petit.height);
+    const px = ctx.getImageData(0, 0, petit.width, petit.height).data;
+    let nonBlancs = 0;
+    for (let i = 0; i < px.length; i += 4) {
+        if (px[i] < 235 || px[i + 1] < 235 || px[i + 2] < 235) nonBlancs++;
+    }
+    return nonBlancs / (px.length / 4) < 0.01;
+}
+
+/**
  * Génère le PDF du formulaire actuellement rempli.
  * @returns {Promise<Uint8Array>} le PDF, prêt à passer à envoyerMailFormulaire().
  */
@@ -76,7 +95,15 @@ async function genererPdfFormulaire() {
 
     // Rendu hors-écran, dans un iframe isolé — n'affecte jamais la page en cours.
     const iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:fixed;top:-10000px;left:-10000px;width:900px;height:0;border:0;';
+    // ← MODIFIÉ : l'iframe était placé à left/top:-10000px avec height:0.
+    // html2canvas calcule la zone à dessiner à partir de la fenêtre de
+    // l'iframe : hors écran et de hauteur nulle, il ne rendait qu'une
+    // mince bande du document (le PDF ne contenait que des fragments de
+    // texte sur la gauche de la page). L'iframe reste donc DANS la zone
+    // visible (coin 0,0), derrière la page (z-index négatif, invisible,
+    // non cliquable) et sa hauteur est ajustée au contenu avant capture.
+    iframe.style.cssText = 'position:fixed;top:0;left:0;width:900px;height:1200px;border:0;' +
+                           'z-index:-1;visibility:hidden;pointer-events:none;';
     document.body.appendChild(iframe);
 
     try {
@@ -117,9 +144,23 @@ async function genererPdfFormulaire() {
         // exacte d'une page A4, collées une par une dans le PDF avec
         // jsPDF — un mécanisme simple et entièrement déterministe.
         if (window.html2canvas && jsPDFCtor) {
+            // Hauteur réelle du document rendu : l'iframe et la "fenêtre"
+            // de html2canvas doivent l'englober entièrement.
+            const hauteurDoc = Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight);
+            iframe.style.height = hauteurDoc + 'px';
+            await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
             const canvas = await window.html2canvas(doc.body, {
-                scale: 2, useCORS: true, windowWidth: 900, backgroundColor: '#ffffff'
+                scale: 2, useCORS: true, backgroundColor: '#ffffff',
+                windowWidth: 900, windowHeight: hauteurDoc,
+                x: 0, y: 0, scrollX: 0, scrollY: 0
             });
+
+            // Garde-fou : un rendu quasi vide (capture ratée) ne doit
+            // jamais partir par mail comme s'il s'agissait du vrai document.
+            if (_canvasQuasiVide(canvas)) {
+                throw new Error('La capture du formulaire est vide — PDF non généré.');
+            }
 
             const largeurCanvasPx = canvas.width;
             const hauteurCanvasPx = canvas.height;
