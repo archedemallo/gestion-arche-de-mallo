@@ -467,6 +467,57 @@
     Association L'Arche de Mallo — 8 ter rue d'Eschène, 90140 Autrechêne — 07 71 64 69 89
 </footer>
 
+<div id="login-screen" style="position:fixed;inset:0;background:var(--cream);z-index:99999;display:flex;align-items:center;justify-content:center;">
+    <div style="max-width:340px;width:90%;background:#fff;border:1px solid var(--warm);border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+        <h1 style="font-size:16px;margin:0 0 4px;">L'Arche de Mallo</h1>
+        <p style="font-size:12px;color:var(--grey);margin-bottom:16px;">Connexion requise.</p>
+        <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+        <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+        <div id="login-err" style="font-size:12px;color:#b00020;margin-bottom:8px;"></div>
+        <button type="button" id="login-btn" style="width:100%;padding:9px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
+<script src="supabase-config.js"></script>
+<script>
+var supabaseClient = creerClientSupabase();
+
+async function verifierAccesIndex(user) {
+    var errEl = document.getElementById('login-err');
+    try {
+        var res = await supabaseClient.from('profils_suivi').select('email').eq('user_id', user.id).maybeSingle();
+        if (res.error || !res.data) {
+            errEl.textContent = "Ce compte n'est pas autorisé.";
+            await supabaseClient.auth.signOut();
+            return;
+        }
+        document.getElementById('login-screen').style.display = 'none';
+    } catch (e) {
+        afficherErreurChargement(e);
+    }
+}
+
+async function seConnecterIndex() {
+    var errEl = document.getElementById('login-err');
+    errEl.textContent = '';
+    var res = await supabaseClient.auth.signInWithPassword({
+        email: document.getElementById('login-email').value.trim(),
+        password: document.getElementById('login-password').value
+    });
+    if (res.error) { errEl.textContent = 'Connexion refusée : ' + res.error.message; return; }
+    await verifierAccesIndex(res.data.user);
+}
+
+document.getElementById('login-btn').addEventListener('click', seConnecterIndex);
+['login-email', 'login-password'].forEach(function(id) {
+    document.getElementById(id).addEventListener('keydown', function(e) { if (e.key === 'Enter') seConnecterIndex(); });
+});
+
+supabaseClient.auth.getSession().then(function(res) {
+    if (res.data.session) verifierAccesIndex(res.data.session.user);
+}).catch(afficherErreurChargement);
+</script>
+
 <script>
 function activerOnglet(slug) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.slug === slug));
