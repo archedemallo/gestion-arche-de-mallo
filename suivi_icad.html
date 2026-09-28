@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suivi ICAD — L'Arche de Mallo</title>
+<link rel="icon" type="image/png" href="logo_arche.png">
+<link rel="stylesheet" href="entete-site.css">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+    --cream: #faf7f2; --warm: #f0e8d8; --brown: #3d2b1f;
+    --orange: #c96b2a; --orange-light: #e8843a; --grey: #8a7968;
+    --white: #ffffff; --green: #2e7d32; --green-light: #e8f5e9;
+    --amber: #e65100; --amber-light: #fff3e0;
+    --blue: #1565c0; --blue-light: #e3f2fd;
+    --shadow: 0 4px 24px rgba(61,43,31,0.10);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'DM Sans',sans-serif; background:var(--cream); color:var(--brown); min-height:100vh; }
+
+/* HEADER : en-tête commun (entete-site.css) */
+.btn-back { background:var(--warm); color:var(--brown); border:none; border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer; font-family:'DM Sans',sans-serif; text-decoration:none; display:inline-flex; align-items:center; gap:6px; margin-bottom:14px; }
+
+/* MAIN */
+.main { max-width:1200px; margin:0 auto; padding:24px 20px; }
+
+/* ONGLETS */
+.tabs { display:flex; gap:0; border-bottom:2px solid var(--warm); margin-bottom:20px; }
+.tab { padding:10px 20px; font-size:14px; font-weight:500; cursor:pointer; border:none; background:transparent; color:var(--grey); border-bottom:2px solid transparent; margin-bottom:-2px; font-family:'DM Sans',sans-serif; transition:all .15s; white-space:nowrap; }
+.tab:hover { color:var(--brown); }
+.tab.active { color:var(--orange); border-bottom-color:var(--orange); }
+.tab .count { display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:18px; padding:0 5px; border-radius:10px; font-size:11px; font-weight:500; margin-left:6px; }
+.tab.active .count { background:var(--orange); color:white; }
+.tab:not(.active) .count { background:var(--warm); color:var(--grey); }
+
+/* FILTRES */
+.filters { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; align-items:center; }
+.filter-input { border:1.5px solid var(--warm); border-radius:8px; padding:8px 12px; font-size:13px; font-family:'DM Sans',sans-serif; background:var(--white); color:var(--brown); outline:none; }
+.filter-input:focus { border-color:var(--orange); }
+.filter-input.large { flex:1; min-width:200px; }
+.filter-input.date { width:140px; }
+.btn-reset { background:var(--warm); color:var(--grey); border:none; border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; font-family:'DM Sans',sans-serif; }
+
+/* STATS */
+.stats { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+.stat { background:var(--white); border-radius:10px; padding:10px 18px; display:flex; align-items:center; gap:10px; box-shadow:0 1px 6px rgba(61,43,31,0.07); }
+.stat-num { font-size:22px; font-weight:500; }
+.stat-lbl { font-size:12px; color:var(--grey); }
+.stat-total .stat-num { color:var(--brown); }
+.stat-fait .stat-num { color:var(--green); }
+.stat-todo .stat-num { color:var(--amber); }
+
+/* TABLEAU */
+.table-wrap { background:var(--white); border-radius:12px; box-shadow:var(--shadow); overflow-x:auto; overflow-y:hidden; }
+table { width:100%; min-width:1100px; border-collapse:collapse; table-layout:fixed; }
+thead tr { background:var(--warm); }
+th { padding:10px 12px; text-align:left; font-size:12px; font-weight:500; color:var(--grey); letter-spacing:.03em; white-space:nowrap;
+     position:sticky; top:0; z-index:2; background:var(--warm); overflow:hidden; }
+td { padding:10px 12px; border-bottom:1px solid #f0ebe3; font-size:13px; vertical-align:middle; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:#fdf9f5; }
+tr.done-row td { opacity:.75; }
+
+/* Poignée de redimensionnement des colonnes */
+.col-resizer { position:absolute; top:0; right:0; width:6px; height:100%; cursor:col-resize; user-select:none; z-index:3; }
+.col-resizer:hover, .col-resizer.resizing { background:var(--orange-light); }
+
+.chat-name { font-weight:500; font-size:14px; }
+.badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:500; margin-left:6px; background:var(--blue-light); color:var(--blue); }
+.puce { font-size:11px; color:var(--grey); display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:bottom; }
+
+/* COMMENTAIRE INLINE */
+.comment-input { border:1px solid #e0d8ce; border-radius:6px; padding:5px 8px; font-size:12px; font-family:'DM Sans',sans-serif; background:var(--cream); color:var(--brown); width:100%; box-sizing:border-box; resize:none; }
+.comment-input:focus { outline:none; border-color:var(--orange); }
+
+/* ICAD ACTION */
+.icad-action { display:flex; align-items:center; gap:4px; flex-wrap:nowrap; }
+.date-icad { border:1px solid #e0d8ce; border-radius:6px; padding:4px 6px; font-size:11px; font-family:'DM Sans',sans-serif; background:var(--cream); color:var(--brown); width:112px; }
+.date-icad:focus { outline:none; border-color:var(--green); }
+.btn-ok { background:var(--orange); color:white; border:none; border-radius:6px; padding:6px 8px; font-size:12px; font-weight:500; cursor:pointer; font-family:'DM Sans',sans-serif; white-space:nowrap; }
+.btn-ok:hover { background:var(--orange-light); }
+.btn-ok:disabled { background:#ccc; cursor:not-allowed; }
+.btn-annuler { background:none; border:1px solid var(--grey); color:var(--grey); border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer; font-family:'DM Sans',sans-serif; white-space:nowrap; margin-left:6px; }
+.btn-annuler:hover { background:var(--warm); color:var(--brown); border-color:var(--brown); }
+
+/* STATUT */
+.status-done { display:inline-flex; align-items:center; gap:5px; color:var(--green); font-size:13px; font-weight:500; background:var(--green-light); padding:4px 10px; border-radius:8px; }
+.status-todo { display:inline-flex; align-items:center; gap:5px; color:var(--amber); font-size:12px; font-weight:500; background:var(--amber-light); padding:4px 10px; border-radius:8px; }
+
+/* BOUTON OUVRIR */
+.btn-open { background:var(--white); color:var(--brown); border:1.5px solid #d0c8be; border-radius:6px; padding:5px 12px; font-size:12px; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.btn-open:hover { border-color:var(--orange); color:var(--orange); }
+
+/* BOUTONS AJOUT CERTIFICATS */
+.btn-upload { background:var(--white); color:var(--brown); border:1.5px solid #d0c8be; border-radius:6px; padding:5px 10px; font-size:11px; cursor:pointer; font-family:'DM Sans',sans-serif; white-space:nowrap; width:100%; box-sizing:border-box; }
+.btn-upload:hover { border-color:var(--orange); color:var(--orange); }
+.btn-upload:disabled { opacity:.6; cursor:wait; }
+.btn-upload.done { border-color:var(--green); color:var(--green); background:var(--green-light); }
+
+/* MODAL DÉTAIL */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(61,43,31,.45); z-index:200; align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal { background:var(--white); border-radius:16px; padding:28px; width:90%; max-width:580px; max-height:85vh; overflow-y:auto; box-shadow:0 16px 60px rgba(61,43,31,.25); }
+.modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+.modal-title { font-family:'Playfair Display',serif; font-size:18px; color:var(--brown); }
+.modal-close { background:var(--warm); border:none; border-radius:8px; width:32px; height:32px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; color:var(--grey); }
+.detail-section { margin-bottom:18px; }
+.detail-section h3 { font-size:12px; font-weight:500; color:var(--grey); text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--warm); }
+.detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px 16px; }
+.detail-field { padding:4px 0; }
+.detail-lbl { font-size:11px; color:var(--grey); margin-bottom:1px; }
+.detail-val { font-size:13px; color:var(--brown); font-weight:400; }
+.detail-val.empty { color:#ccc; font-style:italic; }
+.icad-status-modal { padding:12px 16px; border-radius:10px; margin-top:8px; }
+.icad-status-modal.done { background:var(--green-light); }
+.icad-status-modal.todo { background:var(--amber-light); }
+.timeline { display:flex; flex-direction:column; gap:8px; }
+.timeline-item { display:flex; gap:10px; align-items:flex-start; }
+.timeline-dot { width:8px; height:8px; border-radius:50%; background:var(--orange); margin-top:5px; flex-shrink:0; }
+.timeline-content { font-size:12px; color:var(--grey); }
+.timeline-content strong { color:var(--brown); font-size:13px; }
+
+/* IMPRESSION */
+.print-bar { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; align-items:center; }
+.btn-print { background:var(--brown); color:white; border:none; border-radius:8px; padding:9px 16px; font-size:13px; cursor:pointer; font-family:'DM Sans',sans-serif; display:flex; align-items:center; gap:6px; }
+.btn-print:hover { background:#5a3e2e; }
+.btn-print-green { background:var(--green); }
+.btn-print-green:hover { background:#1b5e20; }
+.btn-print-amber { background:var(--amber); }
+.btn-print-amber:hover { background:#bf360c; }
+
+/* LOADING */
+.loading { text-align:center; padding:40px; color:var(--grey); font-size:14px; }
+.empty { text-align:center; padding:40px; color:var(--grey); font-size:14px; font-style:italic; }
+
+@media print {
+    .entete-site, .btn-back, .tabs, .filters, .stats, .print-bar, .btn-open, .icad-action, .comment-input, .modal-overlay { display:none !important; }
+    .table-wrap { box-shadow:none; }
+    body { background:white; }
+    .print-title { display:block !important; }
+    td, th { padding:6px 8px; font-size:11px; }
+}
+.print-title { display:none; font-family:'Playfair Display',serif; font-size:16px; margin-bottom:12px; }
+</style>
+</head>
+<body>
+
+<div id="login-screen" style="position:fixed;inset:0;background:var(--cream);z-index:99999;display:flex;align-items:center;justify-content:center;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid var(--warm);border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:var(--grey);margin-bottom:16px;">Connexion requise.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+
+<header class="entete-site">
+  <a href="index.html" class="entete-site-lien">
+    <img src="logo_arche.png" alt="Logo L'Arche de Mallo" class="entete-site-logo">
+    <div class="entete-site-texte">
+      <h1>L'Arche de Mallo</h1>
+      <p>Association de protection animale — 90140 Autrechêne</p>
+    </div>
+  </a>
+</header>
+
+<div class="main">
+
+    <a href="index.html" class="btn-back">← Retour</a>
+    <h2 style="font-family:'Playfair Display',serif;font-size:20px;margin-bottom:16px;">Suivi ICAD</h2>
+
+    <!-- ONGLETS -->
+    <div class="tabs">
+        <button class="tab active" onclick="changerOnglet('tous')" id="tab-tous">
+            Tous <span class="count" id="cnt-tous">0</span>
+        </button>
+        <button class="tab" onclick="changerOnglet('todo')" id="tab-todo">
+            À faire <span class="count" id="cnt-todo">0</span>
+        </button>
+        <button class="tab" onclick="changerOnglet('fait')" id="tab-fait">
+            Fait <span class="count" id="cnt-fait">0</span>
+        </button>
+    </div>
+
+    <!-- FILTRES -->
+    <div class="filters">
+        <input type="text" class="filter-input large" id="f-search" placeholder="🔍  Nom du chat, nom adopté, adoptant..." oninput="filtrer()">
+        <input type="date" class="filter-input date" id="f-from" onchange="filtrer()" title="Date adoption du...">
+        <input type="date" class="filter-input date" id="f-to" onchange="filtrer()" title="Date adoption au...">
+        <button class="btn-reset" onclick="resetFiltres()">Réinitialiser</button>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats">
+        <div class="stat stat-total">
+            <div><div class="stat-num" id="stat-total">—</div><div class="stat-lbl">Total adoptions</div></div>
+        </div>
+        <div class="stat stat-fait">
+            <div><div class="stat-num" id="stat-fait">—</div><div class="stat-lbl">ICAD transférés</div></div>
+        </div>
+        <div class="stat stat-todo">
+            <div><div class="stat-num" id="stat-todo">—</div><div class="stat-lbl">Restent à faire</div></div>
+        </div>
+    </div>
+
+    <!-- TABLEAU -->
+    <div class="print-title" id="print-title">Suivi ICAD — L'Arche de Mallo</div>
+    <div class="table-wrap">
+        <table>
+            <colgroup>
+                <col style="width:13%">
+                <col style="width:8%">
+                <col style="width:11%">
+                <col style="width:8%">
+                <col style="width:8.5%">
+                <col style="width:14%">
+                <col style="width:8%">
+                <col style="width:7%">
+                <col style="width:12%">
+                <col style="width:10.5%">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Chat / Nom adopté</th>
+                    <th>N° puce</th>
+                    <th>Adoptant</th>
+                    <th>Date adoption</th>
+                    <th>Commentaire</th>
+                    <th>ICAD</th>
+                    <th>Statut</th>
+                    <th></th>
+                    <th title="Ajouter le certificat de stérilisation">Certif. stérilisation</th>
+                    <th title="Ajouter le certificat ICAD">Certif. ICAD</th>
+                </tr>
+            </thead>
+            <tbody id="tbody">
+                <tr><td colspan="10" class="loading">Chargement des données...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <input type="file" id="icad-file-input" accept="image/*,.pdf" style="display:none" onchange="onIcadFileChosen(event)">
+
+</div><!-- /main -->
+
+<!-- MODAL DÉTAIL -->
+<div class="modal-overlay" id="modal-overlay" onclick="fermerModal(event)">
+    <div class="modal" id="modal-content">
+        <div class="modal-header">
+            <div class="modal-title" id="modal-title">Détail</div>
+            <button class="modal-close" onclick="fermerModal()">✕</button>
+        </div>
+        <div id="modal-body"></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
+<script src="supabase-config.js"></script>
+<script src="config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script>
+// ============================================================
+// CONNEXION — comme les autres pages Suivi (statuts_animaux.html) :
+// création du client Supabase, session, contrôle d'accès (voir
+// creerClientSupabase() / initSessionSuivi() dans formulaires-arche-mallo.js).
+// APPS_SCRIPT_URL (config.js) ne sert plus qu'à l'envoi des certificats
+// vers le Drive de l'équipe (voir declencherUploadICAD plus bas).
+// ============================================================
+const supabaseClient = creerClientSupabase();
+initSessionSuivi();
+
+// ============================================================
+// ÉTAT — les lignes viennent maintenant directement de Supabase
+// (table adoptions, reliée à animaux/personnes/animaux_sterilisation_icad par clé
+// étrangère). Chaque ligne porte son propre statut ICAD (l.icad) :
+// plus de cache localStorage ni de synchronisation séparée, la base
+// est la seule source de vérité, pour tout le monde en permanence.
+// ============================================================
+let toutesLignes  = [];
+let lignesFiltres = [];
+let ongletActif   = 'tous';
+
+function estFait(icad) {
+    return !!(icad && icad.date_transfert);
+}
+
+// ============================================================
+// CHARGEMENT DONNÉES depuis Supabase (adoptions + animal + adoptant
+// + statut ICAD, en une seule requête grâce aux clés étrangères déjà
+// déclarées dans le schéma : fk_adoptions_animal_id,
+// fk_adoptions_personne_id, fk_animaux_sterilisation_icad_animal_id).
+// ============================================================
+async function chargerDonnees() {
+    document.getElementById('tbody').innerHTML = '<tr><td colspan="10" class="loading">Chargement des données...</td></tr>';
+    const { data, error } = await supabaseClient
+        .from('adoptions')
+        .select(`
+            date_adoption, total_participation,
+            animaux!inner ( id, nom_usuel, nom_adoption, couleur, sexe, date_naissance, puce,
+                animaux_sterilisation_icad ( date_transfert, commentaire, fichier_icad_url, fichier_sterilisation_url ) ),
+            personnes!inner ( nom, prenom, adresse, code_postal, ville, telephone, email )
+        `)
+        .order('date_adoption', { ascending: false });
+
+    if (error) {
+        document.getElementById('tbody').innerHTML = `<tr><td colspan="10" class="empty">Erreur de chargement : ${esc(error.message)}</td></tr>`;
+        return;
+    }
+
+    toutesLignes = (data || []).map(row => {
+        const a = row.animaux || {};
+        const p = row.personnes || {};
+        // animaux_sterilisation_icad est 1-1 (animal_id unique) mais Supabase le renvoie
+        // sous forme de tableau tant qu'aucune relation singulière n'est
+        // précisée : on prend la première (et seule) entrée.
+        const icadBrut = Array.isArray(a.animaux_sterilisation_icad) ? a.animaux_sterilisation_icad[0] : a.animaux_sterilisation_icad;
+        return {
+            animalId:      a.id,
+            dateAdoption:  row.date_adoption || '',
+            nom:           p.nom || '',
+            prenom:        p.prenom || '',
+            puce:          a.puce || '',
+            nomUsuel:      a.nom_usuel || '',
+            nomAdoption:   a.nom_adoption || '',
+            couleur:       a.couleur || '',
+            sexe:          a.sexe || '',
+            dateNaissance: a.date_naissance || '',
+            adresse:       p.adresse || '',
+            codePostal:    p.code_postal || '',
+            ville:         p.ville || '',
+            portable:      p.telephone || '',
+            email:         p.email || '',
+            totalParticipation: row.total_participation || '',
+            icad: icadBrut || null,
+        };
+    });
+
+    filtrer();
+}
+
+// ============================================================
+// FILTRES + RENDU
+// ============================================================
+function normaliser(s) {
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
+function filtrer() {
+    const terme = normaliser(document.getElementById('f-search').value);
+    const from  = document.getElementById('f-from').value;
+    const to    = document.getElementById('f-to').value;
+
+    lignesFiltres = toutesLignes.filter(l => {
+        const fait = estFait(l.icad);
+        if (ongletActif === 'fait' && !fait) return false;
+        if (ongletActif === 'todo' && fait) return false;
+
+        if (terme) {
+            const haystack = normaliser(
+                l.nomUsuel + ' ' + l.nomAdoption + ' ' + l.nom + ' ' + l.prenom + ' ' + l.puce
+            );
+            if (!haystack.includes(terme)) return false;
+        }
+
+        if (from || to) {
+            const d = parseDate(l.dateAdoption);
+            if (from && d && d < new Date(from)) return false;
+            if (to   && d && d > new Date(to + 'T23:59:59')) return false;
+        }
+
+        return true;
+    });
+
+    // Tri par date d'adoption décroissante (la plus récente en premier)
+    lignesFiltres.sort((a, b) => {
+        const da = parseDate(a.dateAdoption);
+        const db = parseDate(b.dateAdoption);
+        if (!da && !db) return 0;
+        if (!da) return 1;
+        if (!db) return -1;
+        return db - da;
+    });
+
+    mettreAJourStats();
+    rendreLignes();
+    mettreAJourOnglets();
+}
+
+// dateAdoption/date_naissance arrivent au format ISO (AAAA-MM-JJ) depuis
+// Supabase — plus besoin de parser du JJ/MM/AAAA comme avec les Sheets.
+function parseDate(str) {
+    if (!str) return null;
+    return new Date(str);
+}
+function fmtDate(str) {
+    if (!str) return '—';
+    const p = String(str).slice(0, 10).split('-');
+    if (p.length !== 3) return str;
+    return p[2] + '/' + p[1] + '/' + p[0];
+}
+
+function mettreAJourStats() {
+    const total = toutesLignes.length;
+    const fait  = toutesLignes.filter(l => estFait(l.icad)).length;
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-fait').textContent  = fait;
+    document.getElementById('stat-todo').textContent  = total - fait;
+}
+
+function mettreAJourOnglets() {
+    const total = toutesLignes.length;
+    const fait  = toutesLignes.filter(l => estFait(l.icad)).length;
+    document.getElementById('cnt-tous').textContent = total;
+    document.getElementById('cnt-todo').textContent = total - fait;
+    document.getElementById('cnt-fait').textContent = fait;
+}
+
+function rendreLignes() {
+    const tbody = document.getElementById('tbody');
+    if (!lignesFiltres.length) {
+        tbody.innerHTML = '<tr><td colspan="10" class="empty">Aucun résultat</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = lignesFiltres.map((l, i) => {
+        const icad = l.icad || {};
+        const fait = estFait(icad);
+        const nom  = l.nom + ' ' + l.prenom;
+
+        const chatCell = `<span class="chat-name">${esc(l.nomUsuel || '—')}</span>${l.nomAdoption ? '<span class="badge">' + esc(l.nomAdoption) + '</span>' : ''}`;
+
+        const commentCell = fait
+            ? `<span style="font-size:12px;color:var(--grey);font-style:italic;">${esc(icad.commentaire || '')}</span>`
+            : `<textarea class="comment-input" rows="1" id="cmt-${i}" placeholder="Note..." onchange="sauverCommentaire('${l.animalId}', this.value)">${esc(icad.commentaire || '')}</textarea>`;
+
+        const icadCell = fait
+            ? ''
+            : `<div class="icad-action">
+                <input type="date" class="date-icad" id="date-${i}" title="Date du transfert ICAD">
+                <button class="btn-ok" onclick="validerICAD('${l.animalId}', ${i})" title="Valider le transfert ICAD">✓ OK</button>
+               </div>`;
+
+        const statutCell = fait
+            ? `<span class="status-done">✓ ${fmtDate(icad.date_transfert)}</span> <button class="btn-annuler" onclick="annulerICAD('${l.animalId}')" title="Annuler cette validation ICAD">↩ Annuler</button>`
+            : `<span class="status-todo">À faire</span>`;
+
+        const rowClass = fait ? 'done-row' : '';
+
+        return `<tr class="${rowClass}" id="row-${i}">
+            <td>${chatCell}</td>
+            <td><span class="puce" title="${esc(l.puce)}">${esc(l.puce) || '—'}</span></td>
+            <td>${esc(nom)}</td>
+            <td>${fmtDate(l.dateAdoption)}</td>
+            <td>${commentCell}</td>
+            <td>${icadCell}</td>
+            <td>${statutCell}</td>
+            <td><button class="btn-open" onclick="ouvrirDetail(${lignesFiltres.indexOf(l)})">Ouvrir</button></td>
+            <td>${celluleCertificat(l.animalId, 'sterilisation', i, l, icad.fichier_sterilisation_url)}</td>
+            <td>${celluleCertificat(l.animalId, 'icad', i, l, icad.fichier_icad_url)}</td>
+        </tr>`;
+    }).join('');
+}
+
+function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escJs(s) {
+    return String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+// Rendu d'une cellule "Certif. stérilisation" / "Certif. ICAD" :
+// si un lien de fichier existe déjà dans le Sheet (envoyé depuis n'importe
+// quel PC), on affiche le bouton en vert + un lien "Voir" vers le Drive.
+function celluleCertificat(animalId, typeDoc, i, ligne, urlFichier) {
+    const label   = typeDoc === 'sterilisation' ? 'Stérilisation' : 'ICAD';
+    const done    = !!urlFichier;
+    const texte   = done ? ('✓ ' + label) : ('📎 ' + label);
+    const titre   = done ? 'Certificat déjà envoyé — cliquer pour en envoyer un autre' : ('Ajouter le certificat ' + (typeDoc === 'sterilisation' ? 'de stérilisation' : 'ICAD'));
+    const onclick = `declencherUploadICAD('${animalId}','${typeDoc}',${i},'${escJs(ligne.nomUsuel)}','${escJs(ligne.puce)}')`;
+
+    let html = `<button class="btn-upload ${done ? 'done' : ''}" id="btn-${typeDoc}-${i}" onclick="${onclick}" title="${esc(titre)}">${texte}</button>`;
+    if (done) {
+        html += `<a href="${esc(urlFichier)}" target="_blank" style="display:block;text-align:center;font-size:10px;margin-top:2px;color:var(--grey);">Voir le fichier</a>`;
+    }
+    return html;
+}
+
+// ============================================================
+// ICAD — VALIDATION (écrit directement dans la table animaux_sterilisation_icad ;
+// clé = animal_id, plus fiable que le couple puce/nom des Sheets et
+// déjà indexé unique par le schéma).
+// ============================================================
+async function sauverCommentaire(animalId, val) {
+    const { error } = await supabaseClient.from('animaux_sterilisation_icad')
+        .upsert({ animal_id: animalId, commentaire: val }, { onConflict: 'animal_id' });
+    if (error) alert('Erreur en sauvegardant le commentaire : ' + error.message);
+}
+
+async function validerICAD(animalId, idx) {
+    const dateInput = document.getElementById('date-' + idx);
+    if (!dateInput || !dateInput.value) {
+        dateInput && (dateInput.style.border = '1.5px solid var(--amber)');
+        dateInput && dateInput.focus();
+        alert('Veuillez renseigner la date du transfert ICAD avant de valider.');
+        return;
+    }
+    const cmtEl = document.getElementById('cmt-' + idx);
+    const commentaire = cmtEl ? cmtEl.value : '';
+
+    const { error } = await supabaseClient.from('animaux_sterilisation_icad').upsert({
+        animal_id: animalId,
+        date_transfert: dateInput.value,
+        commentaire: commentaire
+    }, { onConflict: 'animal_id' });
+
+    if (error) { alert('Erreur lors de la validation : ' + error.message); return; }
+    await chargerDonnees(); // relit depuis la base, seule source de vérité
+}
+
+async function annulerICAD(animalId) {
+    if (!confirm('Annuler cette validation ICAD ? Le chat repassera en "À faire".')) return;
+    const { error } = await supabaseClient.from('animaux_sterilisation_icad').delete().eq('animal_id', animalId);
+    if (error) { alert('Erreur lors de l\'annulation : ' + error.message); return; }
+    await chargerDonnees();
+}
+
+// ============================================================
+// AJOUT DES CERTIFICATS (stérilisation / ICAD) — envoyés vers le
+// dossier Drive dédié via l'Apps Script existant (action icad_fichier,
+// voir apps-script-stockage-icad.gs à ajouter au même projet Apps
+// Script que 'photo'/'pdf'), puis l'URL retournée est enregistrée
+// dans animaux_sterilisation_icad. Contrairement aux autres appels Apps Script du
+// site (mode:'no-cors'), celui-ci lit la réponse pour récupérer
+// l'URL réelle tout de suite — pas besoin d'attendre une synchro.
+// ============================================================
+let icadUploadPending = null; // { animalId, typeDoc, i }
+
+function declencherUploadICAD(animalId, typeDoc, i, nomChat, numeroIcad) {
+    icadUploadPending = { animalId, typeDoc, i, nomChat, numeroIcad };
+    document.getElementById('icad-file-input').click();
+}
+
+async function onIcadFileChosen(e) {
+    const file = e.target.files[0];
+    e.target.value = ''; // permet de reprendre le même fichier plus tard
+    if (!file || !icadUploadPending) return;
+    const { animalId, typeDoc, i, nomChat, numeroIcad } = icadUploadPending;
+    icadUploadPending = null;
+
+    const btn = document.getElementById(`btn-${typeDoc}-${i}`);
+    const label = typeDoc === 'sterilisation' ? '📎 Stérilisation' : '📎 ICAD';
+    if (btn) { btn.disabled = true; btn.textContent = 'Envoi…'; }
+
+    try {
+        const base64 = await fichierEnBase64(file);
+        const ext = (file.name.split('.').pop() || 'pdf').toLowerCase();
+
+        const prefixe   = typeDoc === 'sterilisation' ? 'sterilisation' : 'Icad';
+        const nomPropre = (nomChat    || 'chat').replace(/[\\/:*?"<>|]+/g, '').trim() || 'chat';
+        const numPropre = (numeroIcad || 'sans-numero').replace(/[\\/:*?"<>|]+/g, '').trim() || 'sans-numero';
+        const filename  = `${prefixe}_${nomPropre}_${numPropre}.${ext}`;
+
+        const resp = await fetch(APPS_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' }, // évite le préflight CORS, voir stocker-pdf-drive.js
+            body: JSON.stringify({
+                action: 'icad_fichier', typeDoc, filename,
+                mimeType: file.type || 'application/octet-stream',
+                fichierBase64: base64
+            })
+        });
+        const json = await resp.json();
+        if (!json.ok) throw new Error(json.error || 'échec côté Drive');
+
+        const colonne = typeDoc === 'sterilisation' ? 'fichier_sterilisation_url' : 'fichier_icad_url';
+        const { error } = await supabaseClient.from('animaux_sterilisation_icad')
+            .upsert({ animal_id: animalId, [colonne]: json.url }, { onConflict: 'animal_id' });
+        if (error) throw error;
+
+        await chargerDonnees();
+    } catch(err) {
+        if (btn) { btn.disabled = false; btn.textContent = label; }
+        alert("Erreur lors de l'envoi du fichier : " + (err.message || err));
+    }
+}
+
+function fichierEnBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+// ============================================================
+// ONGLETS
+// ============================================================
+function changerOnglet(onglet) {
+    ongletActif = onglet;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + onglet).classList.add('active');
+    filtrer();
+}
+
+// ============================================================
+// RÉINITIALISER FILTRES
+// ============================================================
+function resetFiltres() {
+    document.getElementById('f-search').value = '';
+    document.getElementById('f-from').value   = '';
+    document.getElementById('f-to').value     = '';
+    filtrer();
+}
+
+// ============================================================
+// MODAL DÉTAIL
+// ============================================================
+function ouvrirDetail(idx) {
+    const l = lignesFiltres[idx];
+    if (!l) return;
+    const icad = l.icad || {};
+    const fait = estFait(icad);
+
+    document.getElementById('modal-title').textContent =
+        (l.nomUsuel || '?') + (l.nomAdoption ? ' — ' + l.nomAdoption : '');
+
+    document.getElementById('modal-body').innerHTML = `
+        <div class="detail-section">
+            <h3>Animal</h3>
+            <div class="detail-grid">
+                <div class="detail-field"><div class="detail-lbl">Nom usuel</div><div class="detail-val">${esc(l.nomUsuel) || '<span class="empty">—</span>'}</div></div>
+                <div class="detail-field"><div class="detail-lbl">Nom adopté</div><div class="detail-val">${esc(l.nomAdoption) || '<span class="empty">—</span>'}</div></div>
+                <div class="detail-field"><div class="detail-lbl">N° puce</div><div class="detail-val">${esc(l.puce) || '<span class="empty">—</span>'}</div></div>
+                <div class="detail-field"><div class="detail-lbl">Couleur</div><div class="detail-val">${esc(l.couleur) || '<span class="empty">—</span>'}</div></div>
+                <div class="detail-field"><div class="detail-lbl">Sexe</div><div class="detail-val">${esc(l.sexe) || '<span class="empty">—</span>'}</div></div>
+                <div class="detail-field"><div class="detail-lbl">Né(e) le</div><div class="detail-val">${fmtDate(l.dateNaissance)}</div></div>
+            </div>
+        </div>
+        <div class="detail-section">
+            <h3>Adoptant(e)</h3>
+            <div class="detail-grid">
+                <div class="detail-field"><div class="detail-lbl">Nom</div><div class="detail-val">${esc(l.nom)} ${esc(l.prenom)}</div></div>
+                <div class="detail-field"><div class="detail-lbl">Date adoption</div><div class="detail-val">${fmtDate(l.dateAdoption)}</div></div>
+                <div class="detail-field"><div class="detail-lbl">Adresse</div><div class="detail-val">${esc(l.adresse) || '<span class="empty">—</span>'}</div></div>
+                <div class="detail-field"><div class="detail-lbl">Code postal / Ville</div><div class="detail-val">${esc(l.codePostal)} ${esc(l.ville)}</div></div>
+                <div class="detail-field"><div class="detail-lbl">Téléphone</div><div class="detail-val">${esc(l.portable) || '<span class="empty">—</span>'}</div></div>
+                <div class="detail-field"><div class="detail-lbl">Email</div><div class="detail-val">${esc(l.email) || '<span class="empty">—</span>'}</div></div>
+                <div class="detail-field"><div class="detail-lbl">Total</div><div class="detail-val">${l.totalParticipation ? esc(l.totalParticipation) + ' €' : '<span class="empty">—</span>'}</div></div>
+            </div>
+        </div>
+        <div class="detail-section">
+            <h3>Statut ICAD</h3>
+            <div class="icad-status-modal ${fait ? 'done' : 'todo'}">
+                ${fait
+                    ? `<strong style="color:var(--green)">✓ Transfert effectué le ${fmtDate(icad.date_transfert)}</strong>${icad.commentaire ? '<br><span style="font-size:12px;color:var(--grey);margin-top:4px;display:block;">' + esc(icad.commentaire) + '</span>' : ''}`
+                    : `<strong style="color:var(--amber)">En attente de transfert</strong>${icad.commentaire ? '<br><span style="font-size:12px;color:var(--grey);margin-top:4px;display:block;">' + esc(icad.commentaire) + '</span>' : ''}`
+                }
+            </div>
+        </div>
+    `;
+
+    document.getElementById('modal-overlay').classList.add('open');
+}
+
+function fermerModal(e) {
+    if (!e || e.target === document.getElementById('modal-overlay')) {
+        document.getElementById('modal-overlay').classList.remove('open');
+    }
+}
+
+// ============================================================
+// IMPRESSION
+// ============================================================
+function imprimer(filtre) {
+    const lignes = toutesLignes.filter(l => {
+        const fait = estFait(l.icad);
+        if (filtre === 'fait' && !fait) return false;
+        if (filtre === 'todo' && fait)  return false;
+        return true;
+    });
+
+    let titre = filtre === 'tous' ? 'Liste complète ICAD'
+              : filtre === 'fait' ? 'ICAD transférés'
+              : 'ICAD à faire';
+
+    const rows = lignes.map(l => {
+        const icad = l.icad || {};
+        const fait = estFait(icad);
+        return `<tr>
+            <td>${esc(l.nomUsuel)}${l.nomAdoption ? ' / ' + esc(l.nomAdoption) : ''}</td>
+            <td>${esc(l.puce)}</td>
+            <td>${esc(l.nom)} ${esc(l.prenom)}</td>
+            <td>${fmtDate(l.dateAdoption)}</td>
+            <td>${fait ? fmtDate(icad.date_transfert) : '—'}</td>
+            <td>${esc(icad.commentaire || '')}</td>
+        </tr>`;
+    }).join('');
+
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${titre}</title>
+    <style>
+        body{font-family:Arial,sans-serif;font-size:10pt;padding:15mm;}
+        h2{font-size:14pt;margin-bottom:4px;}
+        .sous{font-size:10pt;color:#666;margin-bottom:12px;}
+        table{width:100%;border-collapse:collapse;}
+        th{background:#f0e8d8;text-align:left;padding:5px 8px;font-size:9pt;border:0.5px solid #ccc;}
+        td{padding:5px 8px;border:0.5px solid #e0d8ce;font-size:9pt;}
+        .stat{margin-bottom:8px;font-size:10pt;}
+        @page{margin:15mm;}
+    </style></head><body>
+    <h2>L'Arche de Mallo — ${titre}</h2>
+    <div class="sous">Édité le ${new Date().toLocaleDateString('fr-FR')} · ${lignes.length} entrée(s)</div>
+    <table>
+        <thead><tr><th>Chat / Nom adopté</th><th>N° puce</th><th>Adoptant</th><th>Date adoption</th><th>Date ICAD</th><th>Commentaire</th></tr></thead>
+        <tbody>${rows}</tbody>
+    </table>
+    <script>window.print();<\/script>
+    </body></html>`);
+    win.document.close();
+}
+
+// ============================================================
+// REDIMENSIONNEMENT DES COLONNES (glisser le bord droit d'un en-tête)
+// ============================================================
+function initRedimensionnementColonnes() {
+    const table = document.querySelector('.table-wrap table');
+    const cols  = table.querySelectorAll('colgroup col');
+    const ths   = table.querySelectorAll('thead th');
+
+    ths.forEach((th, i) => {
+        if (i >= cols.length - 1) return; // pas de poignée sur la dernière colonne
+        const resizer = document.createElement('div');
+        resizer.className = 'col-resizer';
+        th.style.position = 'sticky'; // déjà sticky, on s'assure juste du contexte de positionnement
+        th.appendChild(resizer);
+
+        resizer.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            const col       = cols[i];
+            const startX    = e.pageX;
+            const startWidth = th.offsetWidth;
+            const tableWidth = table.offsetWidth;
+            resizer.classList.add('resizing');
+
+            function onMouseMove(ev) {
+                const delta = ev.pageX - startX;
+                const newWidthPx = Math.max(50, startWidth + delta);
+                const newWidthPct = (newWidthPx / tableWidth) * 100;
+                col.style.width = newWidthPct + '%';
+            }
+            function onMouseUp() {
+                resizer.classList.remove('resizing');
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+    });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+    initRedimensionnementColonnes();
+    await chargerDonnees(); // charge adoptions + statuts ICAD depuis Supabase (source de vérité unique)
+}
+init();
+</script>
+</body>
+</html>
