@@ -12,6 +12,22 @@
 // ============================================================
 
 /**
+ * Coche, dans un groupe de cases (data-group), celle dont le libellé
+ * correspond (sans accents ni casse) ; décoche les autres. Sans libellé,
+ * ne touche à rien.
+ */
+function cocherGroupeParLibelle(groupe, libelle) {
+    if (!libelle) return;
+    var norm = function(t) {
+        return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    };
+    document.querySelectorAll('.checkbox[data-group="' + groupe + '"]').forEach(function(cb) {
+        var texte = cb.parentNode ? cb.parentNode.textContent : '';
+        cb.classList.toggle('checked', norm(texte) === norm(libelle));
+    });
+}
+
+/**
  * @param {string} inputId       id du champ texte qui sert de recherche
  *                                (remplace un champ nomUsuel en saisie libre)
  * @param {string} contexte      'reservation' ou 'adoption' — c'est la
@@ -25,6 +41,8 @@
  *                                si l'animal est déjà réservé (non verrouillés)
  * @param {function} onSelect    callback(animalId, reservationId) appelé après
  *                                la sélection, pour mémoriser l'id choisi
+ * @param {function} apresSelection callback(data) appelé après le remplissage
+ *                                des champs (ex. cocher le sexe)
  */
 function initSelecteurAnimal(config) {
     var input = document.getElementById(config.inputId);
@@ -155,6 +173,11 @@ function initSelecteurAnimal(config) {
                         el.value = data.personne[champPersonne];
                     }
                 });
+            }
+
+            if (typeof config.apresSelection === 'function') {
+                try { config.apresSelection(data); }
+                catch (eHook) { console.error('[Sélecteur animal] Erreur apresSelection :', eHook); }
             }
 
             animalIdChoisi = animalId;
