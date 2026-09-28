@@ -67,14 +67,13 @@
   </div>
 </div>
 
-<div id="popup-succes" class="popup-overlay">
+<div id="popup-succes" class="popup-overlay" onclick="if(event.target===this)fermerPopupSucces()">
   <div class="popup-box">
     <div class="popup-icon">✅</div>
     <p>Arrivée enregistrée avec succès.</p>
-    <p id="popup-lien-fiche" style="display:none;margin-top:-8px;">
-      <a href="#" id="lien-fiche" target="_blank" style="color:var(--orange);font-weight:bold;">→ Ouvrir le formulaire</a>
+    <p id="popup-lien-fiche" style="display:none;margin:0;">
+      <a href="#" id="lien-fiche" target="_blank" onclick="setTimeout(fermerPopupSucces,100)" style="color:var(--orange);font-weight:bold;font-size:15px;">→ Ouvrir le formulaire</a>
     </p>
-    <button type="button" onclick="document.getElementById('popup-succes').classList.remove('show')">OK</button>
   </div>
 </div>
 
@@ -215,6 +214,10 @@
 <script>
 const supabaseClient = creerClientSupabase();
 initSessionSuivi();
+
+function fermerPopupSucces() {
+  document.getElementById('popup-succes').classList.remove('show');
+}
 
 // La case "Chaton" n'a de sens que pour un chat — masquée (et décochée)
 // pour les autres espèces.
@@ -422,17 +425,13 @@ async function declarerArrivee() {
       const fichierCible = origine === 'abandon' ? 'abandon.html' : 'depot_chat.html';
       const urlFiche = fichierCible + (paramsUrl.length ? '?' + paramsUrl.join('&') : '');
 
-      const fenetre = window.open(urlFiche, '_blank');
-      if (!fenetre) {
-        // Fallback si le popup est bloqué par le navigateur
-        const lienFiche = document.getElementById('popup-lien-fiche');
-        const lien = document.getElementById('lien-fiche');
-        lien.href = urlFiche;
-        lienFiche.style.display = 'block';
-        document.getElementById('popup-succes').classList.add('show');
-      }
-    } else {
+      document.getElementById('lien-fiche').href = urlFiche;
+      document.getElementById('popup-lien-fiche').style.display = 'block';
       document.getElementById('popup-succes').classList.add('show');
+    } else {
+      document.getElementById('popup-lien-fiche').style.display = 'none';
+      document.getElementById('popup-succes').classList.add('show');
+      setTimeout(fermerPopupSucces, 2000);
     }
 
     ['arr-nom','arr-couleur','arr-puce','arr-nom-personne','arr-prenom-personne','arr-motif','arr-date-naissance','arr-autre-info','arr-nom-maman']
