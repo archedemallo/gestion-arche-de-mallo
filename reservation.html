@@ -364,7 +364,21 @@ chargerListeSaisisseurs();
                 inputId: 'nomChat',
                 contexte: 'reservation',
                 champsVerrouilles: { identification: 'puce', dateNaissance: 'date_naissance' },
-                champsModifiables: { couleur: 'couleur', signesParticuliers: 'signes_particuliers', nomMaman: 'nom_maman' }
+                champsModifiables: { couleur: 'couleur', signesParticuliers: 'signes_particuliers', nomMaman: 'nom_maman' },
+                apresSelection: function(data) {
+                    cocherGroupeParLibelle('sexe_chat',
+                        data.animal.sexe === 'M' ? 'Mâle' : (data.animal.sexe === 'F' ? 'Femelle' : null));
+                    var puce = (data.animal.puce || '').trim();
+                    var champSignes = document.getElementById('signesParticuliers');
+                    if (champSignes) {
+                        var base = (data.animal.signes_particuliers || '').trim();
+                        if (puce && base.indexOf(puce) === -1) {
+                            champSignes.value = (base ? base + ' — ' : '') + 'Puce n° ' + puce;
+                        } else {
+                            champSignes.value = base;
+                        }
+                    }
+                }
             });
         }
     }
