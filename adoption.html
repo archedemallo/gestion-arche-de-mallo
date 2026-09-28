@@ -1048,11 +1048,45 @@ initSessionSuivi();
 chargerListeSaisisseurs();
 var dernierAdoptionId = null;
 
+function afficherPopupAttention(message) {
+    var ancien = document.getElementById('popup-attention');
+    if (ancien) ancien.remove();
+    var overlay = document.createElement('div');
+    overlay.id = 'popup-attention';
+    overlay.className = 'no-print';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(61,43,31,0.5);z-index:100000;display:flex;align-items:center;justify-content:center;';
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#fff;border-radius:12px;padding:26px 24px;max-width:340px;width:90%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.25);font-family:Arial,sans-serif;';
+    var icone = document.createElement('div');
+    icone.style.cssText = 'font-size:38px;margin-bottom:10px;';
+    icone.textContent = '⚠️';
+    var texte = document.createElement('p');
+    texte.style.cssText = 'font-size:15px;margin:0 0 18px;color:#3d2b1f;font-weight:bold;';
+    texte.textContent = message;
+    var bouton = document.createElement('button');
+    bouton.type = 'button';
+    bouton.textContent = 'OK';
+    bouton.style.cssText = 'padding:9px 26px;background:#c96b2a;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:14px;';
+    bouton.onclick = function() { overlay.remove(); };
+    box.appendChild(icone); box.appendChild(texte); box.appendChild(bouton);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+}
+
 var selecteurAnimal = initSelecteurAnimal({
     inputId: 'nomUsuel',
     contexte: 'adoption',
     champsVerrouilles: { puce: 'puce', dateNaissance: 'date_naissance' },
     champsModifiables: { couleur: 'couleur' },
+    apresSelection: function(data) {
+        cocherGroupeParLibelle('sexe',
+            data.animal.sexe === 'M' ? 'Mâle' : (data.animal.sexe === 'F' ? 'Femelle' : null));
+    },
+    onSelect: function(animalId, reservationId) {
+        if (animalId && !reservationId) {
+            afficherPopupAttention("Attention : ce chat n'a pas été réservé avant cette adoption.");
+        }
+    },
     champsPersonne: {
         nom: 'nom', prenom: 'prenom', adresse: 'adresse', codePostal: 'code_postal',
         ville: 'ville', email: 'email', portable: 'telephone'
