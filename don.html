@@ -582,23 +582,25 @@ async function saveForm() {
         data.donId = donId;
 
         var avertissementMail = '';
-        if (ENVOYER_PDF_MAIL && !estAnonyme) {
+        // Envoi mail (compta + bureau) et dépôt Drive dans TOUS les cas, y compris
+        // don anonyme (la trace comptable est nécessaire ; seul le reçu fiscal est exclu).
+        if (ENVOYER_PDF_MAIL) {
             data.filename = buildFilename(data);
             try {
                 const pdfBytes = await genererPdfFormulaire();
                 await envoyerMailFormulaire({
-                    sujet: 'Reçu de don — ' + (estSociete ? (data.raisonSociale || '') : (data.nom || '')),
+                    sujet: 'Reçu de don — ' + (estAnonyme ? 'Don anonyme' : (estSociete ? (data.raisonSociale || '') : (data.nom || ''))),
                     corps: construireCorpsMail(data),
                     pdfBytes: pdfBytes,
                     pdfNomFichier: data.filename + '.pdf',
-                    emailClient: data.email,
-                    nomClient: estSociete ? (data.raisonSociale || '') : ((data.prenom || '') + ' ' + (data.nom || '')).trim()
+                    emailClient: estAnonyme ? '' : data.email,
+                    nomClient: estAnonyme ? 'Don anonyme' : (estSociete ? (data.raisonSociale || '') : ((data.prenom || '') + ' ' + (data.nom || '')).trim())
                 });
                 try {
                     await enregistrerPdfDrive({
                         onglet: data.onglet,
-                        prenom: data.prenom,
-                        nom: estSociete ? data.raisonSociale : data.nom,
+                        prenom: estAnonyme ? '' : data.prenom,
+                        nom: estAnonyme ? 'Don anonyme' : (estSociete ? data.raisonSociale : data.nom),
                         dateDossier: data.dateSignature || null,
                         filename: data.filename,
                         pdfBytes: pdfBytes,
