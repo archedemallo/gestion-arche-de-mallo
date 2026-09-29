@@ -158,7 +158,9 @@ AVEC <input type="text" class="editable editable-medium" id="produitAntiPuces" d
 <div><strong><span class="highlight-red">LA FAMILLE</span></strong></div>
 <div class="section">
     <!-- Civilite -->
-    <p id="bloc_civilite">        <span class="clickable-row" onclick="toggleCheck(this, 'civilite')">
+<div class="section">
+    <p id="bloc_civilite">
+        <span class="clickable-row" onclick="toggleCheck(this, 'civilite')">
             <span class="checkbox" data-group="civilite"></span>
             <span class="blue">Monsieur</span>
         </span>
@@ -167,7 +169,7 @@ AVEC <input type="text" class="editable editable-medium" id="produitAntiPuces" d
             <span class="blue">Madame</span>
         </span>
     </p>
-    <p><span class="blue">Nom :</span> <input type="text" class="editable editable-long" id="nom" data-required="true" data-label="Nom" oninput="majNomAttestation(); this.value=this.value.toUpperCase()""></p>
+    <p><span class="blue">Nom :</span> <input type="text" class="editable editable-long" id="nom" data-required="true" data-label="Nom" oninput="majNomAttestation(); this.value=this.value.toUpperCase()"></p>
     <p><span class="blue">Prénom :</span> <input type="text" class="editable editable-long" id="prenom" data-required="true" data-label="Prénom" oninput="majNomAttestation(); this.value=this.value.toUpperCase()"></p>
     <p><span class="blue">Adresse :</span> <input type="text" class="editable editable-long" id="adresse" data-required="true" data-label="Adresse"></p>
     <p>
@@ -310,7 +312,7 @@ AVEC <input type="text" class="editable editable-medium" id="produitAntiPuces" d
 	
 
 <!-- Engagement stérilisation -->
-<div><strong><span class="highlight-red">ENGAGEMENT À LA STÉRILISATION</strong></span></div>
+<div><strong><span class="highlight-red">ENGAGEMENT À LA STÉRILISATION</span></strong></div>
 
 <div class="cas-box">
     <p><span class="red">CAS 1 :</span></p>
@@ -363,7 +365,7 @@ AVEC <input type="text" class="editable editable-medium" id="produitAntiPuces" d
 
 	
 <!-- Participation -->
-<div><strong><span class="highlight-red">Participation financière :</strong></span></div>
+<div><strong><span class="highlight-red">Participation financière :</span></strong></div>
 <div class="section">
     <!-- Cases multiples : chaque option est indépendante -->
     <p>
@@ -436,7 +438,7 @@ AVEC <input type="text" class="editable editable-medium" id="produitAntiPuces" d
         Reprise d'acompte de <span class="red bold">50 €</span> pour la réservation
     </p>
     <p>Reste à payer <input type="number" class="editable editable-num" id="resteAPayer"><span class="red"> €</span></p>
-    <p class="total-line">Total de la participation : </span><input type="number" class="editable editable-num" id="totalParticipation" data-required="true" data-label="Total participation (€)"> <span class="red"> €</span></p>
+    <p class="total-line">Total de la participation : <input type="number" class="editable editable-num" id="totalParticipation" data-required="true" data-label="Total participation (€)"> <span class="red"> €</span></p>
 
     <!-- Paiement : multi-sélection -->
 <p><strong><span class="blue">Paiement effectué par :</span></strong></p>
