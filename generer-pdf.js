@@ -1,35 +1,29 @@
 // ============================================================
-// GÉNÉRATION DU PDF CÔTÉ NAVIGATEUR — nouveau système (remplace la
-// génération faite jusqu'ici par l'Apps Script côté serveur)
+// GÉNÉRATION DU PDF — rendu par un vrai navigateur côté serveur
+// (remplace le pipeline html2canvas + jsPDF, abandonné : capture
+// fragile, PDF parfois vides ou tronqués — voir les incidents des
+// 27 et 28/09).
 // ============================================================
-// Réutilise EXACTEMENT le rendu déjà en place et déjà utilisé au
-// quotidien : buildHtmlWithData() (voir formulaires-arche-mallo.js),
-// c'est-à-dire le même contenu que celui envoyé à l'Apps Script, et
-// les mêmes règles CSS que celles utilisées par le bouton "Imprimer".
+// Réutilise EXACTEMENT le même contenu que celui déjà utilisé par le
+// bouton "Imprimer" : buildHtmlWithData() (voir formulaires-arche-
+// mallo.js) et les mêmes règles CSS (y compris @media print). La
+// différence est qu'au lieu de dessiner nous-mêmes une image de ce
+// rendu (html2canvas), on envoie le HTML tel quel à un Chromium
+// hébergé chez Cloudflare (Edge Function "generer-pdf-formulaire"),
+// qui produit un vrai PDF texte — exactement ce que ferait un Ctrl+P
+// dans le navigateur.
 //
-// Contrairement au chantier précédent (pdf-lib + gabarit PDF figé aux
-// coordonnées fixes), on ne redessine aucune mise en page : on capture
-// tel quel ce qui s'affiche déjà à l'écran/à l'impression. Aucun
-// nouveau gabarit à valider, fonctionne à l'identique pour les 12
-// formulaires sans travail supplémentaire par formulaire.
-//
-// Nécessite html2pdf.js, chargé à la demande (inutile d'ajouter un
-// <script> dans chaque page).
+// Le JavaScript est désactivé côté serveur (voir l'Edge Function) :
+// buildHtmlWithData() a déjà "figé" toutes les valeurs saisies dans
+// le HTML (attributs value, contenu des <textarea>, styles inline),
+// donc aucun script n'est nécessaire à l'affichage — et cela évite
+// que les scripts de la page (client Supabase, sélecteurs animal/
+// personne...) se ré-exécutent côté serveur et modifient le
+// formulaire avant la capture, ce qui est la cause la plus probable
+// des PDF quasi vides obtenus avec l'ancien pipeline (l'iframe qui
+// servait à la capture n'était, elle non plus, jamais isolée du
+// JavaScript de la page).
 // ============================================================
-
-let _html2pdfChargement = null;
-function _chargerHtml2Pdf() {
-    if (window.html2pdf) return Promise.resolve();
-    if (_html2pdfChargement) return _html2pdfChargement;
-    _html2pdfChargement = new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-        s.onload = resolve;
-        s.onerror = () => reject(new Error('Impossible de charger la bibliothèque de génération PDF (vérifiez la connexion internet).'));
-        document.head.appendChild(s);
-    });
-    return _html2pdfChargement;
-}
 
 /**
  * Récupère TOUT le CSS de la page courante (règles normales + celles de
@@ -38,14 +32,11 @@ function _chargerHtml2Pdf() {
  * (donc prioritaires à spécificité égale, comme le ferait le mode
  * impression du navigateur).
  *
- * Le rendu hors-écran (iframe isolé, voir plus bas) ne recharge pas de
- * façon fiable les feuilles de style externes (ex: formulaires-arche-
- * mallo.css) : la résolution d'URL relative dans un iframe "srcdoc" est
- * inconstante selon les navigateurs. Sans tout ce CSS réinjecté en
+ * Indispensable ici aussi : le Chromium serveur reçoit du HTML brut,
+ * sans URL de page d'origine, donc il ne peut pas résoudre l'URL
+ * relative de formulaires-arche-mallo.css. Sans ce CSS réinjecté en
  * clair, la mise en forme de base disparaît (largeurs de champs,
- * position des boutons flottants...) et le PDF ne ressemble plus du
- * tout à ce qui s'affiche à l'écran — d'où l'inlining complet plutôt
- * que de compter sur le chargement de la feuille externe.
+ * positionnement...).
  */
 function _reglesCompletesEnClair() {
     let base = '';
@@ -65,269 +56,98 @@ function _reglesCompletesEnClair() {
 }
 
 /**
- * true si le canevas est (quasi) entièrement blanc : on échantillonne une
- * version réduite et on compte les pixels non blancs. Un vrai formulaire
- * (texte, cadres, logo) en contient nettement plus de 1 %.
+ * Remplace toutes les occurrences de "logo_arche.png" (favicon +
+ * logo affiché) par une image encodée en base64, chargée depuis la
+ * page actuelle. Sans ça, le Chromium serveur — qui ne connaît pas
+ * l'URL de la page d'origine — ne pourrait pas afficher le logo.
+ * En cas d'échec (page hors-ligne, fichier renommé...), le PDF part
+ * quand même, simplement sans logo, plutôt que d'échouer entièrement.
  */
-function _canvasQuasiVide(canvas) {
-    const petit = document.createElement('canvas');
-    petit.width  = 120;
-    petit.height = Math.max(1, Math.round(120 * canvas.height / canvas.width));
-    const ctx = petit.getContext('2d');
-    ctx.drawImage(canvas, 0, 0, petit.width, petit.height);
-    const px = ctx.getImageData(0, 0, petit.width, petit.height).data;
-    let nonBlancs = 0;
-    for (let i = 0; i < px.length; i += 4) {
-        if (px[i] < 235 || px[i + 1] < 235 || px[i + 2] < 235) nonBlancs++;
+async function _logoEnBase64DansHtml(html) {
+    if (html.indexOf('logo_arche.png') === -1) return html;
+    try {
+        const reponse = await fetch('logo_arche.png');
+        if (!reponse.ok) return html;
+        const blob = await reponse.blob();
+        const dataUrl = await new Promise((resolve, reject) => {
+            const lecteur = new FileReader();
+            lecteur.onload = () => resolve(lecteur.result);
+            lecteur.onerror = reject;
+            lecteur.readAsDataURL(blob);
+        });
+        return html.split('logo_arche.png').join(dataUrl);
+    } catch (e) {
+        console.warn('[PDF] Logo non intégré (chargement échoué) :', e);
+        return html;
     }
-    return nonBlancs / (px.length / 4) < 0.01;
-}
-
-/** Lit une URL et la renvoie sous forme de data: URI (pour l'inclure dans un SVG autonome). */
-async function _urlEnDataUri(url) {
-    const rep = await fetch(url);
-    if (!rep.ok) throw new Error('HTTP ' + rep.status + ' ' + url);
-    const blob = await rep.blob();
-    return await new Promise((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(r.result);
-        r.onerror = () => reject(new Error('lecture impossible ' + url));
-        r.readAsDataURL(blob);
-    });
 }
 
 /**
- * Capture le document via un SVG <foreignObject> (rendu natif du navigateur),
- * images et fonds CSS incorporés en data: URI. Sert de méthode principale ;
- * html2canvas n'est plus qu'un repli.
+ * Retire du HTML sérialisé les éléments qui ne doivent jamais
+ * apparaître dans le PDF (boutons, zone de signature interactive...).
+ * Le CSS d'impression les masque déjà normalement ; ceci est un
+ * filet de sécurité qui les supprime physiquement, au cas où — le
+ * même principe que l'ancien code appliquait sur l'iframe avant
+ * capture. On en profite aussi pour retirer les <script>, désormais
+ * inutiles côté serveur (JS désactivé) et inutiles à envoyer.
  */
-async function _capturerViaSvg(doc, largeur, hauteur, echelle) {
-    const clone = doc.documentElement.cloneNode(true);
-    clone.querySelectorAll('script, iframe, link[rel="stylesheet"]').forEach(function(e) { e.remove(); });
+function _retirerElementsNonImprimables(html) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll(
+        '.buttons, .no-print, .signature-pad-wrap, .signature-controls, button, script'
+    ).forEach(function(el) { el.remove(); });
+    return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
+}
 
-    const base = window.location.href;
-    const cache = {};
-    async function versData(u) {
-        if (!u || /^data:/i.test(u)) return u;
-        const abs = new URL(u, base).href;
-        if (!cache[abs]) cache[abs] = _urlEnDataUri(abs);
-        return cache[abs];
-    }
-
-    for (const img of clone.querySelectorAll('img')) {
-        const src = img.getAttribute('src');
-        if (src) img.setAttribute('src', await versData(src));
-    }
-    for (const st of clone.querySelectorAll('style')) {
-        let css = st.textContent;
-        const urls = new Set();
-        css.replace(/url\(\s*['"]?([^'")]+)['"]?\s*\)/g, function(m, u) { if (!/^data:/i.test(u)) urls.add(u); return m; });
-        for (const u of urls) {
-            let d = '';
-            try { d = await versData(u); } catch (e) { d = ''; }
-            css = css.split(u).join(d || 'about:blank');
-        }
-        st.textContent = css;
-    }
-
-    // Reporte l'état des champs (valeurs saisies, cases cochées) sur la copie.
-    const orig = doc.documentElement.querySelectorAll('input, textarea, select');
-    const copies = clone.querySelectorAll('input, textarea, select');
-    orig.forEach(function(o, i) {
-        const c = copies[i];
-        if (!c) return;
-        if (o.tagName === 'INPUT') {
-            if (o.type === 'checkbox' || o.type === 'radio') {
-                if (o.checked) c.setAttribute('checked', 'checked'); else c.removeAttribute('checked');
-            } else c.setAttribute('value', o.value);
-        }
-        else if (o.tagName === 'TEXTAREA') c.textContent = o.value;
-        else if (o.tagName === 'SELECT') {
-            c.querySelectorAll('option').forEach(function(op) {
-                op.removeAttribute('selected');
-                if (op.value === o.value) op.setAttribute('selected', 'selected');
-            });
-        }
-    });
-
-    const xhtml = new XMLSerializer().serializeToString(clone);
-    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + largeur + '" height="' + hauteur + '">' +
-                '<foreignObject x="0" y="0" width="100%" height="100%">' + xhtml + '</foreignObject></svg>';
-    const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-
-    const img = await new Promise(function(resolve, reject) {
-        const i = new Image();
-        i.onload = function() { resolve(i); };
-        i.onerror = function() { reject(new Error('rendu SVG impossible')); };
-        i.src = url;
-    });
-
-    const canvas = document.createElement('canvas');
-    canvas.width  = Math.round(largeur * echelle);
-    canvas.height = Math.round(hauteur * echelle);
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.scale(echelle, echelle);
-    ctx.drawImage(img, 0, 0, largeur, hauteur);
-    return canvas;
+function _base64VersUint8Array(base64) {
+    const binaire = atob(base64);
+    const octets = new Uint8Array(binaire.length);
+    for (let i = 0; i < binaire.length; i++) octets[i] = binaire.charCodeAt(i);
+    return octets;
 }
 
 /**
  * Génère le PDF du formulaire actuellement rempli.
- * @returns {Promise<Uint8Array>} le PDF, prêt à passer à envoyerMailFormulaire().
+ * @returns {Promise<Uint8Array>} le PDF, prêt à passer à envoyerMailFormulaire()
+ *          et à enregistrerPdfDrive() — signature inchangée par rapport à
+ *          l'ancienne version, aucun appelant n'a besoin d'être modifié.
  */
 async function genererPdfFormulaire() {
-    await _chargerHtml2Pdf();
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) throw new Error("Session expirée — reconnectez-vous puis réessayez.");
 
     let htmlComplet = buildHtmlWithData();
     htmlComplet = htmlComplet.replace('<head>', '<head><style>' + _reglesCompletesEnClair() + '</style>');
+    htmlComplet = await _logoEnBase64DansHtml(htmlComplet);
+    htmlComplet = _retirerElementsNonImprimables(htmlComplet);
 
-    // Rendu hors-écran, dans un iframe isolé — n'affecte jamais la page en cours.
-    const iframe = document.createElement('iframe');
-    // ← MODIFIÉ : l'iframe était placé à left/top:-10000px avec height:0.
-    // html2canvas calcule la zone à dessiner à partir de la fenêtre de
-    // l'iframe : hors écran et de hauteur nulle, il ne rendait qu'une
-    // mince bande du document (le PDF ne contenait que des fragments de
-    // texte sur la gauche de la page). L'iframe reste donc DANS la zone
-    // visible (coin 0,0), derrière la page (z-index négatif, invisible,
-    // non cliquable) et sa hauteur est ajustée au contenu avant capture.
-    iframe.style.cssText = 'position:fixed;top:0;left:0;width:900px;height:1200px;border:0;' +
-                           'z-index:-1;visibility:hidden;pointer-events:none;';
-    document.body.appendChild(iframe);
+    const url = SUPABASE_URL + '/functions/v1/generer-pdf-formulaire';
+    const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + session.access_token,
+            'apikey': SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ html: htmlComplet }),
+    });
 
-    try {
-        await new Promise((resolve) => { iframe.onload = resolve; iframe.srcdoc = htmlComplet; });
-        // Laisse le temps aux images (signature, photo de l'animal) de se poser.
-        await new Promise((r) => setTimeout(r, 300));
+    let result = {};
+    try { result = await resp.json(); } catch (e) { /* réponse non-JSON, traité ci-dessous */ }
 
-        // Filet de sécurité : même si le CSS d'impression échouait à masquer
-        // les boutons flottants et autres éléments "no-print", on les
-        // retire physiquement du DOM avant la capture — ils ne peuvent
-        // alors plus apparaître dans le PDF, quelle que soit la raison
-        // pour laquelle le display:none n'aurait pas été appliqué.
-        const doc = iframe.contentDocument;
-        doc.querySelectorAll('.buttons, .no-print, .signature-pad-wrap, .signature-controls, button').forEach(function(el) {
-            el.remove();
-        });
-
-        const MARGE_MM          = 8;
-        const PAGE_LARGEUR_MM   = 210;   // A4 portrait
-        const PAGE_HAUTEUR_MM   = 297;
-        const LARGEUR_UTILE_MM  = PAGE_LARGEUR_MM - 2 * MARGE_MM;
-        const HAUTEUR_UTILE_MM  = PAGE_HAUTEUR_MM - 2 * MARGE_MM;
-
-        // html2pdf.js bundle les deux librairies dont il dépend ; selon les
-        // versions du CDN elles sont exposées soit sous window.jspdf.jsPDF
-        // (UMD récent), soit directement sous window.jsPDF (plus ancien).
-        const jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
-
-        // ← AJOUTÉ : pagination manuelle, à la place du découpeur interne
-        // de html2pdf.js (pagebreak mode 'css'/'legacy'). Ce découpeur est
-        // connu pour être instable quand le contenu dépasse une page de
-        // peu (petite tranche de reliquat sur la dernière page) : selon
-        // les essais, il duplique la même image sur 2 pages, ou plante
-        // (RangeError: Maximum call stack size exceeded) — observé en
-        // reproduisant le pipeline en local avec la vraie version 0.10.1.
-        // Ici, on capture UNE SEULE FOIS le rendu complet avec html2canvas,
-        // puis on découpe NOUS-MÊMES ce canevas en tranches de la hauteur
-        // exacte d'une page A4, collées une par une dans le PDF avec
-        // jsPDF — un mécanisme simple et entièrement déterministe.
-        if (jsPDFCtor) {
-            // Hauteur réelle du document rendu : l'iframe et la "fenêtre"
-            // de capture doivent l'englober entièrement.
-            const hauteurDoc = Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight);
-            iframe.style.height = hauteurDoc + 'px';
-            await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-            // Méthode principale : capture via SVG ; repli : html2canvas.
-            let canvas = null;
-            try {
-                canvas = await _capturerViaSvg(doc, 900, hauteurDoc, 2);
-                if (_canvasQuasiVide(canvas)) canvas = null;
-            } catch (e) {
-                console.warn('[PDF] Capture SVG impossible, essai avec html2canvas :', e);
-                canvas = null;
-            }
-            if (!canvas && window.html2canvas) {
-                canvas = await window.html2canvas(doc.body, {
-                    scale: 2, useCORS: true, backgroundColor: '#ffffff',
-                    windowWidth: 900, windowHeight: hauteurDoc,
-                    x: 0, y: 0, scrollX: 0, scrollY: 0
-                });
-                if (_canvasQuasiVide(canvas)) canvas = null;
-            }
-
-            // Garde-fou : un rendu quasi vide (capture ratée) ne doit
-            // jamais partir par mail comme s'il s'agissait du vrai document.
-            if (!canvas) {
-                throw new Error('La capture du formulaire est vide — PDF non généré.');
-            }
-
-            const largeurCanvasPx = canvas.width;
-            const hauteurCanvasPx = canvas.height;
-            const mmParPx         = LARGEUR_UTILE_MM / largeurCanvasPx;
-            const hauteurPageEnPx = Math.floor(HAUTEUR_UTILE_MM / mmParPx);
-
-            const pdf = new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-
-            // Léger dépassement d'une page (< 12 %) : on réduit l'image pour
-            // tenir sur une seule page plutôt que d'avoir une page de reliquat.
-            const hauteurTotaleMm = hauteurCanvasPx * mmParPx;
-            if (hauteurTotaleMm > HAUTEUR_UTILE_MM && hauteurTotaleMm <= HAUTEUR_UTILE_MM * 1.12) {
-                const facteur = HAUTEUR_UTILE_MM / hauteurTotaleMm;
-                const largeurMm = LARGEUR_UTILE_MM * facteur;
-                pdf.addImage(
-                    canvas.toDataURL('image/jpeg', 0.95), 'JPEG',
-                    MARGE_MM + (LARGEUR_UTILE_MM - largeurMm) / 2, MARGE_MM,
-                    largeurMm, HAUTEUR_UTILE_MM
-                );
-                return new Uint8Array(pdf.output('arraybuffer'));
-            }
-
-            let positionY    = 0;
-            let premierePage = true;
-            while (positionY < hauteurCanvasPx) {
-                const hauteurTrancheEnPx = Math.min(hauteurPageEnPx, hauteurCanvasPx - positionY);
-
-                const trancheCanvas = document.createElement('canvas');
-                trancheCanvas.width  = largeurCanvasPx;
-                trancheCanvas.height = hauteurTrancheEnPx;
-                trancheCanvas.getContext('2d').drawImage(
-                    canvas,
-                    0, positionY, largeurCanvasPx, hauteurTrancheEnPx,
-                    0, 0, largeurCanvasPx, hauteurTrancheEnPx
-                );
-
-                if (!premierePage) pdf.addPage();
-                pdf.addImage(
-                    trancheCanvas.toDataURL('image/jpeg', 0.95), 'JPEG',
-                    MARGE_MM, MARGE_MM,
-                    LARGEUR_UTILE_MM, hauteurTrancheEnPx * mmParPx
-                );
-
-                positionY   += hauteurTrancheEnPx;
-                premierePage = false;
-            }
-
-            return new Uint8Array(pdf.output('arraybuffer'));
-        }
-
-        // ← Filet de sécurité : si ce build de html2pdf.js n'expose pas
-        // html2canvas/jsPDF globalement (ça peut changer selon les
-        // versions livrées par le CDN), on retombe sur l'ancien
-        // comportement plutôt que de tout casser.
-        const worker = window.html2pdf().set({
-            margin: MARGE_MM,
-            filename: 'formulaire.pdf',
-            html2canvas: { scale: 2, useCORS: true, windowWidth: 900, backgroundColor: '#ffffff' },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: ['css', 'legacy'] }
-        }).from(doc.body);
-
-        const arrayBuffer = await worker.outputPdf('arraybuffer');
-        return new Uint8Array(arrayBuffer);
-    } finally {
-        document.body.removeChild(iframe);
+    if (!resp.ok || !result.ok) {
+        throw new Error(result.error || ('Échec de la génération du PDF (HTTP ' + resp.status + ')'));
     }
+
+    const pdfBytes = _base64VersUint8Array(result.pdfBase64);
+
+    // Garde-fou : un PDF anormalement petit trahit presque toujours un
+    // rendu raté (page blanche) plutôt qu'un vrai formulaire — mieux
+    // vaut échouer bruyamment que d'envoyer ça par mail comme si de
+    // rien n'était.
+    if (pdfBytes.length < 2000) {
+        throw new Error('Le PDF généré semble anormalement petit — envoi annulé par précaution.');
+    }
+
+    return pdfBytes;
 }
