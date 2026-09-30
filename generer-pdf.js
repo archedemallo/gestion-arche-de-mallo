@@ -26,6 +26,14 @@
 // ============================================================
 
 /**
+ * Facteur de taille du contenu du PDF (1 = taille normale, 0.5 = moitié).
+ * C'est le SEUL réglage à modifier pour agrandir/réduire le texte des PDF.
+ * Il s'applique à tout le contenu (texte, champs, images), pas seulement
+ * à la police, pour que la mise en page reste proportionnée.
+ */
+const FACTEUR_TAILLE_PDF = 0.5;
+
+/**
  * Récupère TOUT le CSS de la page courante (règles normales + celles de
  * "@media print", ces dernières sans leur condition) et le renvoie comme
  * un unique bloc de règles normales, les règles d'impression en dernier
@@ -52,7 +60,13 @@ function _reglesCompletesEnClair() {
             }
         }
     }
-    return base + '\n' + impression;
+    // Réduction globale du PDF, en dernier pour l'emporter sur le reste.
+    // Le conteneur est élargi d'autant (21 cm / facteur) afin que le
+    // contenu continue d'occuper toute la largeur de la page A4.
+    const reduction =
+        'body { zoom: ' + FACTEUR_TAILLE_PDF + '; }\n' +
+        '.content { max-width: calc(21cm / ' + FACTEUR_TAILLE_PDF + ') !important; }\n';
+    return base + '\n' + impression + '\n' + reduction;
 }
 
 /**
