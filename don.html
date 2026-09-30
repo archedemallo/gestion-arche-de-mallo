@@ -454,6 +454,54 @@ validateRequiredFields = function() {
         });
     }
 
+    // Vérification : somme des montants saisis par mode de paiement = montant
+    // du don. On ne déclenche la vérification que si au moins un montant par
+    // mode a été rempli — si aucun ne l'a été (une seule case cochée, sans
+    // détail), on garde l'ancien fonctionnement (le montant du don suffit).
+    var montantsParMode = [
+        { id: 'montant_espece',   checkboxId: 'pay_espece' },
+        { id: 'montant_cb',       checkboxId: 'pay_cb' },
+        { id: 'montant_virement', checkboxId: 'pay_virement' },
+        { id: 'montant_cheque',   checkboxId: 'pay_cheque' },
+        { id: 'montant_cheque1',  checkboxId: 'pay_plusieurs_cheques' },
+        { id: 'montant_cheque2',  checkboxId: 'pay_plusieurs_cheques' },
+        { id: 'montant_cheque3',  checkboxId: 'pay_plusieurs_cheques' },
+        { id: 'montant_cheque4',  checkboxId: 'pay_plusieurs_cheques' }
+    ];
+    var auMoinsUnMontantSaisi = montantsParMode.some(function(m) {
+        var el = document.getElementById(m.id);
+        return el && el.value.trim() !== '';
+    });
+    var montantDonEl = document.getElementById('montantDon');
+    if (auMoinsUnMontantSaisi) {
+        var totalReparti = 0;
+        montantsParMode.forEach(function(m) {
+            var cb = document.getElementById(m.checkboxId);
+            var el = document.getElementById(m.id);
+            if (cb && cb.classList.contains('checked') && el && el.value.trim() !== '') {
+                totalReparti += parseFloat(el.value) || 0;
+            }
+        });
+        var montantDonVal = montantDonEl ? (parseFloat(montantDonEl.value) || 0) : 0;
+        if (Math.abs(totalReparti - montantDonVal) > 0.01) {
+            missing.push(
+                'Le total des montants par mode de paiement (' + totalReparti.toFixed(2) +
+                ' €) ne correspond pas au montant du don (' + montantDonVal.toFixed(2) + ' €)'
+            );
+            montantsParMode.forEach(function(m) {
+                var el = document.getElementById(m.id);
+                if (el) el.style.borderBottom = '2px solid red';
+            });
+            if (montantDonEl) montantDonEl.style.borderBottom = '2px solid red';
+        } else {
+            montantsParMode.forEach(function(m) {
+                var el = document.getElementById(m.id);
+                if (el) el.style.borderBottom = '';
+            });
+            if (montantDonEl) montantDonEl.style.borderBottom = '';
+        }
+    }
+
     // N° chèque si chèque coché
     var payCheque = document.getElementById('pay_cheque');
     if (payCheque && payCheque.classList.contains('checked')) {
@@ -582,25 +630,23 @@ async function saveForm() {
         data.donId = donId;
 
         var avertissementMail = '';
-        // Envoi mail (compta + bureau) et dépôt Drive dans TOUS les cas, y compris
-        // don anonyme (la trace comptable est nécessaire ; seul le reçu fiscal est exclu).
-        if (ENVOYER_PDF_MAIL) {
+        if (ENVOYER_PDF_MAIL && !estAnonyme) {
             data.filename = buildFilename(data);
             try {
                 const pdfBytes = await genererPdfFormulaire();
                 await envoyerMailFormulaire({
-                    sujet: 'Reçu de don — ' + (estAnonyme ? 'Don anonyme' : (estSociete ? (data.raisonSociale || '') : (data.nom || ''))),
+                    sujet: 'Reçu de don — ' + (estSociete ? (data.raisonSociale || '') : (data.nom || '')),
                     corps: construireCorpsMail(data),
                     pdfBytes: pdfBytes,
                     pdfNomFichier: data.filename + '.pdf',
-                    emailClient: estAnonyme ? '' : data.email,
-                    nomClient: estAnonyme ? 'Don anonyme' : (estSociete ? (data.raisonSociale || '') : ((data.prenom || '') + ' ' + (data.nom || '')).trim())
+                    emailClient: data.email,
+                    nomClient: estSociete ? (data.raisonSociale || '') : ((data.prenom || '') + ' ' + (data.nom || '')).trim()
                 });
                 try {
                     await enregistrerPdfDrive({
                         onglet: data.onglet,
-                        prenom: estAnonyme ? '' : data.prenom,
-                        nom: estAnonyme ? 'Don anonyme' : (estSociete ? data.raisonSociale : data.nom),
+                        prenom: data.prenom,
+                        nom: estSociete ? data.raisonSociale : data.nom,
                         dateDossier: data.dateSignature || null,
                         filename: data.filename,
                         pdfBytes: pdfBytes,
