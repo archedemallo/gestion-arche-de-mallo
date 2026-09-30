@@ -433,6 +433,36 @@ function chequesDepuisFormData(data) {
     return cheques;
 }
 
+// Ouvre Dons.html dans un nouvel onglet, pré-rempli avec les infos de
+// l'adhérent et le montant du don libre (bienfaiteur ou sympathisant).
+function ouvrirFormulaireDon(champMontant) {
+    var champs = ['nom', 'prenom', 'adresse', 'codePostal', 'ville', 'email', 'saisiPar'];
+    var slim = {};
+    champs.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el && el.value) slim[id] = el.value;
+    });
+
+    var portableEl = document.getElementById('portable');
+    if (portableEl && portableEl.value) slim.telephone = portableEl.value;
+
+    var montantEl = document.getElementById(champMontant);
+    if (montantEl && montantEl.value) slim.montantDon = montantEl.value;
+
+    var dateAdhesionEl = document.getElementById('dateAdhesion');
+    if (dateAdhesionEl && dateAdhesionEl.value) slim.dateSignature = dateAdhesionEl.value;
+
+    slim._typeDonateur = 'Particulier';
+
+    var prefill = encodeURIComponent(JSON.stringify(slim));
+    var url     = 'don.html?prefill=' + prefill;
+
+    var fenetre = window.open(url, '_blank');
+    if (!fenetre) {
+        afficherMessage('Veuillez autoriser les popups pour ouvrir le formulaire de don, ou ouvrez-le manuellement : <a href="' + url + '" target="_blank">ouvrir</a>', 'erreur');
+    }
+}
+
 async function saveForm() {
     var missing = validateRequiredFields();
     if (missing.length > 0) {
@@ -526,6 +556,15 @@ async function saveForm() {
             btnPrint.disabled = false;
         }
         afficherMessage('Formulaire enregistré<br>Vous pouvez imprimer' + avertissementMail);
+
+        // Ouvre Dons.html, pré-rempli avec les infos de l'adhérent et le
+        // montant du don libre, si "Membre bienfaiteur" ou "Membre
+        // sympathisant" a été coché.
+        var bienfaiteurCoche  = document.getElementById('type_bienfaiteur')  && document.getElementById('type_bienfaiteur').classList.contains('checked');
+        var sympathisantCoche = document.getElementById('type_sympathisant') && document.getElementById('type_sympathisant').classList.contains('checked');
+        if (bienfaiteurCoche || sympathisantCoche) {
+            ouvrirFormulaireDon(bienfaiteurCoche ? 'donBienfaiteur' : 'donSympatisant');
+        }
     } catch (err) {
         console.error(err);
         alert('Erreur lors de la sauvegarde : ' + (err.message || err));
