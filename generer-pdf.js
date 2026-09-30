@@ -33,7 +33,14 @@ function _reglesCompletesEnClair() {
     }
         const reduction =
         'body { zoom: ' + FACTEUR_TAILLE_PDF + '; }\n' +
-        '.content { max-width: calc(21cm / ' + FACTEUR_TAILLE_PDF + ') !important; }\n';
+        '.content { max-width: calc(21cm / ' + FACTEUR_TAILLE_PDF + ') !important; }\n' +
+        // En-tête en 3 colonnes : logo à gauche, texte de l'association
+        // réellement centré sur la page, date / "Saisi par" à droite.
+        '.header-adoption { display: grid !important; grid-template-columns: 1fr auto 1fr; align-items: center !important; }\n' +
+        '.header-adoption > div:first-child { display: contents !important; }\n' +
+        '.header-adoption .logo-box { justify-self: start; margin: 0 !important; }\n' +
+        '.header-adoption .header-info { justify-self: center; margin: 0 !important; }\n' +
+        '.header-adoption .header-adoption-right { justify-self: end; }\n';
     return base + '\n' + impression + '\n' + reduction;
 }
 
