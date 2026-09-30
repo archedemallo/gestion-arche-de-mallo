@@ -1,36 +1,7 @@
 // ============================================================
 // GÉNÉRATION DU PDF — rendu par un vrai navigateur côté serveur
-// (remplace le pipeline html2canvas + jsPDF, abandonné : capture
-// fragile, PDF parfois vides ou tronqués — voir les incidents des
-// 27 et 28/09).
-// ============================================================
-// Réutilise EXACTEMENT le même contenu que celui déjà utilisé par le
-// bouton "Imprimer" : buildHtmlWithData() (voir formulaires-arche-
-// mallo.js) et les mêmes règles CSS (y compris @media print). La
-// différence est qu'au lieu de dessiner nous-mêmes une image de ce
-// rendu (html2canvas), on envoie le HTML tel quel à un Chromium
-// hébergé chez Cloudflare (Edge Function "generer-pdf-formulaire"),
-// qui produit un vrai PDF texte — exactement ce que ferait un Ctrl+P
-// dans le navigateur.
-//
-// Le JavaScript est désactivé côté serveur (voir l'Edge Function) :
-// buildHtmlWithData() a déjà "figé" toutes les valeurs saisies dans
-// le HTML (attributs value, contenu des <textarea>, styles inline),
-// donc aucun script n'est nécessaire à l'affichage — et cela évite
-// que les scripts de la page (client Supabase, sélecteurs animal/
-// personne...) se ré-exécutent côté serveur et modifient le
-// formulaire avant la capture, ce qui est la cause la plus probable
-// des PDF quasi vides obtenus avec l'ancien pipeline (l'iframe qui
-// servait à la capture n'était, elle non plus, jamais isolée du
-// JavaScript de la page).
 // ============================================================
 
-/**
- * Facteur de taille du contenu du PDF (1 = taille normale, 0.5 = moitié).
- * C'est le SEUL réglage à modifier pour agrandir/réduire le texte des PDF.
- * Il s'applique à tout le contenu (texte, champs, images), pas seulement
- * à la police, pour que la mise en page reste proportionnée.
- */
 const FACTEUR_TAILLE_PDF = 0.5;
 
 /**
@@ -60,10 +31,7 @@ function _reglesCompletesEnClair() {
             }
         }
     }
-    // Réduction globale du PDF, en dernier pour l'emporter sur le reste.
-    // Le conteneur est élargi d'autant (21 cm / facteur) afin que le
-    // contenu continue d'occuper toute la largeur de la page A4.
-    const reduction =
+        const reduction =
         'body { zoom: ' + FACTEUR_TAILLE_PDF + '; }\n' +
         '.content { max-width: calc(21cm / ' + FACTEUR_TAILLE_PDF + ') !important; }\n';
     return base + '\n' + impression + '\n' + reduction;
