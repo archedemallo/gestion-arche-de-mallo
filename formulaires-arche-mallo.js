@@ -441,6 +441,56 @@ async function sendToGoogle(data) {
 }
 
 // ============================================================
+// N° DE CHÈQUE OBLIGATOIRE — mutualisé pour tous les formulaires.
+// Si "Chèque" est coché : le n° est obligatoire.
+// Si "Plusieurs chèques" est coché : au moins un n° est obligatoire, et
+// toute ligne dont le montant est saisi doit avoir son n°.
+// Ajoute les messages d'erreur dans le tableau `missing` fourni.
+// ============================================================
+function verifierNumerosCheques(missing) {
+    function coche(id) {
+        var e = document.getElementById(id);
+        return !!(e && e.classList.contains('checked'));
+    }
+    function rouge(el, on) { if (el) el.style.borderBottom = on ? '2px solid red' : ''; }
+
+    // Chèque unique (le champ s'appelle numeroPaiement ou numeroCheque selon le formulaire)
+    var num = document.getElementById('numeroPaiement') || document.getElementById('numeroCheque');
+    if (coche('pay_cheque')) {
+        if (!num || !num.value.trim()) {
+            missing.push('Numéro de chèque');
+            rouge(num, true);
+        } else {
+            rouge(num, false);
+        }
+    } else {
+        rouge(num, false);
+    }
+
+    // Plusieurs chèques
+    var lignes = [1, 2, 3, 4].map(function(n) {
+        return { n: n, num: document.getElementById('cheque' + n), mt: document.getElementById('montant_cheque' + n) };
+    });
+    if (coche('pay_plusieurs_cheques')) {
+        var auMoinsUn = false, sansNumero = [];
+        lignes.forEach(function(l) {
+            var aNum = !!(l.num && l.num.value.trim());
+            var aMt  = !!(l.mt && l.mt.value.trim() !== '');
+            if (aNum) auMoinsUn = true;
+            if (aMt && !aNum) { sansNumero.push(l.n); rouge(l.num, true); } else { rouge(l.num, false); }
+        });
+        if (!auMoinsUn) {
+            missing.push('Numéro de chèque (Plusieurs chèques : au moins un n° à renseigner)');
+            rouge(lignes[0].num, true);
+        } else if (sansNumero.length) {
+            missing.push('Numéro de chèque manquant pour le chèque n°' + sansNumero.join(', n°'));
+        }
+    } else {
+        lignes.forEach(function(l) { rouge(l.num, false); });
+    }
+}
+
+// ============================================================
 // VALIDATION CHAMPS OBLIGATOIRES
 // ============================================================
 
@@ -528,15 +578,8 @@ function validateRequiredFields() {
         });
     }
 
-    // N° chèque obligatoire si Chèque coché
-    var payCheque = document.getElementById('pay_cheque');
-    if (payCheque && payCheque.classList.contains('checked')) {
-        var numPaiement = document.getElementById('numeroPaiement') || document.getElementById('numeroCheque');
-        if (!numPaiement || !numPaiement.value.trim()) {
-            missing.push('Numéro de chèque');
-            if (numPaiement) numPaiement.style.borderBottom = '2px solid red';
-        }
-    }
+    // N° chèque obligatoire si Chèque / Plusieurs chèques coché
+    verifierNumerosCheques(missing);
 
     // Résultat FIV et Diarrhée si OUI coché
     var libRes = {
