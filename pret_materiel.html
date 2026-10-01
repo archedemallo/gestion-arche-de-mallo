@@ -283,6 +283,9 @@
             });
         }
 
+        // N° chèque obligatoire si Chèque coché
+        verifierNumerosCheques(missing);
+
         // Lu et approuvé
         ['luApprouve1_pm','luApprouve2_pm'].forEach(function(id) {
             var el = document.getElementById(id);
