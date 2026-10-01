@@ -441,56 +441,6 @@ async function sendToGoogle(data) {
 }
 
 // ============================================================
-// N° DE CHÈQUE OBLIGATOIRE — mutualisé pour tous les formulaires.
-// Si "Chèque" est coché : le n° est obligatoire.
-// Si "Plusieurs chèques" est coché : au moins un n° est obligatoire, et
-// toute ligne dont le montant est saisi doit avoir son n°.
-// Ajoute les messages d'erreur dans le tableau `missing` fourni.
-// ============================================================
-function verifierNumerosCheques(missing) {
-    function coche(id) {
-        var e = document.getElementById(id);
-        return !!(e && e.classList.contains('checked'));
-    }
-    function rouge(el, on) { if (el) el.style.borderBottom = on ? '2px solid red' : ''; }
-
-    // Chèque unique (le champ s'appelle numeroPaiement ou numeroCheque selon le formulaire)
-    var num = document.getElementById('numeroPaiement') || document.getElementById('numeroCheque');
-    if (coche('pay_cheque')) {
-        if (!num || !num.value.trim()) {
-            missing.push('Numéro de chèque');
-            rouge(num, true);
-        } else {
-            rouge(num, false);
-        }
-    } else {
-        rouge(num, false);
-    }
-
-    // Plusieurs chèques
-    var lignes = [1, 2, 3, 4].map(function(n) {
-        return { n: n, num: document.getElementById('cheque' + n), mt: document.getElementById('montant_cheque' + n) };
-    });
-    if (coche('pay_plusieurs_cheques')) {
-        var auMoinsUn = false, sansNumero = [];
-        lignes.forEach(function(l) {
-            var aNum = !!(l.num && l.num.value.trim());
-            var aMt  = !!(l.mt && l.mt.value.trim() !== '');
-            if (aNum) auMoinsUn = true;
-            if (aMt && !aNum) { sansNumero.push(l.n); rouge(l.num, true); } else { rouge(l.num, false); }
-        });
-        if (!auMoinsUn) {
-            missing.push('Numéro de chèque (Plusieurs chèques : au moins un n° à renseigner)');
-            rouge(lignes[0].num, true);
-        } else if (sansNumero.length) {
-            missing.push('Numéro de chèque manquant pour le chèque n°' + sansNumero.join(', n°'));
-        }
-    } else {
-        lignes.forEach(function(l) { rouge(l.num, false); });
-    }
-}
-
-// ============================================================
 // VALIDATION CHAMPS OBLIGATOIRES
 // ============================================================
 
@@ -578,8 +528,15 @@ function validateRequiredFields() {
         });
     }
 
-    // N° chèque obligatoire si Chèque / Plusieurs chèques coché
-    verifierNumerosCheques(missing);
+    // N° chèque obligatoire si Chèque coché
+    var payCheque = document.getElementById('pay_cheque');
+    if (payCheque && payCheque.classList.contains('checked')) {
+        var numPaiement = document.getElementById('numeroPaiement') || document.getElementById('numeroCheque');
+        if (!numPaiement || !numPaiement.value.trim()) {
+            missing.push('Numéro de chèque');
+            if (numPaiement) numPaiement.style.borderBottom = '2px solid red';
+        }
+    }
 
     // Résultat FIV et Diarrhée si OUI coché
     var libRes = {
@@ -1060,7 +1017,7 @@ function ouvrirPhoto(previewId) {
 // ← onerror ajoutés (voir même correctif dans adoption.html) : sans eux,
 // une image illisible ne rappelait jamais callback() et bloquait
 // indéfiniment la promesse appelante côté formulaire.
-function redimensionnerImage(file, callback) {
+function redimensionnerImage(file, callback, maxDim) {
     var reader = new FileReader();
     reader.onerror = function() { callback(null); };
     reader.onload = function(e) {
@@ -1068,7 +1025,7 @@ function redimensionnerImage(file, callback) {
         img.onerror = function() { callback(null); };
         img.onload = function() {
             var canvas = document.createElement('canvas');
-            var max = 1200;
+            var max = maxDim || 1200;
             var w = img.width, h = img.height;
             if (w > max || h > max) {
                 if (w > h) { h = Math.round(h * max / w); w = max; }
@@ -1157,17 +1114,7 @@ function appliquerPrefill() {
         // Afficher la photo prise lors de la réservation (référence visuelle
         // uniquement — un input[type=file] ne peut pas être prérempli par
         // script, la capture de la photo d'adoption reste obligatoire).
-        if (data.photoReservation) {
-            var zonePhotoReservation = document.getElementById('photoReservationPreview');
-            if (zonePhotoReservation) {
-                zonePhotoReservation.innerHTML =
-                    '<p class="bold blue no-print" style="margin:0 0 6px;">📷 Photo prise lors de la réservation</p>' +
-                    '<img src="' + data.photoReservation + '" style="max-width:200px;max-height:150px;border:1px solid #ccc;border-radius:4px;display:block;" alt="Photo réservation">' +
-                    '<button type="button" class="btn-voir-photo no-print" style="margin-top:4px;" onclick="window.open(\'' + data.photoReservation + '\', \'_blank\')">Voir la photo</button>' +
-                    '<p class="no-print" style="font-size:11px;color:#666;margin:4px 0 0;">Référence uniquement, non modifiable ici</p>';
-                zonePhotoReservation.style.display = 'block';
-            }
-        }
+        if (data.photoReservation) afficherPhotoReservation(data.photoReservation);
 
         // Gérer le sexe (case à cocher radio) — cherche la case dont le texte correspond
         var sexeVal = data['sexe'] || data['check_sexe'] || data['check_sexe_chat'] || '';
@@ -1193,6 +1140,99 @@ function appliquerPrefill() {
 
     } catch(e) {
         console.warn('[Prefill] Erreur lors du pré-remplissage :', e.message);
+    }
+}
+
+// ============================================================
+// PHOTO DE RÉSERVATION REPRISE DANS L'ADOPTION
+// À la réservation, la photo est (en plus de l'envoi vers Drive)
+// enregistrée dans animaux_photos (source = 'reservation'), version
+// réduite à 800 px. À l'adoption, dès que l'animal est choisi, on
+// l'affiche en référence dans #photoReservationPreview (zone "no-print",
+// donc jamais dans le PDF). La photo d'adoption reste obligatoire.
+// ============================================================
+
+/** Enregistre la photo du champ #photoAnimal dans animaux_photos. */
+async function enregistrerPhotoAnimalEnBase(animalId, source) {
+    var input = document.getElementById('photoAnimal');
+    if (!animalId || !input || !input.files || !input.files[0]) return true;
+    var base64 = await new Promise(function(resolve) {
+        redimensionnerImage(input.files[0], resolve, 800);
+    });
+    if (!base64) {
+        console.error('[Photo] Image illisible, non enregistrée en base.');
+        return false;
+    }
+    var res = await supabaseClient.from('animaux_photos').insert({
+        animal_id: animalId,
+        url: 'data:image/jpeg;base64,' + base64,
+        source: source || null
+    });
+    if (res.error) {
+        console.error('[Photo] Enregistrement en base impossible :', res.error.message);
+        return false;
+    }
+    return true;
+}
+
+/** Affiche (ou masque, si url vide) la photo de réservation en référence. */
+function afficherPhotoReservation(url) {
+    var zone = document.getElementById('photoReservationPreview');
+    if (!zone) return;
+    zone.innerHTML = '';
+    if (!url) { zone.style.display = 'none'; return; }
+
+    var titre = document.createElement('p');
+    titre.className = 'bold blue no-print';
+    titre.style.cssText = 'margin:0 0 6px;';
+    titre.textContent = '📷 Photo prise lors de la réservation';
+
+    var img = document.createElement('img');
+    img.src = url;
+    img.alt = 'Photo réservation';
+    img.style.cssText = 'max-width:200px;max-height:150px;border:1px solid #ccc;border-radius:4px;display:block;';
+
+    var bouton = document.createElement('button');
+    bouton.type = 'button';
+    bouton.className = 'btn-voir-photo no-print';
+    bouton.style.cssText = 'margin-top:4px;';
+    bouton.textContent = 'Voir la photo';
+    bouton.onclick = function() {
+        // document.write plutôt que window.open(url) : les navigateurs
+        // bloquent l'ouverture directe d'une URL "data:".
+        var w = window.open('', '_blank');
+        if (!w) return;
+        w.document.write('<body style="margin:0;background:#000;"><img src="' + url + '" style="max-width:100%;height:auto;display:block;margin:auto;"></body>');
+        w.document.close();
+    };
+
+    var note = document.createElement('p');
+    note.className = 'no-print';
+    note.style.cssText = 'font-size:11px;color:#666;margin:4px 0 0;';
+    note.textContent = 'Référence uniquement, non modifiable ici';
+
+    zone.appendChild(titre); zone.appendChild(img); zone.appendChild(bouton); zone.appendChild(note);
+    zone.style.display = 'block';
+}
+
+/** Cherche la dernière photo de réservation de l'animal et l'affiche. */
+var _chargementPhotoReservation = 0;
+async function chargerPhotoReservation(animalId) {
+    var token = ++_chargementPhotoReservation;
+    if (!animalId) { afficherPhotoReservation(null); return; }
+    try {
+        var res = await supabaseClient.from('animaux_photos')
+            .select('url')
+            .eq('animal_id', animalId)
+            .eq('source', 'reservation')
+            .order('cree_le', { ascending: false })
+            .limit(1);
+        if (token !== _chargementPhotoReservation) return; // animal changé entre-temps
+        if (res.error) throw res.error;
+        afficherPhotoReservation(res.data && res.data[0] ? res.data[0].url : null);
+    } catch (e) {
+        console.error('[Photo réservation] Lecture impossible :', e.message || e);
+        afficherPhotoReservation(null);
     }
 }
 
