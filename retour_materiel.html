@@ -265,6 +265,20 @@
         });
         if (!cautionCoche) missing.push('Restitution de la caution');
 
+        // Restitution par chèque cochée : n° de chèque obligatoire
+        var restCheque = document.getElementById('restitution_cheque');
+        var numRest = document.getElementById('numeroChequeRestitution');
+        if (restCheque && restCheque.classList.contains('checked')) {
+            if (!numRest || !numRest.value.trim()) {
+                missing.push('Numéro de chèque (restitution par chèque)');
+                if (numRest) numRest.style.borderBottom = '2px solid red';
+            } else {
+                numRest.style.borderBottom = '';
+            }
+        } else if (numRest) {
+            numRest.style.borderBottom = '';
+        }
+
         // Lu et approuvé
         ['luApprouve1_rm','luApprouve2_rm'].forEach(function(id) {
             var el = document.getElementById(id);
