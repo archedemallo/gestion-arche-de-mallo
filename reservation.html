@@ -32,22 +32,17 @@
 
 <div class="title" style="text-align:center; margin-top:5px;">Contrat de réservation</div>
 
-<p style="text-align:center;">
-    <span class="blue bold">Type de réservation :</span>
-    <span class="clickable-row" onclick="toggleCheck(this, 'typeResa'); majTypeReservation()"><span class="checkbox" data-group="typeResa" id="type_chat"></span> Chat</span>
-    <span class="clickable-row" onclick="toggleCheck(this, 'typeResa'); majTypeReservation()"><span class="checkbox" data-group="typeResa" id="type_chaton"></span> Chaton</span>
-    <span class="clickable-row" onclick="toggleCheck(this, 'typeResa'); majTypeReservation()"><span class="checkbox" data-group="typeResa" id="type_autre_animal"></span> Autre animal</span>
-</p>
-
 <p style="text-align:center;">N° du BOX : <input type="text" class="editable" style="width:150px;" id="numeroBox"></p>
 
-<!-- Bloc Autre animal : uniquement si ce type est choisi -->
-<div class="section" id="bloc_espece_autre" style="display:none;">
+<!-- Espèce de l'animal (remplace l'ancien "Type de réservation") -->
+<div class="section" id="bloc_espece">
     <p>
         <span class="blue">Espèce de l'animal :</span>
-        <span class="clickable-row" onclick="toggleCheck(this, 'espece')"><span class="checkbox" data-group="espece" id="espece_lapin"></span> Lapin</span>
-        <span class="clickable-row" onclick="toggleCheck(this, 'espece')"><span class="checkbox" data-group="espece" id="espece_chien"></span> Chien</span>
-        <span class="clickable-row" onclick="toggleCheck(this, 'espece')"><span class="checkbox" data-group="espece" id="espece_autre"></span> Autre :
+        <span class="clickable-row" onclick="toggleCheck(this, 'espece'); majTypeReservation()"><span class="checkbox" data-group="espece" id="espece_chat"></span> Chat</span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'espece'); majTypeReservation()"><span class="checkbox" data-group="espece" id="espece_chaton"></span> Chaton</span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'espece'); majTypeReservation()"><span class="checkbox" data-group="espece" id="espece_lapin"></span> Lapin</span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'espece'); majTypeReservation()"><span class="checkbox" data-group="espece" id="espece_chien"></span> Chien</span>
+        <span class="clickable-row" onclick="toggleCheck(this, 'espece'); majTypeReservation()"><span class="checkbox" data-group="espece" id="espece_autre"></span> Autre :
             <input type="text" class="editable editable-medium" id="espece_autre_texte" style="width:150px;" onclick="event.stopPropagation()">
         </span>
     </p>
@@ -347,17 +342,40 @@ chargerListeSaisisseurs();
     var typeReservationActuel = null;
     var selecteurAnimal = null;
 
+    // Le "type de réservation" attendu par la base (chat / chaton /
+    // autre_animal) est déduit de l'espèce cochée : plus de double saisie.
     function typeReservationChoisi() {
-        if (document.getElementById('type_chat').classList.contains('checked')) return 'chat';
-        if (document.getElementById('type_chaton').classList.contains('checked')) return 'chaton';
-        if (document.getElementById('type_autre_animal').classList.contains('checked')) return 'autre_animal';
+        if (document.getElementById('espece_chat').classList.contains('checked')) return 'chat';
+        if (document.getElementById('espece_chaton').classList.contains('checked')) return 'chaton';
+        if (['espece_lapin', 'espece_chien', 'espece_autre'].some(function(id) {
+            return document.getElementById(id).classList.contains('checked');
+        })) return 'autre_animal';
         return null;
+    }
+
+    // Coche l'espèce à partir de la fiche de l'animal sélectionné.
+    function cocherEspeceDepuisAnimal(animal) {
+        var espece = String((animal && animal.espece) || '').normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+        if (!espece) return;
+        var cible = null;
+        if (espece === 'chat') cible = animal.est_chaton ? 'espece_chaton' : 'espece_chat';
+        else if (espece === 'chaton') cible = 'espece_chaton';
+        else if (espece === 'chien') cible = 'espece_chien';
+        else if (espece === 'lapin') cible = 'espece_lapin';
+        else cible = 'espece_autre';
+        document.querySelectorAll('.checkbox[data-group="espece"]').forEach(function(cb) {
+            cb.classList.toggle('checked', cb.id === cible);
+        });
+        if (cible === 'espece_autre') {
+            document.getElementById('espece_autre_texte').value = animal.espece;
+        }
+        majTypeReservation();
     }
 
     function majTypeReservation() {
         typeReservationActuel = typeReservationChoisi();
         document.getElementById('bloc_chaton').style.display = (typeReservationActuel === 'chaton') ? '' : 'none';
-        document.getElementById('bloc_espece_autre').style.display = (typeReservationActuel === 'autre_animal') ? '' : 'none';
 
         if (!selecteurAnimal) {
             selecteurAnimal = initSelecteurAnimal({
@@ -366,6 +384,7 @@ chargerListeSaisisseurs();
                 champsVerrouilles: { identification: 'puce', dateNaissance: 'date_naissance' },
                 champsModifiables: { couleur: 'couleur', signesParticuliers: 'signes_particuliers', nomMaman: 'nom_maman' },
                 apresSelection: function(data) {
+                    cocherEspeceDepuisAnimal(data.animal);
                     cocherGroupeParLibelle('sexe_chat',
                         data.animal.sexe === 'M' ? 'Mâle' : (data.animal.sexe === 'F' ? 'Femelle' : null));
                     var puce = (data.animal.puce || '').trim();
@@ -563,7 +582,7 @@ chargerListeSaisisseurs();
         }
 
         if (!typeReservationChoisi()) {
-            missing.push('Type de réservation (Chat / Chaton / Autre animal)');
+            missing.push('Espèce de l\'animal (Chat / Chaton / Lapin / Chien / Autre)');
         }
 
         return missing;
