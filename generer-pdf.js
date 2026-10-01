@@ -2,7 +2,7 @@
 // GÉNÉRATION DU PDF — rendu par un vrai navigateur côté serveur
 // ============================================================
 
-const FACTEUR_TAILLE_PDF = 0.65;
+const FACTEUR_TAILLE_PDF = 0.55;
 
 /**
  * Récupère TOUT le CSS de la page courante (règles normales + celles de
