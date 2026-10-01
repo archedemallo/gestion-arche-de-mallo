@@ -361,6 +361,9 @@ if (!typeChecked) {
         });
     }
 
+    // N° chèque obligatoire (chèque unique ou plusieurs chèques)
+    verifierNumerosCheques(missing);
+
     // Lu et approuvé
     ['luApprouve1', 'luApprouve2'].forEach(function(id) {
         var el = document.getElementById(id);
