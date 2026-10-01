@@ -546,9 +546,6 @@ chargerListeSaisisseurs();
             }
         }
 
-        // N° chèque obligatoire (chèque unique ou plusieurs chèques)
-        verifierNumerosCheques(missing);
-
         // Lu et approuvé
         ['luApprouve1_resa', 'luApprouve2_resa'].forEach(function(id) {
             var el = document.getElementById(id);
@@ -705,7 +702,10 @@ chargerListeSaisisseurs();
                     avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué. La réservation est bien enregistrée — vous pouvez l\'imprimer avec le bouton "Imprimer" en attendant.';
                 }
                 if (typeof postSavePhotos === 'function') {
-                    await postSavePhotos(data, data.filename);
+                    var photoBaseOk = await postSavePhotos(data, data.filename);
+                    if (photoBaseOk === false) {
+                        avertissementMail += ' ⚠️ La photo n\'a pas pu être mémorisée pour l\'adoption (elle est bien envoyée sur Drive).';
+                    }
                 }
             }
 
@@ -734,6 +734,14 @@ chargerListeSaisisseurs();
             nomEl2   ? nomEl2.value   : '',
             animalEl ? animalEl.value : '',
             dateEl   ? dateEl.value   : '');
+        // Mémorise aussi la photo en base pour la reprendre à l'adoption
+        try {
+            return await enregistrerPhotoAnimalEnBase(
+                selecteurAnimal ? selecteurAnimal.getAnimalId() : null, 'reservation');
+        } catch (e) {
+            console.error('Erreur enregistrement photo en base :', e);
+            return false;
+        }
     }
 </script>
 
