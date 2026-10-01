@@ -502,15 +502,8 @@ validateRequiredFields = function() {
         }
     }
 
-    // N° chèque si chèque coché
-    var payCheque = document.getElementById('pay_cheque');
-    if (payCheque && payCheque.classList.contains('checked')) {
-        var numCheque = document.getElementById('numeroCheque');
-        if (!numCheque || !numCheque.value.trim()) {
-            missing.push('Numéro de chèque');
-            if (numCheque) numCheque.style.borderBottom = '2px solid red';
-        }
-    }
+    // N° chèque obligatoire (chèque unique ou plusieurs chèques)
+    verifierNumerosCheques(missing);
 
     // Email format si renseigné
     var elEmail = document.getElementById('email');
