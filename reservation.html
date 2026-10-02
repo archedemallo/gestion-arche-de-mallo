@@ -259,6 +259,9 @@
     </div>
 
     
+<!-- Photo précédente de l'animal (référence, hors PDF) -->
+<div class="section no-print" id="photoPrecedentePreview" style="display:none;"></div>
+
 <!-- Photo de l'animal -->
 <div class="section">
     <p class="bold blue no-print">📷 Photo de l'animal <span class="red">*</span> (obligatoire)</p>
@@ -381,6 +384,7 @@ chargerListeSaisisseurs();
             selecteurAnimal = initSelecteurAnimal({
                 inputId: 'nomChat',
                 contexte: 'reservation',
+                onSelect: function(animalId) { chargerPhotoAnimal(animalId); },
                 champsVerrouilles: { identification: 'puce', dateNaissance: 'date_naissance' },
                 champsModifiables: { couleur: 'couleur', signesParticuliers: 'signes_particuliers', nomMaman: 'nom_maman' },
                 apresSelection: function(data) {
