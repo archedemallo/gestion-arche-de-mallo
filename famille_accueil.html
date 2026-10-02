@@ -133,6 +133,9 @@
 </div>
 
 
+<!-- Photo précédente de l'animal (référence, hors PDF) -->
+<div class="section no-print" id="photoPrecedentePreview" style="display:none;"></div>
+
 <!-- Photo de l'animal -->
 <div class="section">
     <p class="bold blue">📷 Photo de l'animal <span class="red">*</span> (obligatoire)</p>
@@ -210,6 +213,7 @@
     var selecteurAnimal = initSelecteurAnimal({
         inputId: 'nom_animal',
         contexte: 'recherche',
+        onSelect: function(animalId) { chargerPhotoAnimal(animalId); },
         champsModifiables: { couleur: 'couleur', date_naissance: 'date_naissance', puce: 'puce' }
     });
 
@@ -399,7 +403,10 @@ chargerListeSaisisseurs();
                     avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué (' + (e.message || e) + ').';
                 }
                 if (typeof postSavePhotos === 'function') {
-                    await postSavePhotos(data, data.filename);
+                    var photoBaseOk = await postSavePhotos(data, data.filename);
+                    if (photoBaseOk === false) {
+                        avertissementMail += ' ⚠️ La photo n\'a pas pu être mémorisée pour les prochains formulaires (elle est bien envoyée sur Drive).';
+                    }
                 }
             }
 
@@ -427,6 +434,14 @@ chargerListeSaisisseurs();
             nomEl    ? nomEl.value    : '',
             animalEl ? animalEl.value : '',
             dateEl   ? dateEl.value   : '');
+        // Mémorise aussi la photo en base pour les formulaires suivants
+        try {
+            return await enregistrerPhotoAnimalEnBase(
+                selecteurAnimal ? selecteurAnimal.getAnimalId() : null, 'famille_accueil');
+        } catch (e) {
+            console.error('Erreur enregistrement photo en base :', e);
+            return false;
+        }
     }
 </script>
 
