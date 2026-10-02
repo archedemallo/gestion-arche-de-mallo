@@ -1114,7 +1114,7 @@ function appliquerPrefill() {
         // Afficher la photo prise lors de la réservation (référence visuelle
         // uniquement — un input[type=file] ne peut pas être prérempli par
         // script, la capture de la photo d'adoption reste obligatoire).
-        if (data.photoReservation) afficherPhotoReservation(data.photoReservation);
+        if (data.photoReservation) afficherPhotoAnimal(data.photoReservation, 'reservation', null);
 
         // Gérer le sexe (case à cocher radio) — cherche la case dont le texte correspond
         var sexeVal = data['sexe'] || data['check_sexe'] || data['check_sexe_chat'] || '';
@@ -1144,13 +1144,20 @@ function appliquerPrefill() {
 }
 
 // ============================================================
-// PHOTO DE RÉSERVATION REPRISE DANS L'ADOPTION
-// À la réservation, la photo est (en plus de l'envoi vers Drive)
-// enregistrée dans animaux_photos (source = 'reservation'), version
-// réduite à 800 px. À l'adoption, dès que l'animal est choisi, on
-// l'affiche en référence dans #photoReservationPreview (zone "no-print",
-// donc jamais dans le PDF). La photo d'adoption reste obligatoire.
+// PHOTO DE L'ANIMAL REPRISE D'UN FORMULAIRE À L'AUTRE
+// Chaque formulaire qui prend une photo (arrivée, réservation, famille
+// d'accueil...) l'enregistre aussi dans animaux_photos (version 800 px,
+// avec son origine dans "source"). Quand un animal est choisi dans un
+// formulaire, sa dernière photo, toutes origines confondues, s'affiche
+// en référence dans #photoPrecedentePreview (zone "no-print", jamais
+// dans le PDF). La photo du formulaire en cours reste obligatoire.
 // ============================================================
+
+var LIBELLES_SOURCE_PHOTO = {
+    arrivee: "lors de l'arrivée",
+    reservation: 'lors de la réservation',
+    famille_accueil: "lors de l'accueil en famille d'accueil"
+};
 
 /** Enregistre la photo du champ #photoAnimal dans animaux_photos. */
 async function enregistrerPhotoAnimalEnBase(animalId, source) {
@@ -1175,21 +1182,28 @@ async function enregistrerPhotoAnimalEnBase(animalId, source) {
     return true;
 }
 
-/** Affiche (ou masque, si url vide) la photo de réservation en référence. */
-function afficherPhotoReservation(url) {
-    var zone = document.getElementById('photoReservationPreview');
+/** Affiche (ou masque, si url vide) la photo précédente en référence. */
+function afficherPhotoAnimal(url, source, dateIso) {
+    var zone = document.getElementById('photoPrecedentePreview');
     if (!zone) return;
     zone.innerHTML = '';
     if (!url) { zone.style.display = 'none'; return; }
 
+    var libelle = LIBELLES_SOURCE_PHOTO[source] || 'précédemment';
+    var dateTxt = '';
+    if (dateIso) {
+        var d = new Date(dateIso);
+        if (!isNaN(d)) dateTxt = ' (' + d.toLocaleDateString('fr-FR') + ')';
+    }
+
     var titre = document.createElement('p');
     titre.className = 'bold blue no-print';
     titre.style.cssText = 'margin:0 0 6px;';
-    titre.textContent = '📷 Photo prise lors de la réservation';
+    titre.textContent = '📷 Photo prise ' + libelle + dateTxt;
 
     var img = document.createElement('img');
     img.src = url;
-    img.alt = 'Photo réservation';
+    img.alt = 'Photo précédente de l\'animal';
     img.style.cssText = 'max-width:200px;max-height:150px;border:1px solid #ccc;border-radius:4px;display:block;';
 
     var bouton = document.createElement('button');
@@ -1215,24 +1229,24 @@ function afficherPhotoReservation(url) {
     zone.style.display = 'block';
 }
 
-/** Cherche la dernière photo de réservation de l'animal et l'affiche. */
-var _chargementPhotoReservation = 0;
-async function chargerPhotoReservation(animalId) {
-    var token = ++_chargementPhotoReservation;
-    if (!animalId) { afficherPhotoReservation(null); return; }
+/** Cherche la dernière photo de l'animal (toutes origines) et l'affiche. */
+var _chargementPhotoAnimal = 0;
+async function chargerPhotoAnimal(animalId) {
+    var token = ++_chargementPhotoAnimal;
+    if (!animalId) { afficherPhotoAnimal(null); return; }
     try {
         var res = await supabaseClient.from('animaux_photos')
-            .select('url')
+            .select('url, source, cree_le')
             .eq('animal_id', animalId)
-            .eq('source', 'reservation')
             .order('cree_le', { ascending: false })
             .limit(1);
-        if (token !== _chargementPhotoReservation) return; // animal changé entre-temps
+        if (token !== _chargementPhotoAnimal) return; // animal changé entre-temps
         if (res.error) throw res.error;
-        afficherPhotoReservation(res.data && res.data[0] ? res.data[0].url : null);
+        var p = res.data && res.data[0];
+        afficherPhotoAnimal(p ? p.url : null, p ? p.source : null, p ? p.cree_le : null);
     } catch (e) {
-        console.error('[Photo réservation] Lecture impossible :', e.message || e);
-        afficherPhotoReservation(null);
+        console.error('[Photo animal] Lecture impossible :', e.message || e);
+        afficherPhotoAnimal(null);
     }
 }
 
