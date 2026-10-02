@@ -365,6 +365,8 @@ async function declarerArrivee() {
         document.getElementById('arr-prenom-personne').value.trim(),
         document.getElementById('arr-nom-personne').value.trim(),
         nom, date);
+      // Mémorise aussi la photo en base (data = id du nouvel animal)
+      if (!(await enregistrerPhotoAnimalEnBase(data, 'arrivee'))) photoOk = false;
     } catch (ePhoto) {
       console.error('Erreur envoi photo :', ePhoto);
       photoOk = false;
