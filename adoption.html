@@ -182,7 +182,7 @@ AVEC <input type="text" class="editable editable-medium" id="produitAntiPuces" d
  <p class="mt-20"><strong><span class="red">Pièces justificatives obligatoires à nous fournir :</span></strong></p>
 
 <!-- Photo prise lors de la réservation (référence, si formulaire préremplié) -->
-<div class="section no-print" id="photoReservationPreview" style="display:none;"></div>
+<div class="section no-print" id="photoPrecedentePreview" style="display:none;"></div>
 
 <!-- Photo de l'animal -->
 <div class="section">
@@ -1074,7 +1074,7 @@ var selecteurAnimal = initSelecteurAnimal({
             data.animal.sexe === 'M' ? 'Mâle' : (data.animal.sexe === 'F' ? 'Femelle' : null));
     },
     onSelect: function(animalId, reservationId) {
-        chargerPhotoReservation(animalId);
+        chargerPhotoAnimal(animalId);
         if (animalId && !reservationId) {
             afficherPopupAttention("Attention : ce chat n'a pas été réservé avant cette adoption.");
         }
