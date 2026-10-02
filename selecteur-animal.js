@@ -136,6 +136,16 @@ function initSelecteurAnimal(config) {
         dropdown.style.display = 'block';
     }
 
+    // Les dates arrivent de la base au format AAAA-MM-JJ. Un champ de type
+    // "date" les affiche tout seul selon la langue du navigateur, mais un
+    // champ texte (ex. "Date de naissance / âge approximatif") les afficherait
+    // telles quelles : on les met donc au format français JJ/MM/AAAA.
+    function valeurPourChamp(el, valeur) {
+        if (el.type === 'date') return valeur;
+        var m = String(valeur).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        return m ? m[3] + '/' + m[2] + '/' + m[1] : valeur;
+    }
+
     async function choisir(animalId) {
         try {
             const { data, error } = await supabaseClient.rpc('obtenir_animal_pour_formulaire', { p_animal_id: animalId });
@@ -152,7 +162,7 @@ function initSelecteurAnimal(config) {
                 var champAnimal = config.champsVerrouilles[id];
                 var el = document.getElementById(id);
                 if (el && data.animal[champAnimal] !== undefined && data.animal[champAnimal] !== null) {
-                    el.value = data.animal[champAnimal];
+                    el.value = valeurPourChamp(el, data.animal[champAnimal]);
                     el.readOnly = true;
                     el.style.background = '#f0f0f0';
                 }
@@ -161,7 +171,7 @@ function initSelecteurAnimal(config) {
                 var champAnimal = config.champsModifiables[id];
                 var el = document.getElementById(id);
                 if (el && data.animal[champAnimal] !== undefined && data.animal[champAnimal] !== null) {
-                    el.value = data.animal[champAnimal];
+                    el.value = valeurPourChamp(el, data.animal[champAnimal]);
                 }
             });
 
@@ -170,7 +180,7 @@ function initSelecteurAnimal(config) {
                     var champPersonne = config.champsPersonne[id];
                     var el = document.getElementById(id);
                     if (el && data.personne[champPersonne] !== undefined && data.personne[champPersonne] !== null) {
-                        el.value = data.personne[champPersonne];
+                        el.value = valeurPourChamp(el, data.personne[champPersonne]);
                     }
                 });
             }
