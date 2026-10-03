@@ -1217,7 +1217,6 @@ async function _saveFormOriginal() {
             p_animal_id: selecteurAnimal.getAnimalId()
         });
 
-        masquerPopupChargement();
         if (error) throw error;
 
         dernierAdoptionId = adoptionId;
@@ -1273,8 +1272,10 @@ async function _saveFormOriginal() {
         var btnPrint = document.querySelector('.btn-print');
         if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
         if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
+        masquerPopupChargement();
         afficherMessage('Formulaire enregistré<br>Vous pouvez imprimer' + avertissementMail);
     } catch (err) {
+        masquerPopupChargement();
         console.error(err);
         alert('Erreur lors de la sauvegarde : ' + (err.message || err));
     } finally {
