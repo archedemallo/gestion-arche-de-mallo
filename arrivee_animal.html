@@ -60,13 +60,6 @@
   </div>
 </div>
 
-<div id="popup-loading" class="popup-overlay">
-  <div class="popup-box">
-    <div class="popup-icon">⏳</div>
-    <p>Enregistrement en cours…<br>Merci de patienter.</p>
-  </div>
-</div>
-
 <div id="popup-succes" class="popup-overlay" onclick="if(event.target===this)fermerPopupSucces()">
   <div class="popup-box">
     <div class="popup-icon">✅</div>
@@ -333,7 +326,7 @@ async function declarerArrivee() {
   const fichierPhoto = document.getElementById('photoAnimal').files[0];
   if (!fichierPhoto) { msg.textContent = 'La photo de l\'animal est obligatoire.'; msg.className = 'msg err'; return; }
 
-  document.getElementById('popup-loading').classList.add('show');
+  afficherPopupChargement();
 
   try {
     const { data, error } = await supabaseClient.rpc('creer_arrivee_animal', {
@@ -460,7 +453,7 @@ async function declarerArrivee() {
     msg.textContent = 'Erreur : ' + (err.message || err);
     msg.className = 'msg err';
   } finally {
-    document.getElementById('popup-loading').classList.remove('show');
+    masquerPopupChargement();
   }
 }
 </script>
