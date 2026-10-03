@@ -143,6 +143,7 @@
                 </span>
             </div>
         </div>
+        <p id="totalCaution" class="no-print" style="font-size:12px;margin:6px 0 0;"></p>
     </div>
 
     <!-- Conditions -->
@@ -231,7 +232,41 @@
         if (!box) return;
         box.classList.toggle('checked');
         if (detail) detail.style.display = box.classList.contains('checked') ? 'inline' : 'none';
+        majTotalCaution();
     }
+
+    var CAUTION_ATTENDUE = 100;
+    var MODES_CAUTION = [
+        ['pay_cb', 'montant_cb', 'CB'],
+        ['pay_cheque', 'montant_cheque', 'Chèque'],
+        ['pay_espece', 'montant_espece', 'Espèces'],
+        ['pay_virement', 'montant_virement', 'Virement']
+    ];
+
+    // Total des seuls modes cochés + liste des modes cochés sans montant
+    function montantsCautionSaisis() {
+        var total = 0, sansMontant = [];
+        MODES_CAUTION.forEach(function(m) {
+            var box = document.getElementById(m[0]);
+            var champ = document.getElementById(m[1]);
+            if (box && box.classList.contains('checked')) {
+                var v = parseFloat(champ && champ.value) || 0;
+                if (v <= 0) sansMontant.push(m);
+                total += v;
+            }
+        });
+        return { total: total, sansMontant: sansMontant };
+    }
+
+    function majTotalCaution() {
+        var el = document.getElementById('totalCaution');
+        if (!el) return;
+        var c = montantsCautionSaisis();
+        var ok = Math.round(c.total * 100) === CAUTION_ATTENDUE * 100;
+        el.textContent = 'Total saisi : ' + c.total.toFixed(2).replace('.', ',') + ' € / ' + CAUTION_ATTENDUE + ' €';
+        el.style.color = ok ? '#2e7d32' : '#c00000';
+    }
+    document.getElementById('paiement-section').addEventListener('input', majTotalCaution);
 
     validateRequiredFields = function() {
         var missing = [];
@@ -285,6 +320,26 @@
 
         // N° chèque obligatoire si Chèque coché
         verifierNumerosCheques(missing);
+
+        // Montants de la caution : chaque mode coché doit avoir un montant, et le total doit faire 100 €
+        MODES_CAUTION.forEach(function(m) {
+            var ch = document.getElementById(m[1]);
+            if (ch) ch.style.borderBottom = '';
+        });
+        var cau = montantsCautionSaisis();
+        cau.sansMontant.forEach(function(m) {
+            missing.push('Montant ' + m[2]);
+            var ch = document.getElementById(m[1]);
+            if (ch) ch.style.borderBottom = '2px solid red';
+        });
+        if (payCoche && !cau.sansMontant.length && Math.round(cau.total * 100) !== CAUTION_ATTENDUE * 100) {
+            missing.push('Le total des montants (' + cau.total.toFixed(2).replace('.', ',') + ' €) doit être égal à la caution de ' + CAUTION_ATTENDUE + ' €');
+            MODES_CAUTION.forEach(function(m) {
+                var box = document.getElementById(m[0]);
+                var ch = document.getElementById(m[1]);
+                if (box && box.classList.contains('checked') && ch) ch.style.borderBottom = '2px solid red';
+            });
+        }
 
         // Lu et approuvé
         ['luApprouve1_pm','luApprouve2_pm'].forEach(function(id) {
@@ -364,8 +419,7 @@ chargerListeSaisisseurs();
         var codePostal = (document.getElementById('codePostalEmprunteur') || {}).value || null;
         var ville = (document.getElementById('villeEmprunteur') || {}).value || null;
         var saisiPar = (document.getElementById('saisiPar') || {}).value || null;
-        var montantCaution = ['montant_cb', 'montant_cheque', 'montant_espece', 'montant_virement']
-            .reduce(function(somme, id) { return somme + (parseFloat(data[id]) || 0); }, 0);
+        var montantCaution = montantsCautionSaisis().total;
 
         afficherPopupChargement();
 
