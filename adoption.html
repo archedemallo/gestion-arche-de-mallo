@@ -1265,6 +1265,15 @@ async function _saveFormOriginal() {
                 console.error('Erreur envoi PDF/mail :', e);
                 avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué. L\'adoption est bien enregistrée — vous pouvez imprimer le contrat avec le bouton "Imprimer" en attendant.';
             }
+            // Toutes les photos prises (animal, CNI, domicile, CBS, carnet de
+            // santé) regroupées dans un PDF déposé sur Drive et lié à
+            // l'adoption en base (visible dans la fiche de la personne).
+            try {
+                await deposerPhotosAdoption(adoptionId, data);
+            } catch (ePhotosPdf) {
+                console.error('Erreur dépôt PDF des photos :', ePhotosPdf);
+                avertissementMail += ' ⚠️ Le dépôt des photos (PDF) sur Drive a échoué : ' + (ePhotosPdf.message || ePhotosPdf);
+            }
             // ← AJOUTÉ : la photo de l'animal (prise plus haut dans le
             // formulaire, incluse dans le PDF) n'était jamais envoyée
             // séparément vers le Drive — contrairement à reservation.html
@@ -1291,6 +1300,62 @@ async function _saveFormOriginal() {
     } finally {
         masquerPopupChargement();
     }
+}
+
+// Regroupe toutes les photos prises dans un seul PDF (même circuit que le
+// contrat : génération PDF -> Drive -> lien enregistré dans soumission_fichiers).
+async function deposerPhotosAdoption(adoptionId, data) {
+    var photos = [
+        { id: 'photoAnimal',        titre: "Photo de l'animal" },
+        { id: 'photoCNI_recto',     titre: "Pièce d'identité — recto" },
+        { id: 'photoCNI_verso',     titre: "Pièce d'identité — verso" },
+        { id: 'photoDomicile_1',    titre: 'Justificatif de domicile — page 1' },
+        { id: 'photoDomicile_2',    titre: 'Justificatif de domicile — page 2' },
+        { id: 'photoCBS_1',         titre: 'Certificat de bonne santé' },
+        { id: 'photoCarnetSante_1', titre: 'Carnet de santé — page vaccin 1' },
+        { id: 'photoCarnetSante_2', titre: 'Carnet de santé — page vaccin 2' }
+    ];
+    var blocs = [];
+    for (var i = 0; i < photos.length; i++) {
+        var input = document.getElementById(photos[i].id);
+        if (!input || !input.files || !input.files[0]) continue;
+        var b64 = await new Promise(function(resolve) {
+            redimensionnerImage(input.files[0], resolve, 1400);
+        });
+        if (!b64) {
+            console.error('[Photo] Image illisible, ignorée :', photos[i].id);
+            continue;
+        }
+        blocs.push('<div style="page-break-inside:avoid;margin:0 0 22px;">' +
+            '<p style="font-weight:bold;color:#c96b2a;margin:0 0 6px;">' + photos[i].titre + '</p>' +
+            '<img src="data:image/jpeg;base64,' + b64 + '" style="max-width:100%;max-height:22cm;border:1px solid #ccc;"></div>');
+    }
+    if (!blocs.length) return;
+
+    var esc = function(x) { return String(x || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); };
+    var animal = data.nomAdoption || data.nomUsuel || '';
+    var html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><style>' +
+        'body{font-family:Arial,sans-serif;color:#3d2b1f;margin:28px;font-size:13px;} h1{font-size:18px;color:#c96b2a;margin:0 0 4px;}' +
+        '.sous{color:#8a7968;margin-bottom:18px;}</style></head><body>' +
+        '<h1>Photos et pièces — adoption de ' + esc(animal) + '</h1>' +
+        '<div class="sous">' + esc(((data.prenom || '') + ' ' + (data.nom || '')).trim()) + ' — ' + esc(data.dateFait || '') + '</div>' +
+        blocs.join('') + '</body></html>';
+
+    var pdfBytes = await genererPdfDepuisHtml(html);
+    var filename = ['Photos', data.nom || 'Inconnu', animal || 'Animal', data.dateFait || '']
+        .filter(Boolean).join('_').replace(/\s+/g, '_');
+    await enregistrerPdfDrive({
+        onglet: data.onglet,
+        prenom: data.prenom,
+        nom: data.nom,
+        animal: animal,
+        dateDossier: data.dateFait || null,
+        filename: filename,
+        pdfBytes: pdfBytes,
+        tableSource: 'adoptions',
+        enregistrementId: adoptionId,
+        typeFichier: 'Photos et pièces justificatives'
+    });
 }
 
 // ← AJOUTÉ : envoi de la photo de l'animal après sauvegarde réussie
