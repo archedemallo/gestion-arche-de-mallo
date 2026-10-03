@@ -507,7 +507,6 @@ async function saveForm() {
             p_adoption_id: adoptionIdDepuisPrefill
         });
 
-        masquerPopupChargement();
         if (error) throw error;
 
         var avertissementMail = '';
@@ -558,6 +557,7 @@ async function saveForm() {
             btnPrint.className = 'btn btn-print';
             btnPrint.disabled = false;
         }
+        masquerPopupChargement();
         afficherMessage('Formulaire enregistré<br>Vous pouvez imprimer' + avertissementMail);
 
         // Ouvre Dons.html, pré-rempli avec les infos de l'adhérent et le
@@ -569,6 +569,7 @@ async function saveForm() {
             ouvrirFormulaireDon(bienfaiteurCoche ? 'donBienfaiteur' : 'donSympatisant');
         }
     } catch (err) {
+        masquerPopupChargement();
         console.error(err);
         alert('Erreur lors de la sauvegarde : ' + (err.message || err));
     } finally {
