@@ -399,7 +399,6 @@ chargerListeSaisisseurs();
                 p_saisi_par_id: saisiPar
             });
 
-            masquerPopupChargement();
             if (error) throw error;
 
             var avertissementMail = '';
@@ -442,8 +441,10 @@ chargerListeSaisisseurs();
             var btnPrint = document.querySelector('.btn-print');
             if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
             if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
+            masquerPopupChargement();
             afficherMessage('Formulaire enregistré<br>Vous pouvez imprimer' + avertissementMail);
         } catch (err) {
+            masquerPopupChargement();
             console.error(err);
             alert('Erreur lors de la sauvegarde : ' + (err.message || err));
         } finally {
