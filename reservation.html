@@ -550,6 +550,9 @@ chargerListeSaisisseurs();
             }
         }
 
+        // N° chèque obligatoire (chèque unique ou plusieurs chèques)
+        verifierNumerosCheques(missing);
+
         // Lu et approuvé
         ['luApprouve1_resa', 'luApprouve2_resa'].forEach(function(id) {
             var el = document.getElementById(id);
