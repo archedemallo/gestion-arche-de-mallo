@@ -615,7 +615,6 @@ async function saveForm() {
             p_adoption_id: adoptionIdDepuisPrefill
         });
 
-        masquerPopupChargement();
         if (error) throw error;
 
         // Transmis au popup du reçu fiscal (voir ouvrirRecuFiscal) pour qu'il
@@ -665,8 +664,10 @@ async function saveForm() {
         var btnPrint = document.querySelector('.btn-print');
         if (btnSave) { btnSave.textContent = 'Sauvegarde OK'; btnSave.className = 'btn btn-saved'; btnSave.disabled = true; }
         if (btnPrint) { btnPrint.textContent = 'Imprimer'; btnPrint.className = 'btn btn-print'; btnPrint.disabled = false; }
+        masquerPopupChargement();
         afficherMessage('Formulaire enregistré<br>Vous pouvez imprimer' + avertissementMail);
     } catch (err) {
+        masquerPopupChargement();
         console.error(err);
         alert('Erreur lors de la sauvegarde : ' + (err.message || err));
     } finally {
