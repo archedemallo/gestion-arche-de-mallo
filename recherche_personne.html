@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="logo_arche.png">
+<title>Recherche personne — L'Arche de Mallo</title>
+<style>
+  :root{ --cream:#faf7f2; --warm:#f0e8d8; --brown:#3d2b1f; --orange:#c96b2a; --grey:#8a7968; }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:Arial,sans-serif;background:var(--cream);color:var(--brown);}
+  header{background:#fff;border-bottom:3px solid var(--orange);padding:18px 24px;display:flex;align-items:center;gap:14px;}
+  header h1{font-size:16px;margin:0;}
+  header p{font-size:11px;color:var(--grey);margin:2px 0 0;}
+  .wrap{max-width:900px;margin:0 auto;padding:20px 16px 60px;}
+  .search-box{position:relative;margin-bottom:20px;}
+  .search-box input{width:100%;box-sizing:border-box;padding:12px 14px;font-size:14px;border:1px solid var(--warm);border-radius:10px;background:#fff;}
+  #liste-resultats{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid #ccc;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-height:320px;overflow-y:auto;z-index:1000;display:none;}
+  #liste-resultats .ligne{padding:9px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #f0f0f0;}
+  #liste-resultats .ligne:hover{background:#f5f5f5;}
+  #liste-resultats .ligne small{display:block;color:var(--grey);font-size:11.5px;margin-top:2px;}
+  .card{background:#fff;border:1px solid var(--warm);border-radius:12px;padding:16px 18px;margin-bottom:14px;}
+  .card h2{font-size:13px;margin:0 0 10px;color:var(--orange);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:12.5px;}
+  .grid2 .lbl{color:var(--grey);}
+  .full{grid-column:1/-1;}
+  .empty{color:var(--grey);font-size:12px;font-style:italic;}
+  .resume{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px;}
+  th{text-align:left;font-size:10px;color:var(--grey);text-transform:uppercase;padding:4px 6px;border-bottom:1px solid var(--warm);}
+  td{padding:5px 6px;border-bottom:1px solid #f2ece1;vertical-align:top;}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;background:var(--warm);font-size:10px;}
+  .lien-pdf{color:var(--orange);text-decoration:none;font-size:11px;white-space:nowrap;}
+  .lien-pdf:hover{text-decoration:underline;}
+  .rien{color:var(--grey);font-size:11.5px;font-style:italic;margin-top:4px;}
+  .table-scroll{overflow-x:auto;}
+  @media (max-width:600px){ .grid2{grid-template-columns:1fr;} }
+  #login-err{color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;}
+</style>
+</head>
+<body>
+
+<div id="login-screen" style="position:fixed;inset:0;background:var(--cream);z-index:99999;display:flex;align-items:center;justify-content:center;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid var(--warm);border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:var(--grey);margin-bottom:16px;">Connexion requise.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+
+<header>
+  <div>
+    <h1>Recherche personne</h1>
+    <p>Retrouvez la fiche complète d'une personne ou d'une entreprise connue de l'association</p>
+  </div>
+</header>
+<div class="wrap">
+  <div class="search-box">
+    <input type="text" id="recherche-input" placeholder="Nom, prénom, entreprise, email ou téléphone…" autocomplete="off">
+    <div id="liste-resultats"></div>
+  </div>
+  <div id="resultat"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
+<script src="supabase-config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script>
+const supabaseClient = creerClientSupabase();
+initSessionSuivi();
+
+// ------------------------------------------------------------
+// Utilitaires d'affichage
+// ------------------------------------------------------------
+function escH(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+function fmtDate(d) { if (!d) return '—'; const s=String(d).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const p=s.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; } return s; }
+function nombre(v) { return (v===null||v===undefined||v==='') ? null : Number(v); }
+function fmtEuro(v) { const n = nombre(v); return n===null || isNaN(n) ? '—' : n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
+function nomPersonne(p) {
+  if (!p) return '—';
+  if (p.type_personne === 'entreprise') return p.raison_sociale || '—';
+  return `${p.prenom||''} ${p.nom||''}`.trim() || '—';
+}
+function nomAnimal(a) {
+  if (!a) return '—';
+  return escH(a.nom_usuel || '—') + (a.nom_adoption ? ' <span class="empty">(' + escH(a.nom_adoption) + ')</span>' : '');
+}
+function liensPdf(fichiers) {
+  if (!fichiers || !fichiers.length) return '<span class="empty">Aucun document</span>';
+  return fichiers.map((f,i) => `<a class="lien-pdf" href="${escH(f.url)}" target="_blank" rel="noopener">📄 ${escH(f.type_fichier||('Document '+(i+1)))}</a>`).join('<br>');
+}
+// Résumé du règlement : "Virement 20,00 € · Chèque n°123 (20,00 €)"
+function reglement(r) {
+  const parts = [];
+  if (nombre(r.montant_virement)) parts.push('Virement ' + fmtEuro(r.montant_virement));
+  if (nombre(r.montant_espece))   parts.push('Espèces ' + fmtEuro(r.montant_espece));
+  if (nombre(r.montant_cb))       parts.push('CB ' + fmtEuro(r.montant_cb));
+  (r.cheques || []).forEach(c => {
+    parts.push('Chèque' + (c.numero_cheque ? ' n°' + escH(c.numero_cheque) : '') + (nombre(c.montant) ? ' (' + fmtEuro(c.montant) + ')' : ''));
+  });
+  return parts.length ? parts.join('<br>') : '<span class="empty">—</span>';
+}
+function listeAnimaux(animaux) {
+  if (!animaux || !animaux.length) return '<span class="empty">—</span>';
+  return animaux.map(nomAnimal).join(', ');
+}
+function viderResultat() { document.getElementById('resultat').innerHTML = ''; }
+
+// ------------------------------------------------------------
+// Recherche (liste de suggestions)
+// ------------------------------------------------------------
+const input = document.getElementById('recherche-input');
+const liste = document.getElementById('liste-resultats');
+let timer = null;
+let generation = 0;   // les réponses arrivées en retard sont ignorées
+
+function fermerListe() {
+  generation++;
+  clearTimeout(timer);
+  liste.style.display = 'none';
+  liste.innerHTML = '';
+}
+
+async function rechercher(texte) {
+  const maGeneration = ++generation;
+  try {
+    const { data, error } = await supabaseClient.rpc('rechercher_personnes', { p_recherche: texte });
+    if (error) throw error;
+    if (maGeneration !== generation || document.activeElement !== input) return;
+    afficherListe(data || []);
+  } catch (e) {
+    console.error('[Recherche personne] Erreur :', e.message);
+    if (maGeneration === generation) {
+      liste.innerHTML = '<div style="padding:9px 14px;color:#c00000;font-size:13px;">Erreur de recherche : ' + escH(e.message) + '</div>';
+      liste.style.display = 'block';
+    }
+  }
+}
+
+function afficherListe(personnes) {
+  liste.innerHTML = '';
+  if (!personnes.length) {
+    liste.innerHTML = '<div style="padding:9px 14px;color:var(--grey);font-size:13px;">Aucune personne trouvée</div>';
+    liste.style.display = 'block';
+    return;
+  }
+  personnes.forEach(p => {
+    const ligne = document.createElement('div');
+    ligne.className = 'ligne';
+    const detail = [p.ville, p.email, p.telephone].filter(Boolean).join(' · ');
+    ligne.innerHTML = '<strong>' + escH(nomPersonne(p)) + '</strong>' +
+      (p.type_personne === 'entreprise' ? ' <span class="badge">entreprise</span>' : '') +
+      (detail ? '<small>' + escH(detail) + '</small>' : '');
+    // Garde le focus dans le champ pendant le clic
+    ligne.addEventListener('mousedown', e => e.preventDefault());
+    ligne.addEventListener('click', () => {
+      input.value = nomPersonne(p);
+      fermerListe();
+      chargerFiche(p.id);
+    });
+    liste.appendChild(ligne);
+  });
+  liste.style.display = 'block';
+}
+
+input.addEventListener('input', () => {
+  clearTimeout(timer);
+  const texte = input.value.trim();
+  if (texte.length < 2) { fermerListe(); if (!texte) viderResultat(); return; }
+  generation++;
+  timer = setTimeout(() => rechercher(texte), 250);
+});
+input.addEventListener('focus', () => { const t = input.value.trim(); if (t.length >= 2) rechercher(t); });
+input.addEventListener('keydown', e => { if (e.key === 'Escape' || e.key === 'Tab') fermerListe(); });
+input.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== input) fermerListe(); }, 200));
+document.addEventListener('click', e => { if (!e.target.closest('.search-box')) fermerListe(); });
+
+// ------------------------------------------------------------
+// Fiche complète
+// ------------------------------------------------------------
+async function chargerFiche(personneId) {
+  const zone = document.getElementById('resultat');
+  zone.innerHTML = '<div class="empty">Chargement…</div>';
+  const { data, error } = await supabaseClient.rpc('obtenir_fiche_personne', { p_personne_id: personneId });
+  if (error) { zone.innerHTML = `<div class="empty">Erreur : ${escH(error.message)}</div>`; return; }
+  if (!data) { zone.innerHTML = '<div class="empty">Personne introuvable.</div>'; return; }
+  render(data);
+}
+
+function ligneInfo(label, valeur) {
+  if (valeur === null || valeur === undefined || valeur === '') return '';
+  return `<div><span class="lbl">${label} :</span> ${valeur}</div>`;
+}
+
+function render(d) {
+  const p = d.personne;
+  const estEntreprise = p.type_personne === 'entreprise';
+  let html = '';
+
+  // ---- Identité ----
+  const adresse = [p.adresse, [p.code_postal, p.ville].filter(Boolean).join(' '), (p.pays && p.pays !== 'France') ? p.pays : '']
+    .filter(Boolean).map(escH).join(', ');
+  html += `<div class="card"><h2>${estEntreprise ? '🏢' : '👤'} ${escH(nomPersonne(p))}
+      <span class="badge">${estEntreprise ? 'Entreprise' : 'Particulier'}</span></h2>
+    <div class="grid2">
+      ${estEntreprise ? '' : ligneInfo('Civilité', escH(p.civilite))}
+      ${estEntreprise ? ligneInfo('Raison sociale', escH(p.raison_sociale)) : ''}
+      ${estEntreprise ? ligneInfo('Représentant', escH(p.representant)) : ''}
+      ${estEntreprise ? ligneInfo('SIREN', escH(p.siren)) : ''}
+      ${estEntreprise ? ligneInfo('Forme juridique', escH(p.forme_juridique)) : ''}
+      <div class="full"><span class="lbl">Adresse :</span> ${adresse || '—'}</div>
+      <div><span class="lbl">Email :</span> ${p.email ? `<a href="mailto:${escH(p.email)}">${escH(p.email)}</a>` : '—'}</div>
+      <div><span class="lbl">Téléphone :</span> ${p.telephone ? `<a href="tel:${escH(p.telephone)}">${escH(p.telephone)}</a>` : '—'}</div>
+      ${estEntreprise ? '' : `<div><span class="lbl">Naissance :</span> ${fmtDate(p.date_naissance)}</div>`}
+      <div><span class="lbl">Dans la base depuis :</span> ${fmtDate(p.created_at)}</div>
+    </div>
+    ${resumeHtml(d)}</div>`;
+
+  // ---- Sections ----
+  const sections = [
+    { key:'adhesions', titre:'🎫 Adhésion(s)',
+      cols:['Date','Type','Cotisation','Don bienf.','Don sympath.','Total','Règlement','Documents'],
+      row:r=>[fmtDate(r.date_adhesion), escH(r.type_adhesion||'—'), fmtEuro(r.cotisation_adherent), fmtEuro(r.don_bienfaiteur), fmtEuro(r.don_sympathisant), '<strong>'+fmtEuro(r.montant_total)+'</strong>', reglement(r), liensPdf(r.fichiers)] },
+    { key:'dons', titre:'💝 Don(s)',
+      cols:['Date','Montant','Nature','Règlement','N° reçu fiscal','Documents'],
+      row:r=>[fmtDate(r.date_signature), '<strong>'+fmtEuro(r.montant)+'</strong>'+(r.don_anonyme?' <span class="badge">anonyme</span>':''), escH(r.description_nature||'—'), reglement(r), escH(r.numero_recu_fiscal||'—'), liensPdf(r.fichiers)] },
+    { key:'adoptions', titre:'🏠 Adoption(s)',
+      cols:['Date','Animal','Participation','Règlement','Documents'],
+      row:r=>[fmtDate(r.date_adoption), nomAnimal(r.animal), '<strong>'+fmtEuro(r.total_participation)+'</strong>', reglement(r), liensPdf(r.fichiers)] },
+    { key:'reservations', titre:'📅 Réservation(s)',
+      cols:['Date','Type','Animal','Montant','Règlement','Documents'],
+      row:r=>[fmtDate(r.date_reservation), escH(r.type_reservation||'—'), r.animal?nomAnimal(r.animal):escH(r.signes_particuliers||'—'), fmtEuro(r.montant), reglement(r), liensPdf(r.fichiers)] },
+    { key:'depots', titre:'📥 Dépôt(s) de chats',
+      cols:['Date','Commune','Animaux','Documents'],
+      row:r=>[fmtDate(r.date_depot), escH(r.commune||'—'), listeAnimaux(r.animaux), liensPdf(r.fichiers)] },
+    { key:'abandons', titre:'💔 Abandon(s)',
+      cols:['Date','Animal','Cause','Documents'],
+      row:r=>[fmtDate(r.date_fait), nomAnimal(r.animal), escH(r.cause_abandon||'—'), liensPdf(r.fichiers)] },
+    { key:'familles_accueil', titre:'🤝 Famille d\'accueil',
+      cols:['Type','Du','Au','Animal','Documents'],
+      row:r=>[escH(r.type_accueil||'—'), fmtDate(r.date_debut), r.date_fin?fmtDate(r.date_fin):'en cours', nomAnimal(r.animal), liensPdf(r.fichiers)] },
+    { key:'attestations', titre:'📜 Attestation(s)',
+      cols:['Date','Type','Animal','Motif','Documents'],
+      row:r=>[fmtDate(r.date_fait), escH(r.type_attestation||'—'), nomAnimal(r.animal), escH(r.motif||'—'), liensPdf(r.fichiers)] },
+    { key:'materiel', titre:'🪤 Prêt / retour de matériel',
+      cols:['Date','Mouvement','Matériel','Documents'],
+      row:r=>[fmtDate(r.date_mouvement), r.type_mouvement==='retour'?'Retour':'Prêt', escH(r.materiel||'—'), liensPdf(r.fichiers)] },
+    { key:'certificats', titre:'📝 Certificat(s) d\'engagement',
+      cols:['Date','Documents'],
+      row:r=>[fmtDate(r.date_fait), liensPdf(r.fichiers)] },
+  ];
+
+  const vides = [];
+  sections.forEach(sec => {
+    const rows = d[sec.key] || [];
+    if (!rows.length) { vides.push(sec.titre.replace(/^\S+\s/, '')); return; }
+    html += `<div class="card"><h2>${sec.titre} <span class="badge">${rows.length}</span></h2>
+      <div class="table-scroll"><table><thead><tr>${sec.cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>
+        ${rows.map(r=>`<tr>${sec.row(r).map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}
+      </tbody></table></div></div>`;
+  });
+  if (vides.length === sections.length) {
+    html += '<div class="card"><div class="empty">Aucun enregistrement pour cette personne.</div></div>';
+  } else if (vides.length) {
+    html += `<div class="rien">Aucun enregistrement : ${vides.map(escH).join(', ')}.</div>`;
+  }
+
+  document.getElementById('resultat').innerHTML = html;
+}
+
+// Pastilles de synthèse en haut de fiche
+function resumeHtml(d) {
+  const pastilles = [];
+  const total = (rows, champ) => (rows||[]).reduce((s,r)=> s + (Number(r[champ])||0), 0);
+  if ((d.adhesions||[]).length) {
+    const derniere = d.adhesions.map(a=>a.date_adhesion).filter(Boolean).sort().pop();
+    pastilles.push(`Adhérent(e) — dernière adhésion ${fmtDate(derniere)}`);
+  }
+  if ((d.dons||[]).length)         pastilles.push(`${d.dons.length} don(s) — ${fmtEuro(total(d.dons,'montant'))}`);
+  if ((d.adoptions||[]).length)    pastilles.push(`${d.adoptions.length} adoption(s)`);
+  if ((d.reservations||[]).length) pastilles.push(`${d.reservations.length} réservation(s)`);
+  if ((d.depots||[]).length)       pastilles.push(`${d.depots.length} dépôt(s)`);
+  if ((d.abandons||[]).length)     pastilles.push(`${d.abandons.length} abandon(s)`);
+  if ((d.familles_accueil||[]).length) pastilles.push(`${d.familles_accueil.length} accueil(s)`);
+  return pastilles.length ? `<div class="resume">${pastilles.map(t=>`<span class="badge">${escH(t)}</span>`).join('')}</div>` : '';
+}
+</script>
+</body>
+</html>
