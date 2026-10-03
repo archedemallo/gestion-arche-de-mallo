@@ -26,9 +26,10 @@
   #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
   .empty{color:var(--grey);font-size:12px;font-style:italic;}
 
-  .entete-print{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:16px;background:#fff;border-bottom:3px solid var(--orange);}
+  .entete-print{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:18px;padding:16px;background:#fff;border-bottom:3px solid var(--orange);}
+  .entete-print::before{content:'';}
   .entete-print img{width:80px;height:80px;object-fit:contain;}
-  .entete-print .entete-left{display:flex;align-items:center;gap:16px;}
+  .entete-print .entete-left{display:flex;align-items:center;justify-content:center;gap:16px;}
   .entete-print p{margin:0;font-size:11px;line-height:1.5;}
   .entete-print p.bold{font-weight:bold;}
   .entete-print .entete-right{text-align:right;}
@@ -115,11 +116,11 @@
     <div class="champ" style="max-width:260px;">
       <label>Espèce</label>
       <select id="filtre-espece">
-        <option value="chat" selected>Chat</option>
+        <option value="tous" selected>Toutes les espèces</option>
+        <option value="chat">Chat</option>
         <option value="chien">Chien</option>
         <option value="lapin">Lapin</option>
         <option value="autre">Autre</option>
-        <option value="tous">Toutes les espèces</option>
       </select>
     </div>
 
@@ -147,8 +148,6 @@
       </table>
     </div>
   </div>
-
-  <p class="no-print" style="font-size:12px;"><a href="index.html">← Retour à l'accueil</a></p>
 
 </div>
 
