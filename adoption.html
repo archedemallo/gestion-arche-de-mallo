@@ -423,7 +423,7 @@ AVEC <input type="text" class="editable editable-medium" id="produitAntiPuces" d
     </p>
     <p>
         <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox" id="autres_check"></span></span>
-		Autres : (préciser) <input type="text" class="editable editable-long" id="autresMotif">
+        Autres : (préciser) <input type="text" class="editable editable-long" id="autresMotif">
         <span class="blue"> montant : </span><input type="number" class="editable editable-num" id="autresMontant"><span class="red"> €</span>
     </p>
     <p>
@@ -751,7 +751,6 @@ function aperçuPhoto(input, previewId) {
     envoyerPhotos._enCours = true;
     
     var photos = [
-        { id: 'photoAnimal',        type: 'Photo_Animal'     },
         { id: 'photoCNI_recto',     type: 'CNI_Recto'        },
         { id: 'photoCNI_verso',     type: 'CNI_Verso'        },
         { id: 'photoDomicile_1',    type: 'Domicile_1'       },
@@ -768,6 +767,10 @@ function aperçuPhoto(input, previewId) {
         // reconstruit l'ISO à partir de dateAdoption pour le tri Drive).
         var dateAdoptionEl = document.getElementById('dateAdoption');
         var dateISODossier = (dateAdoptionEl && dateAdoptionEl.value) || new Date().toISOString().split('T')[0];
+        var prenomRaw = ((document.getElementById('prenom') || {}).value || '').trim();
+        var nomRaw    = ((document.getElementById('nom')    || {}).value || 'Inconnu').trim();
+        var animalRaw = (nomChat || 'Chat').trim();
+        var echecs = [];
 
         for (var i = 0; i < photos.length; i++) {
             var input = document.getElementById(photos[i].id);
@@ -787,7 +790,9 @@ function aperçuPhoto(input, previewId) {
                             imageBase64: base64,
                             mimeType:    'image/jpeg',
                             personne:    nom,
-                            animal:      chat,
+                            prenom:      prenomRaw,
+                            nom:         nomRaw,
+                            animal:      animalRaw,
                             dateDossier: dateISODossier
                         })
                     }).then(async function(resp) {
@@ -795,16 +800,21 @@ function aperçuPhoto(input, previewId) {
                         try { result = await resp.json(); } catch (e) { /* réponse non-JSON */ }
                         if (!resp.ok || result.status !== 'ok') {
                             console.error('[Photo] Échec de l\'envoi vers Drive :', result.message || ('HTTP ' + resp.status));
+                            echecs.push(photos[i].type);
                         }
                         resolve();
                     }).catch(function(e) {
                         console.error('[Photo] Erreur réseau lors de l\'envoi :', e);
+                        echecs.push(photos[i].type);
                         resolve();
                     });
                 });
             });
         }
-		envoyerPhotos._enCours = false;   // ← libérer à la fin
+        envoyerPhotos._enCours = false;   // ← libérer à la fin
+        if (echecs.length) {
+            afficherMessage('⚠️ Ces photos n\'ont pas pu être envoyées : ' + echecs.join(', '), 'erreur');
+        }
     }
 
 	// signature obligatoire
@@ -1352,7 +1362,7 @@ saveForm = async function() {
             return;
         }
     }
-	
+
     await _saveFormOriginal();
     // N'envoyer les photos QUE si la sauvegarde a réussi (formSaved = true)
     if (!formSaved) return;
@@ -1362,7 +1372,9 @@ saveForm = async function() {
     var nomChat     = (document.getElementById('nomUsuel')    || {}).value || '';
     var dateRaw     = (document.getElementById('dateAdoption')|| {}).value || today;
     var dateFr      = dateRaw ? dateRaw.split('-').reverse().join('-') : today;
-    await envoyerPhotos(nomAdoptant, nomChat, dateFr);
+    afficherPopupChargement('Envoi des photos en cours…');
+    try { await envoyerPhotos(nomAdoptant, nomChat, dateFr); }
+    finally { masquerPopupChargement(); }
 
     // Génération automatique du formulaire de don si "Dons libre" était coché
     if (donLibreCoche) {
