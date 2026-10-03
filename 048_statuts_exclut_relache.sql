@@ -42,6 +42,6 @@ begin
            or a.nom_usuel ilike '%' || btrim(p_recherche) || '%'
            or a.numero_interne ilike '%' || btrim(p_recherche) || '%')
     order by a.nom_usuel
-    limit 20;
+    limit case when p_contexte = 'statuts' then 500 else 20 end;
 end;
 $$;
