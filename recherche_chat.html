@@ -97,7 +97,16 @@ function render(d) {
   const a = d.animal, s = d.sterilisation;
   let html = '';
 
+  const photos = d.photos || [];
+  const libSource = { arrivee:"à l'arrivée", reservation:'à la réservation', famille_accueil:"en famille d'accueil" };
+  const photoHtml = photos.length
+    ? `<div style="margin-bottom:12px;"><a href="${escH(photos[0].url)}" target="_blank"><img src="${escH(photos[0].url)}" alt="Photo de ${escH(a.nom_usuel)}" style="max-width:260px;max-height:200px;border:1px solid #ddd;border-radius:8px;display:block;"></a>
+        <div class="lbl" style="margin-top:4px;">Photo ${libSource[photos[0].source]||''} ${photos[0].cree_le?'('+fmtDate(photos[0].cree_le)+')':''}</div>
+        ${photos.length>1 ? `<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">${photos.slice(1).map(ph=>`<a href="${escH(ph.url)}" target="_blank" title="${escH(libSource[ph.source]||'')} ${ph.cree_le?fmtDate(ph.cree_le):''}"><img src="${escH(ph.url)}" style="height:56px;border:1px solid #ddd;border-radius:4px;"></a>`).join('')}</div>` : ''}</div>`
+    : '<div class="empty" style="margin-bottom:8px;">Aucune photo enregistrée</div>';
+
   html += `<div class="card"><h2>🐱 ${escH(a.nom_usuel)} ${a.nom_adoption?('— '+escH(a.nom_adoption)):''} <span class="badge">${escH(a.statut_actuel||'—')}</span></h2>
+    ${photoHtml}
     <div class="grid2">
       <div><span class="lbl">Espèce / race :</span> ${escH(a.espece||'—')}${a.race?' — '+escH(a.race):''}</div>
       <div><span class="lbl">Sexe :</span> ${escH(a.sexe||'—')}</div>
@@ -112,6 +121,8 @@ function render(d) {
       ${a.signes_particuliers ? `<div style="grid-column:1/-1;"><span class="lbl">Signes particuliers :</span> ${escH(a.signes_particuliers)}</div>` : ''}
       ${a.date_deces ? `<div style="grid-column:1/-1;color:#c00000;"><span class="lbl">Décès :</span> ${fmtDate(a.date_deces)}</div>` : ''}
     </div></div>`;
+
+  html += `<div class="card"><h2>📥 Arrivée — documents</h2>${liensPdf(d.documents_arrivee)}</div>`;
 
   html += `<div class="card"><h2>📋 Historique de statut</h2>${
     d.statuts.length ? `<table><thead><tr><th>Statut</th><th>Du</th><th>Au</th></tr></thead><tbody>
