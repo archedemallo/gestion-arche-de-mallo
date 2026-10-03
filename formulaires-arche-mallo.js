@@ -746,6 +746,10 @@ var _popupChargementEl = null;
 function afficherPopupChargement(texte) {
     if (_popupChargementEl) return;
     var overlay = document.createElement('div');
+    // "no-print" : la pop-up reste affichée pendant la génération du PDF
+    // (qui sérialise la page entière) ; cette classe la fait retirer du PDF
+    // (voir _retirerElementsNonImprimables dans generer-pdf.js).
+    overlay.className = 'no-print';
     overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(61,43,31,0.45);z-index:99999;display:flex;align-items:center;justify-content:center;';
     var boite = document.createElement('div');
     boite.style.cssText = 'background:white;border-radius:12px;padding:28px 24px;max-width:320px;width:90%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.18);font-family:Calibri,Arial,sans-serif;';
