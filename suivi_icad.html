@@ -510,21 +510,31 @@ async function validerICAD(animalId, idx) {
     const cmtEl = document.getElementById('cmt-' + idx);
     const commentaire = cmtEl ? cmtEl.value : '';
 
-    const { error } = await supabaseClient.from('animaux_sterilisation_icad').upsert({
-        animal_id: animalId,
-        date_transfert: dateInput.value,
-        commentaire: commentaire
-    }, { onConflict: 'animal_id' });
+    afficherPopupChargement();
+    try {
+        const { error } = await supabaseClient.from('animaux_sterilisation_icad').upsert({
+            animal_id: animalId,
+            date_transfert: dateInput.value,
+            commentaire: commentaire
+        }, { onConflict: 'animal_id' });
 
-    if (error) { alert('Erreur lors de la validation : ' + error.message); return; }
-    await chargerDonnees(); // relit depuis la base, seule source de vérité
+        if (error) { masquerPopupChargement(); alert('Erreur lors de la validation : ' + error.message); return; }
+        await chargerDonnees(); // relit depuis la base, seule source de vérité
+    } finally {
+        masquerPopupChargement();
+    }
 }
 
 async function annulerICAD(animalId) {
     if (!confirm('Annuler cette validation ICAD ? Le chat repassera en "À faire".')) return;
-    const { error } = await supabaseClient.from('animaux_sterilisation_icad').delete().eq('animal_id', animalId);
-    if (error) { alert('Erreur lors de l\'annulation : ' + error.message); return; }
-    await chargerDonnees();
+    afficherPopupChargement();
+    try {
+        const { error } = await supabaseClient.from('animaux_sterilisation_icad').delete().eq('animal_id', animalId);
+        if (error) { masquerPopupChargement(); alert('Erreur lors de l\'annulation : ' + error.message); return; }
+        await chargerDonnees();
+    } finally {
+        masquerPopupChargement();
+    }
 }
 
 // ============================================================
@@ -554,6 +564,7 @@ async function onIcadFileChosen(e) {
     const label = typeDoc === 'sterilisation' ? '📎 Stérilisation' : '📎 ICAD';
     if (btn) { btn.disabled = true; btn.textContent = 'Envoi…'; }
 
+    afficherPopupChargement();
     try {
         const base64 = await fichierEnBase64(file);
         const ext = (file.name.split('.').pop() || 'pdf').toLowerCase();
@@ -582,8 +593,11 @@ async function onIcadFileChosen(e) {
 
         await chargerDonnees();
     } catch(err) {
+        masquerPopupChargement();
         if (btn) { btn.disabled = false; btn.textContent = label; }
         alert("Erreur lors de l'envoi du fichier : " + (err.message || err));
+    } finally {
+        masquerPopupChargement();
     }
 }
 
