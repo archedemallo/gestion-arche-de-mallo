@@ -291,6 +291,96 @@ function getTypesAdhesion() {
     return result.join(', ');
 }
 
+// ============================================================
+// COHÉRENCE MONTANTS : le total des montants de "Je souhaite adhérer…"
+// doit être égal au total des montants de "Je joins mon règlement par…".
+// Calcul en centimes pour éviter les erreurs d'arrondi (0.1 + 0.2...).
+// ============================================================
+function verifierCoherenceMontants(missing) {
+    function coche(id) {
+        var e = document.getElementById(id);
+        return !!(e && e.classList.contains('checked'));
+    }
+    function centimes(id) {
+        var e = document.getElementById(id);
+        if (!e || String(e.value).trim() === '') return null;
+        var v = parseFloat(e.value);
+        return isNaN(v) ? null : Math.round(v * 100);
+    }
+    function rouge(id, on) {
+        var e = document.getElementById(id);
+        if (e) e.style.borderBottom = on ? '2px solid red' : (id === 'cotisationAdherent' ? '1px dotted #333' : '');
+    }
+    function euros(c) { return (c / 100).toFixed(2).replace('.', ',') + ' €'; }
+
+    var erreur = false;
+
+    // --- Côté adhésion : ce qui est dû ---
+    var attendu = 0, auMoinsUnType = false;
+    [
+        { box: 'type_adherent',     champ: 'cotisationAdherent', label: 'la cotisation du membre adhérent', controleNonCoche: false },
+        { box: 'type_bienfaiteur',  champ: 'donBienfaiteur',     label: 'du don du membre bienfaiteur',     controleNonCoche: true  },
+        { box: 'type_sympathisant', champ: 'donSympatisant',     label: 'du don du membre sympathisant',    controleNonCoche: true  }
+    ].forEach(function(t) {
+        var c = centimes(t.champ);
+        if (coche(t.box)) {
+            auMoinsUnType = true;
+            if (c === null || c <= 0) {
+                missing.push('Montant ' + (t.label.indexOf('la ') === 0 ? 'de ' : '') + t.label + ' (doit être supérieur à 0)');
+                rouge(t.champ, true);
+                erreur = true;
+            } else {
+                attendu += c;
+                rouge(t.champ, false);
+            }
+        } else if (t.controleNonCoche && c !== null && c > 0) {
+            // Un don est saisi mais la case n'est pas cochée : il serait ignoré du total.
+            missing.push('Un montant est saisi ' + t.label.replace('du don', 'pour le don') + ' mais la case n\'est pas cochée');
+            rouge(t.champ, true);
+            erreur = true;
+        } else {
+            rouge(t.champ, false);
+        }
+    });
+
+    // --- Côté règlement : ce qui est joint ---
+    var paye = 0, auMoinsUnMode = false;
+    [
+        { box: 'pay_virement', champs: ['montant_virement'], label: 'Virement' },
+        { box: 'pay_espece',   champs: ['montant_espece'],   label: 'Espèces' },
+        { box: 'pay_cheque',   champs: ['montant_cheque'],   label: 'Chèque' },
+        { box: 'pay_plusieurs_cheques',
+          champs: ['montant_cheque1', 'montant_cheque2', 'montant_cheque3', 'montant_cheque4'],
+          label: 'Plusieurs chèques' }
+    ].forEach(function(m) {
+        if (!coche(m.box)) { m.champs.forEach(function(id) { rouge(id, false); }); return; }
+        auMoinsUnMode = true;
+        var somme = 0, saisi = false;
+        m.champs.forEach(function(id) {
+            var c = centimes(id);
+            if (c !== null) { saisi = true; somme += c; }
+        });
+        if (!saisi || somme <= 0) {
+            missing.push('Montant du règlement (' + m.label + ')');
+            m.champs.forEach(function(id) { rouge(id, true); });
+            erreur = true;
+        } else {
+            m.champs.forEach(function(id) { rouge(id, false); });
+            paye += somme;
+        }
+    });
+
+    // --- Comparaison (seulement si le reste est cohérent, pour ne pas empiler les messages) ---
+    if (!erreur && auMoinsUnType && auMoinsUnMode && paye !== attendu) {
+        missing.push('Le total des règlements (' + euros(paye) + ') ne correspond pas au total de l\'adhésion (' + euros(attendu) + ')');
+        ['montant_virement', 'montant_espece', 'montant_cheque',
+         'montant_cheque1', 'montant_cheque2', 'montant_cheque3', 'montant_cheque4'].forEach(function(id) {
+            var e = document.getElementById(id);
+            if (e && e.offsetParent !== null && String(e.value).trim() !== '') rouge(id, true);
+        });
+    }
+}
+
 validateRequiredFields = function() {
     var missing = [];
 
@@ -363,6 +453,9 @@ if (!typeChecked) {
 
     // N° chèque obligatoire (chèque unique ou plusieurs chèques)
     verifierNumerosCheques(missing);
+
+    // Cohérence montants adhésion / règlement
+    verifierCoherenceMontants(missing);
 
     // Lu et approuvé
     ['luApprouve1', 'luApprouve2'].forEach(function(id) {
