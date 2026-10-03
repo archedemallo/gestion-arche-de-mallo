@@ -643,7 +643,11 @@ input[type="date"] {
     #dateAntiPuces, #produitAntiPuces { font-size: 9pt !important; }
     .editable-medium { width: 150px !important; }
     #puce, #couleur, #nom, #prenom, #adresse, #email, #nomAttestation,
-    #nomUsuel, #nomAdoption {
+    #nomUsuel, #nomAdoption,
+    #nomAnimal, #nomChat, #raisonSociale, #representant,
+    #nomSignataire, #prenomSignataire,
+    #nomAdoptant, #prenomAdoptant, #adresseAdoptant,
+    #nomEmprunteur, #prenomEmprunteur, #adresseEmprunteur, #emailEmprunteur {
         display: inline !important;
         width: auto !important;
         min-width: 200px !important;
