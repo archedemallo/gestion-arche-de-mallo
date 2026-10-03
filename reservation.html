@@ -33,7 +33,13 @@
 <div class="title" style="text-align:center; margin-top:5px;">Contrat de réservation</div>
 
 <p style="text-align:center;">N° du BOX : <input type="text" class="editable" style="width:150px;" id="numeroBox"></p>
-
+<div class="section">
+	<p>
+        <span class="blue">Nom du chat :</span>
+        <input type="text" class="editable editable-long" id="nomChat" data-required="true" data-label="Nom du chat">
+    </p>
+</div>
+	
 <!-- Espèce de l'animal (remplace l'ancien "Type de réservation") -->
 <div class="section" id="bloc_espece">
     <p>
@@ -50,10 +56,7 @@
 
     <!-- Informations du chat -->
 <div class="section">
-    <p>
-        <span class="blue">Nom provisoire du chat :</span>
-        <input type="text" class="editable editable-long" id="nomChat" data-required="true" data-label="Nom du chat">
-    </p>
+
     <p>
         <span class="blue">Né(e) le :</span>
         <input type="date" class="editable editable-date" id="dateNaissance">
