@@ -29,8 +29,17 @@
 function initSelecteurPersonne(config) {
     var idsChamps = [config.nomId, config.prenomId].filter(Boolean);
     var minLength = 2;
+    // Numéro de "génération" : incrémenté à chaque saisie ou fermeture. Une réponse
+    // de recherche qui arrive après (génération différente) est ignorée, sinon elle
+    // rouvrait la liste alors que l'utilisateur avait déjà continué ou choisi.
+    var generation = 0;
+    // Vrai pendant que le composant remplit lui-même les champs : les événements
+    // "input" envoyés pour les autres scripts ne doivent pas relancer une recherche.
+    var remplissageEnCours = false;
 
     function remplirDepuisPersonne(personne) {
+        remplissageEnCours = true;
+        try {
         if (config.nomId) {
             var elNom = document.getElementById(config.nomId);
             if (elNom) {
@@ -53,9 +62,13 @@ function initSelecteurPersonne(config) {
                 el.dispatchEvent(new Event('input', { bubbles: true }));
             }
         });
+        } finally {
+            remplissageEnCours = false;
+        }
     }
 
     function fermerToutes() {
+        generation++;
         document.querySelectorAll('.selecteur-personne-dropdown').forEach(function(d) {
             d.style.display = 'none';
             d.innerHTML = '';
@@ -77,10 +90,20 @@ function initSelecteurPersonne(config) {
 
         var timer = null;
 
+        function fermer() {
+            generation++;
+            clearTimeout(timer);
+            dropdown.style.display = 'none';
+            dropdown.innerHTML = '';
+        }
+
         async function rechercher(texte) {
+            var maGeneration = ++generation;
             try {
                 const { data, error } = await supabaseClient.rpc('rechercher_personnes', { p_recherche: texte });
                 if (error) throw error;
+                // Réponse périmée, ou champ quitté entre-temps : on n'affiche rien.
+                if (maGeneration !== generation || document.activeElement !== input) return;
                 afficherResultats(data || []);
             } catch (e) {
                 console.error('[Sélecteur personne] Erreur recherche :', e.message);
@@ -97,8 +120,8 @@ function initSelecteurPersonne(config) {
         function afficherResultats(personnes) {
             dropdown.innerHTML = '';
             if (personnes.length === 0) {
-                dropdown.innerHTML = '<div style="padding:8px 12px;color:#888;font-size:13px;">Aucune personne trouvée</div>';
-                dropdown.style.display = 'block';
+                // Aucune personne connue = nouvelle personne : on ne gêne pas la saisie.
+                dropdown.style.display = 'none';
                 return;
             }
             personnes.forEach(function(p) {
@@ -106,6 +129,8 @@ function initSelecteurPersonne(config) {
                 var ligne = document.createElement('div');
                 ligne.style.cssText = 'padding:8px 12px;cursor:pointer;font-size:14px;border-bottom:1px solid #f0f0f0;';
                 ligne.innerHTML = '<strong>' + echapper(nomAff) + '</strong>' + (p.ville ? ' — ' + echapper(p.ville) : '');
+                // Garde le focus dans le champ pendant le clic sur la ligne.
+                ligne.addEventListener('mousedown', function(e) { e.preventDefault(); });
                 ligne.addEventListener('mouseenter', function() { ligne.style.background = '#f5f5f5'; });
                 ligne.addEventListener('mouseleave', function() { ligne.style.background = ''; });
                 ligne.addEventListener('click', function() {
@@ -119,17 +144,29 @@ function initSelecteurPersonne(config) {
         }
 
         input.addEventListener('input', function() {
+            if (remplissageEnCours) return;
             clearTimeout(timer);
             var texte = input.value.trim();
-            if (texte.length < minLength) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
+            if (texte.length < minLength) { fermer(); return; }
+            generation++;
             timer = setTimeout(function() { rechercher(texte); }, 250);
+        });
+        // Échap ou Tab (passage au champ suivant) referment la liste.
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' || e.key === 'Tab') fermer();
+        });
+        // Quitter le champ ferme la liste (délai court pour laisser passer le clic sur une ligne).
+        input.addEventListener('blur', function() {
+            setTimeout(function() {
+                if (document.activeElement !== input) fermer();
+            }, 200);
         });
         input.addEventListener('focus', function() {
             var texte = input.value.trim();
             if (texte.length >= minLength) rechercher(texte);
         });
         document.addEventListener('click', function(e) {
-            if (!input.parentNode.contains(e.target)) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; }
+            if (!input.parentNode.contains(e.target)) fermer();
         });
     });
 }
