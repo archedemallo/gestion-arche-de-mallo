@@ -176,6 +176,11 @@ const LABELS_STATUT = {
   reserve: 'Réservé', au_veto: 'Au véto', famille_accueil: "Famille d'accueil", adopte: 'Adopté'
 };
 
+// Ces statuts ne se posent QUE via les formulaires (Contrat de réservation /
+// Contrat de cession) : ils exigent une personne et créent l'enregistrement
+// correspondant. On ne les propose donc jamais ici.
+const STATUTS_VIA_FORMULAIRE = ['reserve', 'adopte'];
+
 // Peuple "Nouveau statut" avec les seules transitions réellement autorisées
 // depuis le statut actuel (obtenir_transitions_possibles, voir 030) — évite
 // de proposer un statut qui ferait échouer l'enregistrement.
@@ -183,7 +188,8 @@ async function chargerTransitionsPossibles(statutActuel) {
   const sel = document.getElementById('chg-statut');
   const { data, error } = await supabaseClient.rpc('obtenir_transitions_possibles', { p_statut_actuel: statutActuel });
   if (error) { sel.innerHTML = '<option value="">Erreur de chargement</option>'; console.error(error); return; }
-  const options = (data || []).map(r => r.statut_arrivee).filter(Boolean);
+  const options = (data || []).map(r => r.statut_arrivee).filter(Boolean)
+    .filter(s => !STATUTS_VIA_FORMULAIRE.includes(s));
   sel.innerHTML = '<option value="">— Choisir —</option>' +
     options.map(s => `<option value="${s}">${escH(LABELS_STATUT[s] || s)}</option>`).join('');
 }
@@ -195,6 +201,7 @@ async function changerStatut(animalId) {
   const date = document.getElementById('chg-date').value;
   const saisiPar = document.getElementById('saisiPar').value;
   if (!statut) { msg.textContent = 'Choisissez un statut.'; msg.className = 'msg err'; return; }
+  if (STATUTS_VIA_FORMULAIRE.includes(statut)) { msg.textContent = 'Ce statut se pose depuis le formulaire de réservation ou d\'adoption.'; msg.className = 'msg err'; return; }
   if (!saisiPar) { msg.textContent = '"Saisi par" est obligatoire.'; msg.className = 'msg err'; return; }
   afficherPopupChargement();
   try {
