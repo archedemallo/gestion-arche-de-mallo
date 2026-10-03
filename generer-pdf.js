@@ -109,6 +109,17 @@ async function genererPdfFormulaire() {
     htmlComplet = htmlComplet.replace('<head>', '<head><style>' + _reglesCompletesEnClair() + '</style>');
     htmlComplet = await _logoEnBase64DansHtml(htmlComplet);
     htmlComplet = _retirerElementsNonImprimables(htmlComplet);
+    return await genererPdfDepuisHtml(htmlComplet);
+}
+
+/**
+ * Envoie un HTML complet (déjà autonome : CSS en ligne, images en base64)
+ * à la fonction Edge et renvoie le PDF. Utilisé directement par les pages
+ * qui ne sont pas un formulaire imprimable (ex. arrivee_animal.html).
+ */
+async function genererPdfDepuisHtml(htmlComplet) {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) throw new Error("Session expirée — reconnectez-vous puis réessayez.");
 
     const url = SUPABASE_URL + '/functions/v1/generer-pdf-formulaire';
     const resp = await fetch(url, {
