@@ -177,9 +177,9 @@ const LABELS_STATUT = {
 };
 
 // Ces statuts ne se posent QUE via les formulaires (Contrat de réservation /
-// Contrat de cession) : ils exigent une personne et créent l'enregistrement
-// correspondant. On ne les propose donc jamais ici.
-const STATUTS_VIA_FORMULAIRE = ['reserve', 'adopte'];
+// Contrat de cession / Famille d'accueil) : ils exigent une personne et
+// créent l'enregistrement correspondant. On ne les propose donc jamais ici.
+const STATUTS_VIA_FORMULAIRE = ['reserve', 'adopte', 'famille_accueil'];
 
 // Peuple "Nouveau statut" avec les seules transitions réellement autorisées
 // depuis le statut actuel (obtenir_transitions_possibles, voir 030) — évite
@@ -201,7 +201,7 @@ async function changerStatut(animalId) {
   const date = document.getElementById('chg-date').value;
   const saisiPar = document.getElementById('saisiPar').value;
   if (!statut) { msg.textContent = 'Choisissez un statut.'; msg.className = 'msg err'; return; }
-  if (STATUTS_VIA_FORMULAIRE.includes(statut)) { msg.textContent = 'Ce statut se pose depuis le formulaire de réservation ou d\'adoption.'; msg.className = 'msg err'; return; }
+  if (STATUTS_VIA_FORMULAIRE.includes(statut)) { msg.textContent = 'Ce statut se pose depuis le formulaire de réservation, d\'adoption ou de famille d\'accueil.'; msg.className = 'msg err'; return; }
   if (!saisiPar) { msg.textContent = '"Saisi par" est obligatoire.'; msg.className = 'msg err'; return; }
   afficherPopupChargement();
   try {
