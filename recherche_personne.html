@@ -5,10 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="logo_arche.png">
 <title>Recherche personne — L'Arche de Mallo</title>
+<link rel="stylesheet" href="formulaires-arche-mallo.css">
 <style>
   :root{ --cream:#faf7f2; --warm:#f0e8d8; --brown:#3d2b1f; --orange:#c96b2a; --grey:#8a7968; }
   *{box-sizing:border-box;}
-  body{margin:0;font-family:Arial,sans-serif;background:var(--cream);color:var(--brown);}
+  body{margin:0;font-family:Arial,sans-serif;font-size:16px;line-height:normal;background:var(--cream);color:var(--brown);}
+  #entete .header-adoption-right{display:none;}
   header{background:#fff;border-bottom:3px solid var(--orange);padding:18px 24px;display:flex;align-items:center;gap:14px;}
   header h1{font-size:16px;margin:0;}
   header p{font-size:11px;color:var(--grey);margin:2px 0 0;}
@@ -51,12 +53,10 @@
   </div>
 </div>
 
-<header>
-  <div>
-    <h1>Recherche personne</h1>
-    <p>Retrouvez la fiche complète d'une personne ou d'une entreprise connue de l'association</p>
-  </div>
-</header>
+<div style="max-width:900px;margin:0 auto;padding:0 16px;">
+  <div id="entete"></div>
+  <p style="font-size:11px;color:var(--grey);margin:-8px 0 12px;">Retrouvez la fiche complète d'une personne ou d'une entreprise connue de l'association</p>
+</div>
 <div class="wrap">
   <div class="search-box">
     <input type="text" id="recherche-input" placeholder="Nom, prénom, entreprise, email ou téléphone…" autocomplete="off">
@@ -71,6 +71,10 @@
 <script>
 const supabaseClient = creerClientSupabase();
 initSessionSuivi();
+
+document.addEventListener('DOMContentLoaded', function() {
+  creerEntete({ dateId: 'dateRef', titre: 'Recherche personne' });
+});
 
 // ------------------------------------------------------------
 // Utilitaires d'affichage
