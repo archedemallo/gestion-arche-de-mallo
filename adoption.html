@@ -422,8 +422,8 @@ AVEC <input type="text" class="editable editable-medium" id="produitAntiPuces" d
         </span>
     </p>
     <p>
-        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox"></span></span>
-        Autres : (préciser) <input type="text" class="editable editable-long" id="autresMotif">
+        <span class="clickable-row" onclick="toggleCheck(this)"><span class="checkbox" id="autres_check"></span></span>
+		Autres : (préciser) <input type="text" class="editable editable-long" id="autresMotif">
         <span class="blue"> montant : </span><input type="number" class="editable editable-num" id="autresMontant"><span class="red"> €</span>
     </p>
     <p>
@@ -1328,6 +1328,31 @@ saveForm = async function() {
         }
     }
 
+    // Validation spécifique "Autres" : motif et montant obligatoires si coché
+    var caseAutres = document.getElementById('autres_check');
+    var motifAutresEl = document.getElementById('autresMotif');
+    var montantAutresEl = document.getElementById('autresMontant');
+    if (caseAutres && caseAutres.classList.contains('checked')) {
+        var missingAutres = [];
+        if (!motifAutresEl || !motifAutresEl.value.trim()) {
+            missingAutres.push('Autres : précisez le motif');
+            if (motifAutresEl) motifAutresEl.style.borderBottom = '2px solid red';
+        } else {
+            motifAutresEl.style.borderBottom = '';
+        }
+        var montantAutresVal = montantAutresEl ? parseFloat(montantAutresEl.value) : 0;
+        if (!montantAutresVal || montantAutresVal <= 0) {
+            missingAutres.push('Autres : indiquez le montant');
+            if (montantAutresEl) montantAutresEl.style.borderBottom = '2px solid red';
+        } else {
+            montantAutresEl.style.borderBottom = '';
+        }
+        if (missingAutres.length > 0) {
+            afficherMessage('⚠️ « Autres » est coché, veuillez compléter :<br><br>• ' + missingAutres.join('<br>• '), 'erreur');
+            return;
+        }
+    }
+	
     await _saveFormOriginal();
     // N'envoyer les photos QUE si la sauvegarde a réussi (formSaved = true)
     if (!formSaved) return;
