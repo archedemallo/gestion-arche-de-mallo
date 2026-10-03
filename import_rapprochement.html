@@ -60,6 +60,12 @@
   .imp-tab-btn{padding:8px 16px;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-weight:600;color:var(--text-2);cursor:pointer;}
   .imp-tab-btn.active{background:var(--orange);color:white;border-color:var(--orange);}
   .bulk-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11.5px;padding:8px 14px;background:rgba(201,107,42,0.06);border-bottom:0.5px solid var(--border);}
+  .sv-subtabs{display:flex;gap:0;border-bottom:0.5px solid var(--border);margin-bottom:12px;overflow-x:auto;}
+  .sv-sub{padding:7px 14px;font-size:11px;font-weight:500;color:var(--text-3);border:none;border-bottom:2px solid transparent;background:none;cursor:pointer;white-space:nowrap;font-family:inherit;}
+  .sv-sub:hover{color:var(--text-2);} .sv-sub.active{color:var(--orange);border-bottom-color:var(--orange);}
+  .sv-badge{display:inline-block;font-size:9px;padding:1px 5px;border-radius:10px;background:var(--orange);color:#fff;margin-left:3px;font-weight:600;}
+  .sv-sub .sv-badge{margin-left:5px;} .imp-tab-btn.active .sv-badge{background:#fff;color:var(--orange);}
+  tr.sv-done{opacity:.45;}
 </style>
 </head>
 <body>
@@ -118,6 +124,7 @@
 
     <div class="imp-tabs">
       <div class="imp-tab-btn" id="tab-btn-import" onclick="switchImportTab('import')"><i class="ti ti-upload"></i> Import banque</div>
+      <div class="imp-tab-btn" id="tab-btn-suivi" onclick="switchImportTab('suivi')"><i class="ti ti-database-import"></i> Import Suivi <span class="sv-badge" id="sv-badge-total" style="display:none;"></span></div>
       <div class="imp-tab-btn active" id="tab-btn-rappr" onclick="switchImportTab('rapprochement')"><i class="ti ti-arrows-exchange"></i> Rapprochement</div>
     </div>
 
@@ -183,6 +190,29 @@
     <!-- fin onglet Import -->
     </div>
 
+    <div id="tab-suivi" class="hidden">
+      <div class="info-box"><i class="ti ti-info-circle"></i> Enregistrements saisis dans Suivi, par catégorie. Une ligne = un règlement : <b>espèces → Caisse</b>, <b>virement / CB → Banque</b>. Les chèques passent par « Remises de chèques ». Les lignes sélectionnées vont dans l'onglet Rapprochement ; au transfert, le lien Suivi est créé automatiquement.</div>
+      <div class="kpi-row" id="sv-kpis"></div>
+      <div class="sv-subtabs" id="sv-subtabs"></div>
+      <div class="list-card">
+        <div class="list-head">
+          <input class="f-input" id="sv-search" placeholder="Rechercher…" oninput="renderSuivi()" style="width:160px;">
+          <select class="f-select" id="sv-mode" onchange="renderSuivi()"><option value="">Tous règlements</option><option value="Espèces">Espèces</option><option value="Virement">Virement</option><option value="CB">CB</option></select>
+          <label style="font-size:11px;color:var(--text-2);display:flex;gap:5px;align-items:center;"><input type="checkbox" id="sv-hide" checked onchange="renderSuivi()" style="accent-color:var(--orange);"> Masquer déjà traités</label>
+          <span style="margin-left:auto;font-size:11px;color:var(--text-3);">Période des lignes importées :</span>
+          <select class="f-select" id="sv-periode"></select>
+        </div>
+        <div class="bulk-bar" id="sv-bar">
+          <span id="sv-count" style="font-weight:600;">0 sélectionnée(s)</span>
+          <button class="btn btn-secondary btn-sm" onclick="svToutSelectionner()">Tout sélectionner</button>
+          <button class="btn btn-secondary btn-sm" onclick="svSel.clear();renderSuivi()">Désélectionner</button>
+          <button class="btn btn-primary btn-sm" id="sv-btn-import" onclick="svOuvrirImport()" disabled><i class="ti ti-download"></i> Envoyer au rapprochement</button>
+        </div>
+        <div style="overflow-x:auto;max-height:500px;overflow-y:auto;" id="sv-wrap"><div style="padding:24px;text-align:center;color:var(--text-3);">Chargement…</div></div>
+      </div>
+    </div>
+    <!-- fin onglet Import Suivi -->
+
     <div id="tab-rapprochement">
     <!-- LISTE EN ATTENTE -->
     <div class="kpi-row" id="kpi-row"></div>
@@ -228,6 +258,21 @@
       <div id="tr-err" class="hidden" style="color:var(--red);font-size:11px;padding:6px 0;"></div>
     </div>
     <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="closeTransfer()">Annuler</button><button class="btn btn-primary btn-sm" id="btn-confirm-transfer" onclick="confirmTransfer()"><i class="ti ti-arrow-right"></i> Transférer</button></div>
+  </div>
+</div>
+
+<!-- MODAL IMPORT SUIVI -->
+<div class="modal-overlay hidden" id="modal-sv">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Envoyer au rapprochement</span><button class="modal-close" onclick="document.getElementById('modal-sv').classList.add('hidden')">×</button></div>
+    <div class="modal-body">
+      <div id="sv-resume" style="font-size:12px;color:var(--text-2);margin-bottom:12px;"></div>
+      <div class="form-group" style="margin-bottom:10px;"><label class="form-label">Type de mouvement (modifiable ensuite)</label><select id="sv-type" class="f-select" style="width:100%;" onchange="svTypeChange()"></select></div>
+      <div class="form-group" style="margin-bottom:10px;"><label class="form-label">Description</label><select id="sv-desc" class="f-select" style="width:100%;"><option value="">—</option></select></div>
+      <div class="form-group"><label class="form-label">Caisse pour les espèces</label><select id="sv-caisse" class="f-select" style="width:100%;"><option value="caisse1">Caisse 1</option><option value="caisse2">Caisse 2</option></select></div>
+      <div id="sv-err" class="hidden" style="color:var(--red);font-size:11px;padding:6px 0;"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-sv').classList.add('hidden')">Annuler</button><button class="btn btn-primary btn-sm" id="sv-confirm" onclick="svConfirmer()"><i class="ti ti-check"></i> Envoyer</button></div>
   </div>
 </div>
 
@@ -279,7 +324,7 @@ async function demarrerApp(user) {
 (async function initSession() { try { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(data.session.user); } catch (e) { afficherErreurChargement(e); } })();
 
 // Période par défaut : définie une seule fois dans Configuration
-async function chargerPeriodes() { await initPeriodes(supabaseClient, ['imp-periode','fl-periode']); }
+async function chargerPeriodes() { await initPeriodes(supabaseClient, ['imp-periode','fl-periode','sv-periode']); }
 async function chargerTypesEtDescriptions() {
   const { data: types } = await supabaseClient.from('types_mouvement').select('id, valeur, ordre').order('ordre');
   const { data: descs } = await supabaseClient.from('descriptions_mouvement').select('id, type_mouvement_id, valeur, ordre').order('ordre');
@@ -294,10 +339,11 @@ function onImpTypeChange() {
   btn.innerHTML = type ? '<i class="ti ti-check"></i> Importer et affecter à ce type' : '<i class="ti ti-check"></i> Importer ces lignes';
 }
 function switchImportTab(tab) {
-  document.getElementById('tab-import').classList.toggle('hidden', tab !== 'import');
-  document.getElementById('tab-rapprochement').classList.toggle('hidden', tab !== 'rapprochement');
-  document.getElementById('tab-btn-import').classList.toggle('active', tab === 'import');
-  document.getElementById('tab-btn-rappr').classList.toggle('active', tab === 'rapprochement');
+  [['import','import'],['suivi','suivi'],['rapprochement','rappr']].forEach(([t,b]) => {
+    document.getElementById('tab-' + t).classList.toggle('hidden', tab !== t);
+    document.getElementById('tab-btn-' + b).classList.toggle('active', tab === t);
+  });
+  if (tab === 'suivi' && !svCharge) chargerSuivi();
 }
 function onTrTypeChange() {
   const t = typesEtDescriptions.find(x => x.valeur === document.getElementById('tr-type').value);
@@ -677,10 +723,12 @@ function openTransfer(id) {
   const r = allImports.find(x => x.id === id); if (!r) return;
   transferTarget = id;
   document.getElementById('transfer-detail').innerHTML = `<strong>${escH(r.libelle||'')}</strong><br>${formatDateFR(r.date_mouvement)} — ${fmt(r.montant)}`;
-  document.getElementById('tr-type').selectedIndex = 0;
-  document.getElementById('tr-desc').innerHTML = '<option value="">—</option>';
+  document.getElementById('tr-type').value = r.type_mouvement || '';
+  if (document.getElementById('tr-type').value !== (r.type_mouvement || '')) document.getElementById('tr-type').selectedIndex = 0;
+  onTrTypeChange();
+  if (r.description) document.getElementById('tr-desc').value = r.description;
   document.getElementById('tr-fourn').selectedIndex = 0;
-  document.getElementById('tr-chat').value = ''; document.getElementById('tr-recu').value = '';
+  document.getElementById('tr-chat').value = r.nom_chat || ''; document.getElementById('tr-recu').value = r.numero_recu || '';
   document.getElementById('tr-err').classList.add('hidden');
   document.getElementById('modal-transfer').classList.remove('hidden');
 }
@@ -717,6 +765,144 @@ async function supprimerLigne(id) {
   if (!confirm('Supprimer définitivement cette ligne d\'import ?')) return;
   try { const { error } = await supabaseClient.rpc('supprimer_import_rapprochement', { p_id: id }); if (error) throw error; showToast('Supprimée'); await loadData(); }
   catch(e) { alert('Erreur : ' + e.message); }
+}
+
+
+// ============================================================
+// IMPORT SUIVI — par catégorie (inspiré de l'ancien import-suivi.html)
+// ============================================================
+const PERS = 'personne:personnes(nom,prenom,raison_sociale)';
+const SV_CATS = [
+  { key:'adoption',   label:'Adoptions',        icon:'ti-heart',     table:'adoptions',    date:'date_adoption',    modes:['virement','espece','cb'], select:'id,date_adoption,montant_virement,montant_espece,montant_cb,'+PERS+',animal:animaux(nom_usuel,nom_adoption)', type:'Adoption', desc:'Adoption' },
+  { key:'don',        label:'Dons',             icon:'ti-gift',      table:'dons',         date:'date_signature',   modes:['virement','espece','cb'], select:'id,date_signature,montant_virement,montant_espece,montant_cb,numero_recu_fiscal,'+PERS, type:'Dons', desc:'Dons' },
+  { key:'adhesion',   label:'Adhésions',        icon:'ti-id-badge',  table:'adhesions',    date:'date_adhesion',    modes:['virement','espece'],      select:'id,date_adhesion,montant_virement,montant_espece,'+PERS, type:'Adhesion', desc:'Adhesion' },
+  { key:'reservation',label:'Rés. chaton',      icon:'ti-cat',       table:'reservations', date:'date_reservation', modes:['virement','espece','cb'], select:'id,date_reservation,montant_virement,montant_espece,montant_cb,'+PERS+',animal:animaux(nom_usuel,nom_adoption)', filtre:['type_reservation','chaton'], type:'Adoption', desc:'Reservation' },
+  { key:'reservation_chat', label:'Rés. chat',  icon:'ti-paw',       table:'reservations', date:'date_reservation', modes:['virement','espece','cb'], select:'id,date_reservation,montant_virement,montant_espece,montant_cb,'+PERS+',animal:animaux(nom_usuel,nom_adoption)', filtre:['type_reservation','chat'], type:'Adoption', desc:'Reservation', suivi:'reservation' },
+  { key:'reservation_autre', label:'Rés. autre animal', icon:'ti-feather', table:'reservations', date:'date_reservation', modes:['virement','espece','cb'], select:'id,date_reservation,montant_virement,montant_espece,montant_cb,'+PERS+',animal:animaux(nom_usuel,nom_adoption)', filtre:['type_reservation','autre_animal'], type:'Adoption', desc:'Reservation', suivi:'reservation' },
+];
+const SV_MODES = { virement:'Virement', espece:'Espèces', cb:'CB' };
+let svCharge = false, svCat = 'adoption', svLignes = {}, svTraites = new Set(), svSel = new Map();
+
+const svNom = r => { const p = r.personne; if (!p) return 'Anonyme'; return p.raison_sociale || [p.prenom, p.nom].filter(Boolean).join(' ') || 'Anonyme'; };
+const svTypeSuivi = c => c.suivi || c.key;
+const svNorm = x => String(x||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+
+async function chargerSuivi() {
+  document.getElementById('sv-wrap').innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-3);">Chargement…</div>';
+  try {
+    // Lignes déjà envoyées au rapprochement + enregistrements déjà liés à un mouvement
+    const [{ data: imp }, { data: lc }, { data: lb }] = await Promise.all([
+      supabaseClient.from('import_rapprochement').select('suivi_type,suivi_id,suivi_mode').not('suivi_id','is',null).neq('statut','ignoree'),
+      supabaseClient.from('caisse_mouvement_suivi_liens').select('adhesion_id,don_id,adoption_id,reservation_id'),
+      supabaseClient.from('banque_mouvement_suivi_liens').select('adhesion_id,don_id,adoption_id,reservation_id'),
+    ]);
+    svTraites = new Set();
+    (imp||[]).forEach(r => svTraites.add(`${r.suivi_type}:${r.suivi_id}:${r.suivi_mode}`));
+    [...(lc||[]), ...(lb||[])].forEach(l => {
+      ['adhesion','don','adoption','reservation'].forEach(t => { if (l[t+'_id']) svTraites.add(`${t}:${l[t+'_id']}:*`); });
+    });
+    await Promise.all(SV_CATS.map(async c => {
+      let q = supabaseClient.from(c.table).select(c.select).order(c.date, { ascending:false, nullsFirst:false }).limit(1000);
+      if (c.filtre) q = q.eq(c.filtre[0], c.filtre[1]);
+      const { data, error } = await q;
+      if (error) throw new Error(c.label + ' : ' + error.message);
+      svLignes[c.key] = [];
+      (data||[]).forEach(r => c.modes.forEach(m => {
+        const montant = parseFloat(r['montant_'+m]) || 0;
+        if (montant <= 0) return;
+        const st = svTypeSuivi(c), mode = SV_MODES[m];
+        svLignes[c.key].push({
+          cle: `${c.key}:${r.id}:${mode}`, cat: c.key, suivi_type: st, suivi_id: r.id, mode, montant,
+          date: r[c.date], nom: svNom(r), chat: r.animal ? (r.animal.nom_usuel || r.animal.nom_adoption || '') : '',
+          recu: r.numero_recu_fiscal || '',
+          traite: svTraites.has(`${st}:${r.id}:${mode}`) || svTraites.has(`${st}:${r.id}:*`),
+        });
+      }));
+    }));
+    svCharge = true;
+    svSel.clear();
+    renderSuivi();
+  } catch (e) {
+    document.getElementById('sv-wrap').innerHTML = `<div style="padding:24px;text-align:center;color:var(--red);font-size:12px;">Erreur : ${escH(e.message)}<br><span style="color:var(--text-3);">As-tu bien exécuté 058_import_suivi.sql ?</span></div>`;
+  }
+}
+
+function svSwitchCat(k) { svCat = k; renderSuivi(); }
+
+function renderSuivi() {
+  const nAFaire = k => (svLignes[k]||[]).filter(l => !l.traite).length;
+  const total = SV_CATS.reduce((s,c) => s + nAFaire(c.key), 0);
+  const bt = document.getElementById('sv-badge-total'); bt.textContent = total; bt.style.display = total ? '' : 'none';
+  document.getElementById('sv-subtabs').innerHTML = SV_CATS.map(c =>
+    `<button class="sv-sub ${c.key===svCat?'active':''}" onclick="svSwitchCat('${c.key}')"><i class="ti ${c.icon}"></i> ${c.label}${nAFaire(c.key)?`<span class="sv-badge">${nAFaire(c.key)}</span>`:''}</button>`).join('');
+
+  const toutes = svLignes[svCat] || [];
+  const aFaire = toutes.filter(l => !l.traite);
+  const sum = a => a.reduce((s,l) => s + l.montant, 0);
+  document.getElementById('sv-kpis').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Lignes (catégorie)</div><div class="kpi-value">${toutes.length}</div></div>
+    <div class="kpi"><div class="kpi-label">À envoyer</div><div class="kpi-value" style="color:var(--orange)">${aFaire.length}</div></div>
+    <div class="kpi"><div class="kpi-label">→ Caisse</div><div class="kpi-value" style="color:var(--amber)">${fmt(sum(aFaire.filter(l=>l.mode==='Espèces')))}</div></div>
+    <div class="kpi"><div class="kpi-label">→ Banque</div><div class="kpi-value" style="color:var(--blue)">${fmt(sum(aFaire.filter(l=>l.mode!=='Espèces')))}</div></div>`;
+
+  const q = svNorm(document.getElementById('sv-search').value), mode = document.getElementById('sv-mode').value, hide = document.getElementById('sv-hide').checked;
+  const rows = toutes.filter(l => (!hide || !l.traite) && (!mode || l.mode === mode) && (!q || svNorm(l.nom+' '+l.chat+' '+l.recu).includes(q)));
+  const admin = roleActuel === 'admin';
+  [...svSel.keys()].forEach(k => { const l = toutes.find(x => x.cle === k); if (!l || l.traite) svSel.delete(k); });
+
+  const hasChat = toutes.some(l => l.chat), hasRecu = toutes.some(l => l.recu);
+  document.getElementById('sv-wrap').innerHTML = !rows.length
+    ? '<div style="padding:24px;text-align:center;color:var(--text-3);font-size:12px;">Aucune ligne</div>'
+    : `<table><thead><tr>${admin?'<th style="width:26px;"></th>':''}<th>Date</th><th>Nom</th>${hasChat?'<th>Chat</th>':''}${hasRecu?'<th>N° reçu</th>':''}<th class="r">Montant</th><th>Règlement</th><th>Destination</th><th>Statut</th></tr></thead><tbody>${rows.map(l => `<tr class="${l.traite?'sv-done':''}">
+      ${admin?`<td>${l.traite?'':`<input type="checkbox" ${svSel.has(l.cle)?'checked':''} onchange="svToggle('${l.cle}',this.checked)" style="width:14px;height:14px;accent-color:var(--orange);">`}</td>`:''}
+      <td>${formatDateFR(l.date)}</td><td style="font-weight:500;">${escH(l.nom)}</td>${hasChat?`<td>${escH(l.chat)}</td>`:''}${hasRecu?`<td>${escH(l.recu)}</td>`:''}
+      <td class="r amount-c">${fmt(l.montant)}</td><td><span class="chip">${l.mode}</span></td>
+      <td><span class="chip">${l.mode==='Espèces'?'Caisse':'Banque'}</span></td>
+      <td>${l.traite?'<span style="color:var(--green);">✓ Traité</span>':'<span style="color:var(--amber);">À envoyer</span>'}</td></tr>`).join('')}</tbody></table>`;
+  document.getElementById('sv-count').textContent = svSel.size + ' sélectionnée(s) — ' + fmt(sum([...svSel.values()]));
+  document.getElementById('sv-btn-import').disabled = !svSel.size || !admin;
+  document.getElementById('sv-bar').classList.toggle('hidden', !admin);
+}
+function svToggle(cle, on) { const l = (svLignes[svCat]||[]).find(x => x.cle === cle); if (on && l) svSel.set(cle, l); else svSel.delete(cle); renderSuivi(); }
+function svToutSelectionner() {
+  const q = svNorm(document.getElementById('sv-search').value), mode = document.getElementById('sv-mode').value;
+  (svLignes[svCat]||[]).filter(l => !l.traite && (!mode || l.mode === mode) && (!q || svNorm(l.nom+' '+l.chat+' '+l.recu).includes(q))).forEach(l => svSel.set(l.cle, l));
+  renderSuivi();
+}
+
+function svTrouverType(valeur) { const v = svNorm(valeur); return typesEtDescriptions.find(t => svNorm(t.valeur) === v); }
+function svOuvrirImport() {
+  const c = SV_CATS.find(x => x.key === svCat), t = svTrouverType(c.type);
+  document.getElementById('sv-resume').innerHTML = `<strong>${svSel.size}</strong> ligne(s) — ${escH(c.label)} — ${fmt([...svSel.values()].reduce((s,l)=>s+l.montant,0))}`;
+  document.getElementById('sv-type').innerHTML = '<option value="">— Choisir plus tard (au rapprochement) —</option>' + typesEtDescriptions.map(x => `<option ${t&&x.id===t.id?'selected':''}>${escH(x.valeur)}</option>`).join('');
+  svTypeChange(c.desc);
+  document.getElementById('sv-err').classList.add('hidden');
+  document.getElementById('modal-sv').classList.remove('hidden');
+}
+function svTypeChange(descDefaut) {
+  const t = typesEtDescriptions.find(x => x.valeur === document.getElementById('sv-type').value);
+  const d = svNorm(typeof descDefaut === 'string' ? descDefaut : '');
+  document.getElementById('sv-desc').innerHTML = '<option value="">—</option>' + (t?.descriptions||[]).map(x => `<option ${d&&svNorm(x.valeur)===d?'selected':''}>${escH(x.valeur)}</option>`).join('');
+}
+async function svConfirmer() {
+  const btn = document.getElementById('sv-confirm'), err = document.getElementById('sv-err');
+  const type = document.getElementById('sv-type').value, desc = document.getElementById('sv-desc').value, caisse = document.getElementById('sv-caisse').value;
+  const periode = document.getElementById('sv-periode').value;
+  const c = SV_CATS.find(x => x.key === svCat);
+  const lignes = [...svSel.values()].map(l => ({
+    suivi_type: l.suivi_type, suivi_id: l.suivi_id, mode: l.mode, destination: l.mode === 'Espèces' ? caisse : 'banque',
+    date: l.date, periode, libelle: l.nom + (l.chat ? ' — ' + l.chat : ''), montant: l.montant,
+    type_mouvement: type, description: type ? desc : '', nom_chat: l.chat, numero_recu: l.recu,
+  }));
+  btn.disabled = true; err.classList.add('hidden');
+  try {
+    const { data, error } = await supabaseClient.rpc('importer_suivi_vers_rapprochement', { p_lignes: lignes });
+    if (error) throw error;
+    document.getElementById('modal-sv').classList.add('hidden');
+    showToast(`${data} ligne(s) envoyée(s) au rapprochement`);
+    await chargerSuivi(); await loadData();
+  } catch (e) { err.textContent = 'Erreur : ' + e.message; err.classList.remove('hidden'); }
+  finally { btn.disabled = false; }
 }
 
 function fmt(v) { if (v===null||v===undefined||v==='') return '—'; return parseFloat(v).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
