@@ -200,6 +200,9 @@
 <script src="config.js"></script>  
 <script src="formulaires-arche-mallo.js"></script>
 <script src="noms-chats.js"></script>
+<script src="generer-pdf.js"></script>
+<script src="envoyer-mail.js"></script>
+<script src="stocker-pdf-drive.js"></script>
 <script>
 const supabaseClient = creerClientSupabase();
 initSessionSuivi();
@@ -350,7 +353,7 @@ async function declarerArrivee() {
 
     let photoOk = true;
     try {
-      photoOk = await envoyerPhotoAnimal('Arrivee_Animal',
+      photoOk = await envoyerPhotoAnimal('arrivee animal',
         document.getElementById('arr-prenom-personne').value.trim(),
         document.getElementById('arr-nom-personne').value.trim(),
         nom, date);
@@ -361,14 +364,17 @@ async function declarerArrivee() {
       photoOk = false;
     }
 
+    // PDF de la fiche d'arrivée -> Drive (dossier Arrivee_Animal/date) + lien en base
+    let pdfOk = true;
+    try { await deposerPdfArrivee(data, nom, date, fichierPhoto); }
+    catch (ePdf) { console.error('Erreur PDF arrivée :', ePdf); pdfOk = false; }
+
     msg.textContent = '';
     msg.className = 'msg';
-    if (!photoOk) {
-      document.getElementById('popup-succes').querySelector('p').textContent =
-        "Arrivée enregistrée, mais l'envoi de la photo a échoué — à reprendre plus tard si besoin.";
-    } else {
-      document.getElementById('popup-succes').querySelector('p').textContent = 'Arrivée enregistrée avec succès.';
-    }
+    const pPopup = document.getElementById('popup-succes').querySelector('p');
+    pPopup.textContent = 'Arrivée enregistrée avec succès.';
+    if (!photoOk) pPopup.textContent = "Arrivée enregistrée, mais l'envoi de la photo a échoué — à reprendre plus tard si besoin.";
+    if (!pdfOk) pPopup.textContent += " Le PDF de la fiche n'a pas pu être déposé sur Drive.";
 
     invaliderCacheNomsAnimauxPresents();
 
@@ -454,6 +460,38 @@ async function declarerArrivee() {
   } finally {
     masquerPopupChargement();
   }
+}
+
+// Fiche d'arrivée en PDF (HTML autonome : cette page n'est pas un formulaire imprimable)
+async function deposerPdfArrivee(animalId, nom, date, fichierPhoto) {
+  const v = id => (document.getElementById(id).value || '').trim();
+  const lib = id => { const e = document.getElementById(id); return e.tagName === 'SELECT' ? (e.options[e.selectedIndex]?.text || '') : e.value.trim(); };
+  const esc = x => String(x || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const photo = await new Promise(res => redimensionnerImage(fichierPhoto, b64 => res(b64 ? 'data:image/jpeg;base64,' + b64 : ''), 800));
+  const cases = [['arr-sterilise','Stérilisé(e)'],['arr-vermifuge','Vermifugé(e)'],['arr-antipuce','Antipuce'],['arr-chaton','Chaton']]
+    .filter(c => document.getElementById(c[0]).checked).map(c => c[1]).join(', ');
+  const lignes = [
+    ['Nom', nom], ['Espèce', lib('arr-espece')], ['Sexe', lib('arr-sexe')], ['Couleur', v('arr-couleur')],
+    ['Date de naissance', v('arr-date-naissance')], ['Puce', v('arr-puce')], ['Nom de la maman', v('arr-nom-maman')],
+    ["Origine de l'arrivée", lib('arr-origine')], ["Date d'arrivée", date],
+    ['Personne à l\'origine', (v('arr-prenom-personne') + ' ' + v('arr-nom-personne')).trim()], ['Commune / motif', v('arr-motif')],
+    ['Informations', cases], ['Autres informations', v('arr-autre-info')], ['Saisi par', lib('saisiPar')]
+  ].filter(l => l[1]);
+  let html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><style>' +
+    'body{font-family:Arial,sans-serif;color:#3d2b1f;margin:32px;font-size:13px;} h1{font-size:20px;color:#c96b2a;margin:0 0 4px;}' +
+    '.sous{color:#8a7968;margin-bottom:18px;} table{border-collapse:collapse;width:100%;} td{padding:6px 8px;border-bottom:1px solid #eee;vertical-align:top;}' +
+    'td:first-child{width:200px;color:#8a7968;text-transform:uppercase;font-size:11px;} img.photo{max-width:260px;max-height:200px;border:1px solid #ccc;border-radius:6px;margin:14px 0;display:block;}' +
+    '</style></head><body><img src="logo_arche.png" style="height:60px;"><h1>Fiche d\'arrivée — ' + esc(nom) + '</h1><div class="sous">L\'Arche de Mallo — ' + esc(date) + '</div>' +
+    (photo ? '<img class="photo" src="' + photo + '">' : '') +
+    '<table>' + lignes.map(l => '<tr><td>' + esc(l[0]) + '</td><td>' + esc(l[1]) + '</td></tr>').join('') + '</table></body></html>';
+  html = await _logoEnBase64DansHtml(html);
+  const pdfBytes = await genererPdfDepuisHtml(html);
+  const filename = ['Arrivee', nom || 'Animal', date].filter(Boolean).join('_').replace(/\s+/g, '_');
+  await enregistrerPdfDrive({
+    onglet: 'arrivee animal', prenom: v('arr-prenom-personne'), nom: v('arr-nom-personne'), animal: nom,
+    dateDossier: date, filename: filename, pdfBytes: pdfBytes,
+    tableSource: 'animaux', enregistrementId: animalId, typeFichier: "Fiche d'arrivée"
+  });
 }
 </script>
 </body>
