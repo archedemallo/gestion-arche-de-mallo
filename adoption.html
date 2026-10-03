@@ -1072,6 +1072,7 @@ var selecteurAnimal = initSelecteurAnimal({
     apresSelection: function(data) {
         cocherGroupeParLibelle('sexe',
             data.animal.sexe === 'M' ? 'Mâle' : (data.animal.sexe === 'F' ? 'Femelle' : null));
+        majNomAttestation();
     },
     onSelect: function(animalId, reservationId) {
         chargerPhotoAnimal(animalId);
