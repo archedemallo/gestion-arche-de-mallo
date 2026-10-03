@@ -196,17 +196,25 @@ async function changerStatut(animalId) {
   const saisiPar = document.getElementById('saisiPar').value;
   if (!statut) { msg.textContent = 'Choisissez un statut.'; msg.className = 'msg err'; return; }
   if (!saisiPar) { msg.textContent = '"Saisi par" est obligatoire.'; msg.className = 'msg err'; return; }
-  const { error } = await supabaseClient.rpc('changer_statut_animal', {
-    p_animal_id: animalId,
-    p_statut: statut,
-    p_date: date || null,
-    p_motif: document.getElementById('chg-motif').value.trim() || null,
-    p_saisi_par_id: saisiPar
-  });
-  if (error) { msg.textContent = 'Erreur : ' + error.message; msg.className = 'msg err'; return; }
-  msg.textContent = 'Statut mis à jour.';
-  msg.className = 'msg ok';
-  chargerFiche(animalId);
+  afficherPopupChargement();
+  try {
+    const { error } = await supabaseClient.rpc('changer_statut_animal', {
+      p_animal_id: animalId,
+      p_statut: statut,
+      p_date: date || null,
+      p_motif: document.getElementById('chg-motif').value.trim() || null,
+      p_saisi_par_id: saisiPar
+    });
+    if (error) { msg.textContent = 'Erreur : ' + error.message; msg.className = 'msg err'; return; }
+    msg.textContent = 'Statut mis à jour.';
+    msg.className = 'msg ok';
+    await chargerFiche(animalId);
+  } catch (err) {
+    console.error(err);
+    msg.textContent = 'Erreur : ' + (err.message || err); msg.className = 'msg err';
+  } finally {
+    masquerPopupChargement();
+  }
 }
 </script>
 </body>
