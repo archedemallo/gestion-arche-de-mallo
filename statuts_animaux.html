@@ -105,6 +105,11 @@ async function chargerFiche(animalId) {
   renderFiche(data);
 }
 
+function nomPersonne(p) {
+  if (!p) return '—';
+  if (p.type_personne === 'entreprise') return p.raison_sociale || '—';
+  return `${p.prenom||''} ${p.nom||''}`.trim() || '—';
+}
 function renderFiche(d) {
   const a = d.animal;
   const espece = ESPECE_LABELS[(a.espece||'chat').toLowerCase()] || capitaliser(a.espece || 'chat');
@@ -112,7 +117,11 @@ function renderFiche(d) {
   const sterilise = d.sterilisation ? (d.sterilisation.sterilise ? 'Oui — ' + fmtDate(d.sterilisation.date_sterilisation) : 'Non') : '—';
   const vermifuge = d.derniere_vermifuge ? 'Oui — ' + fmtDate(d.derniere_vermifuge) : 'Non';
   const antipuce = d.derniere_antipuce ? 'Oui — ' + fmtDate(d.derniere_antipuce) : 'Non';
+  const ORIGINES = { depot: 'Dépôt', abandon: 'Abandon', saisie: 'Saisie', ne_a_association: "Né à l'association", trappage: 'Trappage' };
+  const personneOrigine = d.personne_origine ? escH(nomPersonne(d.personne_origine)) : '';
+  const photo = d.derniere_photo;
   let html = `<div class="card"><h2>${escH(a.nom_usuel)} <span class="badge">${escH(LABELS_STATUT[a.statut_actuel] || a.statut_actuel || '—')}</span></h2>
+    ${photo ? `<img src="${escH(photo.url)}" alt="Photo de ${escH(a.nom_usuel)}" style="max-width:220px;max-height:180px;border:1px solid #ccc;border-radius:6px;display:block;margin:0 0 4px;"><div style="font-size:11px;color:#666;margin:0 0 12px;">Photo du ${fmtDate(photo.cree_le)}</div>` : '<div class="empty" style="margin-bottom:12px;">Aucune photo enregistrée</div>'}
     <div class="grid2">
       <div><span class="lbl">Type :</span> ${escH(espece)}</div>
       <div><span class="lbl">Sexe :</span> ${escH(a.sexe||'—')}</div>
@@ -120,7 +129,8 @@ function renderFiche(d) {
       <div><span class="lbl">Couleur :</span> ${escH(a.couleur||'—')}</div>
       <div><span class="lbl">Maman :</span> ${escH(a.nom_maman||'—')}</div>
       <div><span class="lbl">Puce :</span> ${escH(a.puce||'—')}</div>
-      <div><span class="lbl">Arrivée :</span> ${fmtDate(a.date_arrivee)}${a.origine_arrivee?' — '+escH(a.origine_arrivee):''}</div>
+      <div><span class="lbl">Arrivée :</span> ${fmtDate(a.date_arrivee)}${a.origine_arrivee ? ' — ' + escH(ORIGINES[a.origine_arrivee] || a.origine_arrivee) : ''}</div>
+      <div><span class="lbl">Amené par :</span> ${personneOrigine || '—'}</div>
       <div><span class="lbl">Décès :</span> ${a.date_deces?fmtDate(a.date_deces):'—'}</div>
       <div><span class="lbl">Stérilisé(e) :</span> ${sterilise}</div>
       <div><span class="lbl">Vermifugé :</span> ${vermifuge}</div>
