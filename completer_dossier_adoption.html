@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="logo_arche.png">
+<title>Compléter un dossier d'adoption — L'Arche de Mallo</title>
+<link rel="stylesheet" href="formulaires-arche-mallo.css">
+<style>
+  :root{ --cream:#faf7f2; --warm:#f0e8d8; --brown:#3d2b1f; --orange:#c96b2a; --grey:#8a7968; }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:Arial,sans-serif;font-size:16px;line-height:normal;background:var(--cream);color:var(--brown);}
+  #entete .header-adoption-right{display:none;}
+  header{background:#fff;border-bottom:3px solid var(--orange);padding:18px 24px;display:flex;align-items:center;gap:14px;}
+  header h1{font-size:16px;margin:0;}
+  header p{font-size:11px;color:var(--grey);margin:2px 0 0;}
+  .wrap{max-width:900px;margin:0 auto;padding:20px 16px 60px;}
+  .search-box{position:relative;margin-bottom:20px;}
+  .search-box input{width:100%;box-sizing:border-box;padding:12px 14px;font-size:14px;border:1px solid var(--warm);border-radius:10px;background:#fff;}
+  #liste-resultats{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid #ccc;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-height:320px;overflow-y:auto;z-index:1000;display:none;}
+  #liste-resultats .ligne{padding:9px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #f0f0f0;}
+  #liste-resultats .ligne:hover{background:#f5f5f5;}
+  #liste-resultats .ligne small{display:block;color:var(--grey);font-size:11.5px;margin-top:2px;}
+  .card{background:#fff;border:1px solid var(--warm);border-radius:12px;padding:16px 18px;margin-bottom:14px;}
+  .card h2{font-size:13px;margin:0 0 10px;color:var(--orange);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:12.5px;}
+  .grid2 .lbl{color:var(--grey);}
+  .full{grid-column:1/-1;}
+  .empty{color:var(--grey);font-size:12px;font-style:italic;}
+  .resume{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px;}
+  th{text-align:left;font-size:10px;color:var(--grey);text-transform:uppercase;padding:4px 6px;border-bottom:1px solid var(--warm);}
+  td{padding:5px 6px;border-bottom:1px solid #f2ece1;vertical-align:top;}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;background:var(--warm);font-size:10px;}
+  .lien-pdf{color:var(--orange);text-decoration:none;font-size:11px;white-space:nowrap;}
+  .lien-pdf:hover{text-decoration:underline;}
+  .rien{color:var(--grey);font-size:11.5px;font-style:italic;margin-top:4px;}
+  .table-scroll{overflow-x:auto;}
+  @media (max-width:600px){ .grid2{grid-template-columns:1fr;} }
+  #login-err{color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;}
+</style>
+<style>
+  .rowdoss{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 6px;border-bottom:1px solid #f2ece1;cursor:pointer;font-size:12.5px;}
+  .rowdoss:hover{background:#faf7f2;}
+  .rowdoss small{color:var(--grey);display:block;font-size:11px;margin-top:2px;}
+  .piece{display:grid;grid-template-columns:1.4fr 1fr;gap:6px 14px;padding:10px 0;border-bottom:1px solid #f2ece1;font-size:12.5px;align-items:start;}
+  .piece .nom{font-weight:bold;}
+  .ok{color:#2e7d32;} .manque{color:#c00000;}
+  .actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px;}
+  .btn-s{padding:6px 12px;border:none;border-radius:6px;background:var(--orange);color:#fff;font-size:12px;font-weight:bold;cursor:pointer;}
+  .btn-s.sec{background:#fff;color:var(--orange);border:1px solid var(--orange);}
+  .btn-s:disabled{opacity:.5;cursor:default;}
+  .msgp{font-size:11.5px;min-height:14px;margin-top:3px;}
+  .progress{height:8px;background:var(--warm);border-radius:6px;overflow:hidden;margin:6px 0 2px;}
+  .progress>div{height:100%;background:#2e7d32;}
+  @media (max-width:600px){ .piece{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+
+<div id="login-screen" style="position:fixed;inset:0;background:var(--cream);z-index:99999;display:flex;align-items:center;justify-content:center;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid var(--warm);border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:var(--grey);margin-bottom:16px;">Connexion requise.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+
+<div style="max-width:900px;margin:0 auto;padding:0 16px;">
+  <div id="entete"></div>
+  <p style="font-size:11px;color:var(--grey);margin:-8px 0 12px;">Transmission tardive des pièces d'un dossier d'adoption (identité, domicile, CBS, carnet de santé)</p>
+</div>
+<div class="wrap">
+
+  <div class="card">
+    <h2>📋 Dossiers à compléter <span class="badge" id="nb-incomplets">…</span></h2>
+    <div id="liste-incomplets"><div class="empty">Chargement…</div></div>
+    <details style="margin-top:10px;">
+      <summary style="cursor:pointer;font-size:12px;color:var(--grey);">Adoptions antérieures au suivi des pièces — à vérifier <span class="badge" id="nb-averifier">…</span></summary>
+      <div id="liste-averifier" style="margin-top:8px;"></div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>🔍 Rechercher une personne</h2>
+    <div class="search-box" style="margin-bottom:0;">
+      <input type="text" id="recherche-input" placeholder="Nom, prénom, entreprise, email ou téléphone…" autocomplete="off">
+      <div id="liste-resultats"></div>
+    </div>
+    <div id="adoptions-personne" style="margin-top:10px;"></div>
+  </div>
+
+  <div id="dossier"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
+<script src="supabase-config.js"></script>
+<script src="config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script src="generer-pdf.js"></script>
+<script src="envoyer-mail.js"></script>
+<script src="stocker-pdf-drive.js"></script>
+<script src="pieces-adoption.js"></script>
+<script>
+const supabaseClient = creerClientSupabase();
+initSessionSuivi();
+
+document.addEventListener('DOMContentLoaded', function() {
+  creerEntete({ dateId: 'dateRef', titre: "Compléter un dossier d'adoption" });
+});
+
+function escH(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+function fmtDate(d) { if (!d) return '—'; const s=String(d).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const p=s.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; } return s; }
+function nomPersonne(p) {
+  if (!p) return '—';
+  if (p.type_personne === 'entreprise') return p.raison_sociale || '—';
+  return `${p.prenom||''} ${p.nom||''}`.trim() || '—';
+}
+
+// ------------------------------------------------------------
+// Démarrage : liste des dossiers à compléter (une fois connecté)
+// ------------------------------------------------------------
+let demarre = false;
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  if (session && !demarre) { demarre = true; setTimeout(demarrer, 0); }
+});
+
+async function demarrer() {
+  await chargerIncomplets();
+  const idUrl = new URLSearchParams(location.search).get('adoption');
+  if (idUrl) ouvrirDossier(idUrl);
+}
+
+async function chargerIncomplets() {
+  const { data, error } = await supabaseClient.rpc('dossiers_adoption_incomplets');
+  if (error) {
+    document.getElementById('liste-incomplets').innerHTML = '<div class="empty">Erreur : ' + escH(error.message) + ' (migration 062 exécutée ?)</div>';
+    return;
+  }
+  const lignes = data || [];
+  const inc = lignes.filter(l => l.statut === 'incomplet');
+  const av  = lignes.filter(l => l.statut === 'a_verifier');
+  document.getElementById('nb-incomplets').textContent = inc.length;
+  document.getElementById('nb-averifier').textContent = av.length;
+  document.getElementById('liste-incomplets').innerHTML = inc.length
+    ? inc.map(ligneDossier).join('') : '<div class="empty">Aucun dossier incomplet. 🎉</div>';
+  document.getElementById('liste-averifier').innerHTML = av.length
+    ? av.map(ligneDossier).join('') : '<div class="empty">Rien à vérifier.</div>';
+}
+
+function ligneDossier(l) {
+  const manq = (l.manquantes || []).map(libellePieceAdoption).map(escH).join(', ');
+  const anc = l.date_adoption ? Math.floor((Date.now() - new Date(l.date_adoption).getTime()) / 86400000) : null;
+  return `<div class="rowdoss" onclick="ouvrirDossier('${escH(l.adoption_id)}')">
+    <div><strong>${escH(l.personne_nom)}</strong> — ${escH(l.animal_nom || '—')}
+      <small>Adoption du ${fmtDate(l.date_adoption)}${anc !== null ? ' (' + anc + ' j)' : ''} · manque : ${manq}</small></div>
+    <span class="badge">${(l.manquantes || []).length} manquante(s)</span></div>`;
+}
+
+// ------------------------------------------------------------
+// Recherche d'une personne -> ses adoptions
+// ------------------------------------------------------------
+const input = document.getElementById('recherche-input');
+const liste = document.getElementById('liste-resultats');
+let timer = null, generation = 0;
+
+function fermerListe() { generation++; clearTimeout(timer); liste.style.display = 'none'; liste.innerHTML = ''; }
+
+async function rechercher(texte) {
+  const g = ++generation;
+  try {
+    const { data, error } = await supabaseClient.rpc('rechercher_personnes', { p_recherche: texte });
+    if (error) throw error;
+    if (g !== generation || document.activeElement !== input) return;
+    liste.innerHTML = '';
+    if (!(data||[]).length) {
+      liste.innerHTML = '<div style="padding:9px 14px;color:var(--grey);font-size:13px;">Aucune personne trouvée</div>';
+    }
+    (data||[]).forEach(p => {
+      const l = document.createElement('div');
+      l.className = 'ligne';
+      const detail = [p.ville, p.email, p.telephone].filter(Boolean).join(' · ');
+      l.innerHTML = '<strong>' + escH(nomPersonne(p)) + '</strong>' + (detail ? '<small>' + escH(detail) + '</small>' : '');
+      l.addEventListener('mousedown', e => e.preventDefault());
+      l.addEventListener('click', () => { input.value = nomPersonne(p); fermerListe(); chargerAdoptionsPersonne(p); });
+      liste.appendChild(l);
+    });
+    liste.style.display = 'block';
+  } catch (e) {
+    liste.innerHTML = '<div style="padding:9px 14px;color:#c00000;font-size:13px;">Erreur : ' + escH(e.message) + '</div>';
+    liste.style.display = 'block';
+  }
+}
+input.addEventListener('input', () => {
+  clearTimeout(timer);
+  const t = input.value.trim();
+  if (t.length < 2) { fermerListe(); return; }
+  generation++;
+  timer = setTimeout(() => rechercher(t), 250);
+});
+input.addEventListener('focus', () => { const t = input.value.trim(); if (t.length >= 2) rechercher(t); });
+input.addEventListener('keydown', e => { if (e.key === 'Escape' || e.key === 'Tab') fermerListe(); });
+input.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== input) fermerListe(); }, 200));
+
+async function chargerAdoptionsPersonne(p) {
+  const zone = document.getElementById('adoptions-personne');
+  zone.innerHTML = '<div class="empty">Chargement…</div>';
+  const { data: ads, error } = await supabaseClient.from('adoptions')
+    .select('id,animal_id,date_adoption').eq('personne_id', p.id).order('date_adoption', { ascending: false });
+  if (error) { zone.innerHTML = '<div class="empty">Erreur : ' + escH(error.message) + '</div>'; return; }
+  if (!ads || !ads.length) { zone.innerHTML = '<div class="empty">Cette personne n\'a aucune adoption enregistrée.</div>'; return; }
+  const ids = [...new Set(ads.map(a => a.animal_id).filter(Boolean))];
+  const { data: ans } = ids.length ? await supabaseClient.from('animaux').select('id,nom_usuel,nom_adoption').in('id', ids) : { data: [] };
+  const parId = {}; (ans||[]).forEach(a => parId[a.id] = a);
+  zone.innerHTML = ads.map(a => {
+    const an = parId[a.animal_id] || {};
+    return `<div class="rowdoss" onclick="ouvrirDossier('${escH(a.id)}')"><div><strong>${escH(an.nom_adoption || an.nom_usuel || '—')}</strong>
+      <small>Adoption du ${fmtDate(a.date_adoption)}</small></div><span class="badge">Ouvrir le dossier ›</span></div>`;
+  }).join('');
+}
+
+// ------------------------------------------------------------
+// Dossier d'une adoption : liste des pièces + envoi
+// ------------------------------------------------------------
+let dossierCourant = null;
+
+async function ouvrirDossier(adoptionId) {
+  const zone = document.getElementById('dossier');
+  zone.innerHTML = '<div class="card"><div class="empty">Chargement du dossier…</div></div>';
+  zone.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  try {
+    const { data: ad, error } = await supabaseClient.from('adoptions')
+      .select('id,personne_id,animal_id,date_adoption,date_fait').eq('id', adoptionId).maybeSingle();
+    if (error) throw error;
+    if (!ad) throw new Error('Adoption introuvable.');
+    const [pers, animal, pieces, fichiers] = await Promise.all([
+      supabaseClient.from('personnes').select('*').eq('id', ad.personne_id).maybeSingle(),
+      supabaseClient.from('animaux').select('id,nom_usuel,nom_adoption').eq('id', ad.animal_id).maybeSingle(),
+      supabaseClient.from('adoption_pieces').select('*').eq('adoption_id', adoptionId),
+      supabaseClient.from('soumission_fichiers').select('type_fichier,url').eq('table_source', 'adoptions').eq('enregistrement_id', adoptionId)
+    ]);
+    [pers, animal, pieces, fichiers].forEach(r => { if (r.error) throw r.error; });
+    dossierCourant = { ad, p: pers.data || {}, an: animal.data || {}, pieces: pieces.data || [], fichiers: fichiers.data || [] };
+    afficherDossier();
+  } catch (e) {
+    zone.innerHTML = '<div class="card"><div class="empty">Erreur : ' + escH(e.message) + '</div></div>';
+  }
+}
+
+function afficherDossier() {
+  const { ad, p, an, pieces, fichiers } = dossierCourant;
+  const suivi = pieces.length > 0;
+  const recues = PIECES_ADOPTION.filter(def => pieces.some(x => x.type_piece === def.type && x.recue)).length;
+  const pct = Math.round(recues * 100 / PIECES_ADOPTION.length);
+  let html = `<div class="card"><h2>🏠 Adoption de ${escH(an.nom_adoption || an.nom_usuel || '—')}
+      <span class="badge">${escH(nomPersonne(p))}</span> <span class="badge">du ${fmtDate(ad.date_adoption)}</span></h2>
+    <div style="font-size:12px;">${recues} pièce(s) sur ${PIECES_ADOPTION.length} reçue(s)
+      ${suivi ? '' : ' — <span class="empty">adoption antérieure au suivi : indiquez ce qui a déjà été reçu</span>'}</div>
+    <div class="progress"><div style="width:${pct}%"></div></div>`;
+  PIECES_ADOPTION.forEach(def => {
+    const ligne = pieces.find(x => x.type_piece === def.type);
+    const recue = !!(ligne && ligne.recue);
+    const liens = fichiers.filter(f => f.type_fichier === 'Pièce : ' + def.label)
+      .map(f => `<a class="lien-pdf" href="${escH(f.url)}" target="_blank" rel="noopener">📄 Voir le fichier</a>`).join('<br>');
+    html += `<div class="piece" id="piece-${def.type}">
+      <div><div class="nom">${escH(def.label)}</div>
+        <div class="${recue ? 'ok' : 'manque'}">${recue
+          ? '✅ Reçue le ' + fmtDate(ligne.date_reception) + (ligne.mode_reception === 'papier' ? ' (papier)' : '')
+          : (suivi ? '⏳ Manquante' : '❔ À vérifier')}</div>${liens ? '<div>' + liens + '</div>' : ''}</div>
+      <div>
+        <input type="file" id="f-${def.type}" accept="image/*,application/pdf" multiple style="font-size:12px;max-width:100%;">
+        <div class="actions">
+          <button class="btn-s" id="b-${def.type}" onclick="envoyerPiece('${def.type}')">${recue ? 'Ajouter un fichier' : 'Envoyer'}</button>
+          ${recue ? `<button class="btn-s sec" onclick="changerPiece('${def.type}', false)">Marquer manquante</button>`
+                  : `<button class="btn-s sec" onclick="changerPiece('${def.type}', true)">Reçue en papier</button>`}
+        </div>
+        <div class="msgp" id="m-${def.type}"></div>
+      </div></div>`;
+  });
+  html += '</div>';
+  document.getElementById('dossier').innerHTML = html;
+}
+
+function msgPiece(type, texte, ok) {
+  const el = document.getElementById('m-' + type);
+  if (el) { el.textContent = texte; el.style.color = ok ? '#2e7d32' : '#c00000'; }
+}
+
+async function changerPiece(type, recue) {
+  try {
+    // Sur une adoption antérieure au suivi, on crée d'abord les 5 lignes (non reçues)
+    if (!dossierCourant.pieces.length) await initialiserPiecesAdoption(dossierCourant.ad.id, {});
+    await marquerPieceAdoption(dossierCourant.ad.id, type, recue, 'papier');
+    await ouvrirDossier(dossierCourant.ad.id);
+    chargerIncomplets();
+  } catch (e) { msgPiece(type, '⚠️ ' + e.message, false); }
+}
+
+async function envoyerPiece(type) {
+  const fichiers = document.getElementById('f-' + type).files;
+  if (!fichiers || !fichiers.length) { msgPiece(type, 'Choisissez d\'abord une photo ou un fichier.', false); return; }
+  const bouton = document.getElementById('b-' + type);
+  bouton.disabled = true;
+  msgPiece(type, 'Envoi en cours… (ne fermez pas la page)', true);
+  try {
+    const { ad, p, an } = dossierCourant;
+    if (!dossierCourant.pieces.length) await initialiserPiecesAdoption(ad.id, {});
+    const animal = an.nom_adoption || an.nom_usuel || '';
+    await deposerPieceAdoption({
+      adoptionId: ad.id,
+      onglet: 'adoption',
+      prenom: p.prenom || '',
+      nom: (p.type_personne === 'entreprise' ? p.raison_sociale : p.nom) || 'Inconnu',
+      animal: animal,
+      dateDossier: ad.date_fait || ad.date_adoption || null,
+      titreDossier: 'Adoption de ' + animal + ' — ' + nomPersonne(p) + ' — ' + fmtDate(ad.date_adoption)
+    }, type, fichiers);
+    await ouvrirDossier(ad.id);
+    msgPiece(type, '✅ Pièce enregistrée dans le dossier d\'adoption.', true);
+    chargerIncomplets();
+  } catch (e) {
+    console.error('[Pièce adoption]', e);
+    msgPiece(type, '⚠️ ' + e.message, false);
+    bouton.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
