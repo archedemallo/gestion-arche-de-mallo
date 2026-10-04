@@ -636,7 +636,10 @@ async function onIcadFileChosen(e) {
             })
         });
         const json = await resp.json();
-        if (!json.ok) throw new Error(json.error || 'échec côté Drive');
+        // L'Apps Script répond {status:'ok', url} (ou {status:'error', message}),
+        // comme pour les actions 'photo' et 'pdf' — pas {ok:true}.
+        const reussi = (json.ok === true || json.status === 'ok') && json.url;
+        if (!reussi) throw new Error(json.error || json.message || 'échec côté Drive (aucun lien renvoyé)');
 
         const colonne = typeDoc === 'sterilisation' ? 'fichier_sterilisation_url' : 'fichier_icad_url';
         const { error } = await supabaseClient.from('animaux_sterilisation_icad')
