@@ -304,7 +304,8 @@
 <div class="grid-container">
 
     <div class="tabbar">
-        <button type="button" class="tab-btn active" data-slug="cession" onclick="activerOnglet('cession')">🏠 Cession / Adoption</button>
+        <button type="button" class="tab-btn active" data-slug="arrivee" onclick="activerOnglet('arrivee')">🐾 Arrivée</button>
+        <button type="button" class="tab-btn" data-slug="cession" onclick="activerOnglet('cession')">🏠 Cession / Adoption</button>
         <button type="button" class="tab-btn" data-slug="reservation" onclick="activerOnglet('reservation')">📅 Réservation</button>
         <button type="button" class="tab-btn" data-slug="adhesion-dons" onclick="activerOnglet('adhesion-dons')">📌 Adhésion & Dons</button>
         <button type="button" class="tab-btn" data-slug="famille" onclick="activerOnglet('famille')">🏡 Famille d'accueil</button>
@@ -312,7 +313,28 @@
         <button type="button" class="tab-btn" data-slug="outils" onclick="activerOnglet('outils')">🔍 Outils</button>
     </div>
 
-    <div class="tab-content active" data-slug="cession" id="tab-cession">
+    <div class="tab-content active" data-slug="arrivee" id="tab-arrivee">
+    <div class="grid">
+        <a class="card" href="arrivee_animal.html">
+            <div class="card-icon">🐾</div>
+            <div class="card-text">
+                <div class="card-title">Nouvelle arrivée</div>
+                <div class="card-desc">Déclarer l'arrivée d'un animal (trappage, dépôt, abandon, saisie…)</div>
+            </div>
+            <div class="card-arrow">›</div>
+        </a>
+        <a class="card" href="statuts_animaux.html">
+            <div class="card-icon">🔄</div>
+            <div class="card-text">
+                <div class="card-title">Statuts des animaux</div>
+                <div class="card-desc">Faire évoluer le statut d'un animal déjà connu de l'association</div>
+            </div>
+            <div class="card-arrow">›</div>
+        </a>
+    </div>
+    </div>
+
+    <div class="tab-content" data-slug="cession" id="tab-cession">
     <div class="grid">
         <a class="card" href="adoption.html">
             <div class="card-icon">📋</div>
@@ -322,11 +344,11 @@
             </div>
             <div class="card-arrow">›</div>
         </a>
-        <a class="card" href="certificat_engagement.html">
-            <div class="card-icon">📜</div>
+        <a class="card" href="completer_dossier_adoption.html">
+            <div class="card-icon">📎</div>
             <div class="card-text">
-                <div class="card-title">Certificat d'engagement et de connaissance</div>
-                <div class="card-desc">Loi 2021-1539 — Obligatoire 7 jours avant la cession</div>
+                <div class="card-title">Compléter un dossier d'adoption</div>
+                <div class="card-desc">Joindre les pièces transmises plus tard (identité, domicile, CBS, carnet de santé)</div>
             </div>
             <div class="card-arrow">›</div>
         </a>
@@ -356,6 +378,14 @@
             <div class="card-text">
                 <div class="card-title">Contrat de réservation</div>
                 <div class="card-desc">Chat, chaton ou autre animal — acompte de 50€</div>
+            </div>
+            <div class="card-arrow">›</div>
+        </a>
+        <a class="card" href="certificat_engagement.html">
+            <div class="card-icon">📜</div>
+            <div class="card-text">
+                <div class="card-title">Certificat d'engagement et de connaissance</div>
+                <div class="card-desc">Loi 2021-1539 — Obligatoire 7 jours avant la cession</div>
             </div>
             <div class="card-arrow">›</div>
         </a>
@@ -440,30 +470,6 @@
             <div class="card-text">
                 <div class="card-title">Recherche personne</div>
                 <div class="card-desc">Fiche complète d'une personne : adhésions, dons, adoptions, documents…</div>
-            </div>
-            <div class="card-arrow">›</div>
-        </a>
-        <a class="card" href="completer_dossier_adoption.html">
-            <div class="card-icon">📎</div>
-            <div class="card-text">
-                <div class="card-title">Compléter un dossier d'adoption</div>
-                <div class="card-desc">Joindre les pièces transmises plus tard (identité, domicile, CBS, carnet de santé)</div>
-            </div>
-            <div class="card-arrow">›</div>
-        </a>
-        <a class="card" href="arrivee_animal.html">
-            <div class="card-icon">🐾</div>
-            <div class="card-text">
-                <div class="card-title">Nouvelle arrivée</div>
-                <div class="card-desc">Déclarer l'arrivée d'un animal (trappage, dépôt, abandon, saisie…)</div>
-            </div>
-            <div class="card-arrow">›</div>
-        </a>
-        <a class="card" href="statuts_animaux.html">
-            <div class="card-icon">🔄</div>
-            <div class="card-text">
-                <div class="card-title">Statuts des animaux</div>
-                <div class="card-desc">Faire évoluer le statut d'un animal déjà connu de l'association</div>
             </div>
             <div class="card-arrow">›</div>
         </a>
