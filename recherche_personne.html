@@ -111,6 +111,9 @@ function listeAnimaux(animaux) {
   if (!animaux || !animaux.length) return '<span class="empty">—</span>';
   return animaux.map(nomAnimal).join(', ');
 }
+const LABELS_ORIGINE = { depot:'Dépôt', abandon:'Abandon', saisie:'Saisie', trappage:'Trappage',
+  ne_a_association:'Né à l\'association', transfert_autre_association:'Transfert d\'une autre association' };
+const LABELS_ACCUEIL = { provisoire:'Provisoire', chat_libre:'Chat libre', adoption:'En vue d\'adoption' };
 function viderResultat() { document.getElementById('resultat').innerHTML = ''; }
 
 // ------------------------------------------------------------
@@ -200,6 +203,9 @@ function ligneInfo(label, valeur) {
 }
 
 function render(d) {
+  // Les attestations regroupent deux formulaires : on les sépare pour tout voir
+  d.attestations_cbs = (d.attestations || []).filter(a => a.type_attestation === 'cbs_absent');
+  d.decharges        = (d.attestations || []).filter(a => a.type_attestation === 'decharge_vaccin');
   const p = d.personne;
   const estEntreprise = p.type_personne === 'entreprise';
   let html = '';
@@ -225,12 +231,17 @@ function render(d) {
 
   // ---- Sections ----
   const sections = [
+    { key:'arrivees', titre:'🐾 Animaux amenés (dépôt, abandon, saisie, trappage…)',
+      cols:['Date d\'arrivée','Animal','Origine','Statut','Formulaire'],
+      row:r=>[fmtDate(r.date_arrivee), nomAnimal(r), escH(LABELS_ORIGINE[r.origine_arrivee]||r.origine_arrivee||'—'), escH(r.statut_actuel||'—'),
+              r.formulaire_requis ? (r.formulaire_fait ? '✅ complété' : '⚠️ formulaire à compléter') : '<span class="empty">—</span>'] },
     { key:'adhesions', titre:'🎫 Adhésion(s)',
       cols:['Date','Type','Cotisation','Don bienf.','Don sympath.','Total','Règlement','Documents'],
       row:r=>[fmtDate(r.date_adhesion), escH(r.type_adhesion||'—'), fmtEuro(r.cotisation_adherent), fmtEuro(r.don_bienfaiteur), fmtEuro(r.don_sympathisant), '<strong>'+fmtEuro(r.montant_total)+'</strong>', reglement(r), liensPdf(r.fichiers)] },
     { key:'dons', titre:'💝 Don(s)',
-      cols:['Date','Montant','Nature','Règlement','N° reçu fiscal','Documents'],
-      row:r=>[fmtDate(r.date_signature), '<strong>'+fmtEuro(r.montant)+'</strong>'+(r.don_anonyme?' <span class="badge">anonyme</span>':''), escH(r.description_nature||'—'), reglement(r), escH(r.numero_recu_fiscal||'—'), liensPdf(r.fichiers)] },
+      cols:['Date','Montant','Nature','Règlement','Reçu fiscal','Documents'],
+      row:r=>[fmtDate(r.date_signature), '<strong>'+fmtEuro(r.montant)+'</strong>'+(r.don_anonyme?' <span class="badge">anonyme</span>':''), escH(r.description_nature||'—'), reglement(r),
+              r.numero_recu_fiscal ? '✅ Reçu n° ' + escH(r.numero_recu_fiscal) : '<span class="empty">Sans reçu</span>', liensPdf(r.fichiers)] },
     { key:'adoptions', titre:'🏠 Adoption(s)',
       cols:['Date','Animal','Participation','Règlement','Documents'],
       row:r=>[fmtDate(r.date_adoption), nomAnimal(r.animal), '<strong>'+fmtEuro(r.total_participation)+'</strong>', reglement(r), liensPdf(r.fichiers)] },
@@ -244,14 +255,17 @@ function render(d) {
       cols:['Date','Animal','Cause','Documents'],
       row:r=>[fmtDate(r.date_fait), nomAnimal(r.animal), escH(r.cause_abandon||'—'), liensPdf(r.fichiers)] },
     { key:'familles_accueil', titre:'🤝 Famille d\'accueil',
-      cols:['Type','Du','Au','Animal','Documents'],
-      row:r=>[escH(r.type_accueil||'—'), fmtDate(r.date_debut), r.date_fin?fmtDate(r.date_fin):'en cours', nomAnimal(r.animal), liensPdf(r.fichiers)] },
-    { key:'attestations', titre:'📜 Attestation(s)',
-      cols:['Date','Type','Animal','Motif','Documents'],
-      row:r=>[fmtDate(r.date_fait), escH(r.type_attestation||'—'), nomAnimal(r.animal), escH(r.motif||'—'), liensPdf(r.fichiers)] },
+      cols:['Type','Fait le','Du','Au','Animal','Documents'],
+      row:r=>[escH(LABELS_ACCUEIL[r.type_accueil]||r.type_accueil||'—'), fmtDate(r.date_fait), fmtDate(r.date_debut), r.date_fin?fmtDate(r.date_fin):'en cours', nomAnimal(r.animal), liensPdf(r.fichiers)] },
+    { key:'attestations_cbs', titre:'📜 Attestation(s) CBS absent',
+      cols:['Date','Animal','RDV vétérinaire','Motif','Documents'],
+      row:r=>[fmtDate(r.date_fait), nomAnimal(r.animal), fmtDate(r.date_rdv_veto), escH(r.motif||'—'), liensPdf(r.fichiers)] },
+    { key:'decharges', titre:'🧾 Décharge(s) vaccin',
+      cols:['Date','Animal','Naissance','1er vaccin','Rappel avant le','Documents'],
+      row:r=>[fmtDate(r.date_fait), nomAnimal(r.animal), fmtDate(r.date_naissance_animal), fmtDate(r.date_primo_vaccin), fmtDate(r.date_limite_rappel), liensPdf(r.fichiers)] },
     { key:'materiel', titre:'🪤 Prêt / retour de matériel',
       cols:['Date','Mouvement','Matériel','Documents'],
-      row:r=>[fmtDate(r.date_mouvement), r.type_mouvement==='retour'?'Retour':'Prêt', escH(r.materiel||'—'), liensPdf(r.fichiers)] },
+      row:r=>[fmtDate(r.date_mouvement), r.type_mouvement==='retour'?'↩️ Retour (restitution)':'📤 Prêt', escH(r.materiel||'—'), liensPdf(r.fichiers)] },
     { key:'certificats', titre:'📝 Certificat(s) d\'engagement',
       cols:['Date','Documents'],
       row:r=>[fmtDate(r.date_fait), liensPdf(r.fichiers)] },
@@ -289,6 +303,19 @@ function resumeHtml(d) {
   if ((d.depots||[]).length)       pastilles.push(`${d.depots.length} dépôt(s)`);
   if ((d.abandons||[]).length)     pastilles.push(`${d.abandons.length} abandon(s)`);
   if ((d.familles_accueil||[]).length) pastilles.push(`${d.familles_accueil.length} accueil(s)`);
+  const arr = d.arrivees || [];
+  Object.keys(LABELS_ORIGINE).forEach(o => {
+    const n = arr.filter(a => a.origine_arrivee === o).length;
+    if (n) pastilles.push(`${n} ${LABELS_ORIGINE[o].toLowerCase()}(s) d'animal`);
+  });
+  if ((d.attestations_cbs||[]).length) pastilles.push(`${d.attestations_cbs.length} attestation(s) CBS`);
+  if ((d.decharges||[]).length)        pastilles.push(`${d.decharges.length} décharge(s)`);
+  if ((d.certificats||[]).length)      pastilles.push(`${d.certificats.length} certificat(s) d'engagement`);
+  if ((d.materiel||[]).length) {
+    const prets = d.materiel.filter(m => m.type_mouvement !== 'retour').length;
+    const retours = d.materiel.length - prets;
+    pastilles.push(`${prets} prêt(s) / ${retours} retour(s) de matériel`);
+  }
   return pastilles.length ? `<div class="resume">${pastilles.map(t=>`<span class="badge">${escH(t)}</span>`).join('')}</div>` : '';
 }
 </script>
