@@ -68,6 +68,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
+<script src="pieces-adoption.js"></script>
 <script>
 const supabaseClient = creerClientSupabase();
 initSessionSuivi();
@@ -114,6 +115,21 @@ function listeAnimaux(animaux) {
 const LABELS_ORIGINE = { depot:'Dépôt', abandon:'Abandon', saisie:'Saisie', trappage:'Trappage',
   ne_a_association:'Né à l\'association', transfert_autre_association:'Transfert d\'une autre association' };
 const LABELS_ACCUEIL = { provisoire:'Provisoire', chat_libre:'Chat libre', adoption:'En vue d\'adoption' };
+// Statut calculé d'un dossier d'adoption : complet / incomplet / à vérifier (adoption antérieure au suivi)
+function statutDossier(d, adoptionId) {
+  const rows = (d.pieces_adoption || []).filter(x => x.adoption_id === adoptionId);
+  if (!rows.length) return { code:'a_verifier', manquantes: PIECES_ADOPTION.map(x => x.type) };
+  const manquantes = PIECES_ADOPTION.map(x => x.type).filter(t => !rows.some(r => r.type_piece === t && r.recue));
+  return { code: manquantes.length ? 'incomplet' : 'complet', manquantes };
+}
+function dossierHtml(d, adoptionId) {
+  const st = statutDossier(d, adoptionId);
+  const lien = `<br><a class="lien-pdf" href="completer_dossier_adoption.html?adoption=${encodeURIComponent(adoptionId)}">Compléter le dossier ›</a>`;
+  if (st.code === 'complet') return '<span style="color:#2e7d32;">✅ Dossier complet</span>' + lien;
+  const manq = st.manquantes.map(libellePieceAdoption).map(escH).join(', ');
+  if (st.code === 'a_verifier') return '<span style="color:#b26a00;">❔ À vérifier</span>' + lien;
+  return `<span style="color:#c00000;">⏳ ${st.manquantes.length} pièce(s) manquante(s)</span><br><span class="empty">${manq}</span>` + lien;
+}
 function viderResultat() { document.getElementById('resultat').innerHTML = ''; }
 
 // ------------------------------------------------------------
@@ -243,8 +259,8 @@ function render(d) {
       row:r=>[fmtDate(r.date_signature), '<strong>'+fmtEuro(r.montant)+'</strong>'+(r.don_anonyme?' <span class="badge">anonyme</span>':''), escH(r.description_nature||'—'), reglement(r),
               r.numero_recu_fiscal ? '✅ Reçu n° ' + escH(r.numero_recu_fiscal) : '<span class="empty">Sans reçu</span>', liensPdf(r.fichiers)] },
     { key:'adoptions', titre:'🏠 Adoption(s)',
-      cols:['Date','Animal','Participation','Règlement','Documents'],
-      row:r=>[fmtDate(r.date_adoption), nomAnimal(r.animal), '<strong>'+fmtEuro(r.total_participation)+'</strong>', reglement(r), liensPdf(r.fichiers)] },
+      cols:['Date','Animal','Participation','Règlement','Dossier','Documents'],
+      row:r=>[fmtDate(r.date_adoption), nomAnimal(r.animal), '<strong>'+fmtEuro(r.total_participation)+'</strong>', reglement(r), dossierHtml(d, r.id), liensPdf(r.fichiers)] },
     { key:'reservations', titre:'📅 Réservation(s)',
       cols:['Date','Type','Animal','Montant','Règlement','Documents'],
       row:r=>[fmtDate(r.date_reservation), escH(r.type_reservation||'—'), r.animal?nomAnimal(r.animal):escH(r.signes_particuliers||'—'), fmtEuro(r.montant), reglement(r), liensPdf(r.fichiers)] },
@@ -298,7 +314,18 @@ function resumeHtml(d) {
     pastilles.push(`Adhérent(e) — dernière adhésion ${fmtDate(derniere)}`);
   }
   if ((d.dons||[]).length)         pastilles.push(`${d.dons.length} don(s) — ${fmtEuro(total(d.dons,'montant'))}`);
-  if ((d.adoptions||[]).length)    pastilles.push(`${d.adoptions.length} adoption(s)`);
+  if ((d.adoptions||[]).length) {
+    pastilles.push(`${d.adoptions.length} adoption(s)`);
+    const sts = d.adoptions.map(a => statutDossier(d, a.id));
+    const incompl = sts.filter(x => x.code === 'incomplet');
+    const averif  = sts.filter(x => x.code === 'a_verifier').length;
+    const compl   = sts.filter(x => x.code === 'complet').length;
+    if (incompl.length) pastilles.push(`⏳ Dossier d'adoption incomplet — ${incompl.reduce((n,x)=>n+x.manquantes.length,0)} pièce(s) manquante(s)`);
+    if (compl)          pastilles.push(`✅ ${compl} dossier(s) d'adoption complet(s)`);
+    if (averif)         pastilles.push(`❔ ${averif} dossier(s) d'adoption à vérifier`);
+  }
+  const accueilsEnCours = (d.familles_accueil||[]).filter(f => !f.date_fin || f.date_fin >= new Date().toISOString().slice(0,10)).length;
+  if (accueilsEnCours) pastilles.push(`🤝 Famille d'accueil en cours (${accueilsEnCours})`);
   if ((d.reservations||[]).length) pastilles.push(`${d.reservations.length} réservation(s)`);
   if ((d.depots||[]).length)       pastilles.push(`${d.depots.length} dépôt(s)`);
   if ((d.abandons||[]).length)     pastilles.push(`${d.abandons.length} abandon(s)`);
