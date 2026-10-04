@@ -19,7 +19,18 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:'DM Sans',sans-serif; background:var(--cream); color:var(--brown); min-height:100vh; }
 
-/* HEADER : en-tête commun (entete-site.css) */
+/* EN-TÊTE ASSOCIATION (même rendu que les autres pages — creerEntete()).
+   Règles reprises de formulaires-arche-mallo.css, limitées à #entete : la
+   feuille complète n'est pas chargée ici, elle écraserait le style du tableau. */
+#entete { font-family:'Calibri',Arial,Helvetica,sans-serif; color:#000; line-height:1.6; }
+#entete .header-adoption { display:flex; justify-content:space-between; align-items:center; }
+#entete .header-adoption-right { display:none; }
+#entete .header-info { flex:1; text-align:center; margin-top:0; line-height:1.8; }
+#entete .header-info p { margin:8px 0; font-size:14pt; }
+#entete .logo-box { width:240px; height:160px; background-image:url('logo_arche.png'); background-size:contain; background-repeat:no-repeat; background-position:center; margin-bottom:8px; }
+#entete .bold { font-weight:bold; }
+#entete .blue { color:#0563c1; }
+#entete .title { text-align:center; font-size:18pt; font-weight:bold; margin:10px 0 16px; }
 .btn-back { background:var(--warm); color:var(--brown); border:none; border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer; font-family:'DM Sans',sans-serif; text-decoration:none; display:inline-flex; align-items:center; gap:6px; margin-bottom:14px; }
 
 /* MAIN */
@@ -135,7 +146,7 @@ tr.done-row td { opacity:.75; }
 .empty { text-align:center; padding:40px; color:var(--grey); font-size:14px; font-style:italic; }
 
 @media print {
-    .entete-site, .btn-back, .tabs, .filters, .stats, .print-bar, .btn-open, .icad-action, .comment-input, .modal-overlay { display:none !important; }
+    #entete, .entete-site, .btn-back, .tabs, .filters, .stats, .print-bar, .btn-open, .icad-action, .comment-input, .modal-overlay { display:none !important; }
     .table-wrap { box-shadow:none; }
     body { background:white; }
     .print-title { display:block !important; }
@@ -157,10 +168,11 @@ tr.done-row td { opacity:.75; }
   </div>
 </div>
 
-<div class="main">
+<div style="max-width:1200px;margin:0 auto;padding:0 20px;">
+    <div id="entete"></div>
+</div>
 
-    <a href="index.html" class="btn-back">← Retour</a>
-    <h2 style="font-family:'Playfair Display',serif;font-size:20px;margin-bottom:16px;">Suivi ICAD</h2>
+<div class="main">
 
     <!-- ONGLETS -->
     <div class="tabs">
@@ -282,50 +294,100 @@ function estFait(icad) {
 // déclarées dans le schéma : fk_adoptions_animal_id,
 // fk_adoptions_personne_id, fk_animaux_sterilisation_icad_animal_id).
 // ============================================================
+// PostgREST renvoie au plus 1000 lignes par requête : on lit par pages
+// de 1000 jusqu'à épuisement, sinon les adoptions au-delà seraient absentes.
+async function lireTout(construire) {
+    const taille = 1000;
+    let tout = [];
+    for (let debut = 0; ; debut += taille) {
+        const { data, error } = await construire().range(debut, debut + taille - 1);
+        if (error) throw error;
+        tout = tout.concat(data || []);
+        if (!data || data.length < taille) break;
+    }
+    return tout;
+}
+
+const CHAMPS_ANIMAL = `id, nom_usuel, nom_adoption, couleur, sexe, date_naissance, puce,
+    animaux_sterilisation_icad ( date_transfert, commentaire, fichier_icad_url, fichier_sterilisation_url )`;
+
+function icadDe(a) {
+    // animaux_sterilisation_icad est 1-1 (animal_id unique) mais Supabase le renvoie
+    // sous forme de tableau tant qu'aucune relation singulière n'est précisée.
+    const brut = Array.isArray(a.animaux_sterilisation_icad) ? a.animaux_sterilisation_icad[0] : a.animaux_sterilisation_icad;
+    return brut || null;
+}
+
 async function chargerDonnees() {
     document.getElementById('tbody').innerHTML = '<tr><td colspan="10" class="loading">Chargement des données...</td></tr>';
-    const { data, error } = await supabaseClient
-        .from('adoptions')
-        .select(`
-            date_adoption, total_participation,
-            animaux!inner ( id, nom_usuel, nom_adoption, couleur, sexe, date_naissance, puce,
-                animaux_sterilisation_icad ( date_transfert, commentaire, fichier_icad_url, fichier_sterilisation_url ) ),
-            personnes!inner ( nom, prenom, adresse, code_postal, ville, telephone, email )
-        `)
-        .order('date_adoption', { ascending: false });
+    try {
+        // 1. Les adoptions enregistrées (animal + adoptant + statut ICAD)
+        const adoptions = await lireTout(() => supabaseClient
+            .from('adoptions')
+            .select(`
+                id, date_adoption, total_participation,
+                animaux!inner ( ${CHAMPS_ANIMAL} ),
+                personnes!inner ( nom, prenom, adresse, code_postal, ville, telephone, email )
+            `)
+            .order('date_adoption', { ascending: false })
+            .order('id'));
 
-    if (error) {
+        toutesLignes = adoptions.map(row => {
+            const a = row.animaux || {};
+            const p = row.personnes || {};
+            return {
+                animalId:      a.id,
+                dateAdoption:  row.date_adoption || '',
+                nom:           p.nom || '',
+                prenom:        p.prenom || '',
+                puce:          a.puce || '',
+                nomUsuel:      a.nom_usuel || '',
+                nomAdoption:   a.nom_adoption || '',
+                couleur:       a.couleur || '',
+                sexe:          a.sexe || '',
+                dateNaissance: a.date_naissance || '',
+                adresse:       p.adresse || '',
+                codePostal:    p.code_postal || '',
+                ville:         p.ville || '',
+                portable:      p.telephone || '',
+                email:         p.email || '',
+                totalParticipation: row.total_participation || '',
+                icad: icadDe(a),
+                sansAdoption: false,
+            };
+        });
+
+        // 2. Les chats au statut « Adopté » sans adoption enregistrée : ils étaient
+        //    invisibles ici alors qu'ils sont bien adoptés (ex. dossiers importés
+        //    ou statut posé sans formulaire d'adoption).
+        const dejaVus = new Set(toutesLignes.map(l => l.animalId));
+        const adoptes = await lireTout(() => supabaseClient
+            .from('animaux')
+            .select(CHAMPS_ANIMAL)
+            .eq('statut_actuel', 'adopte')
+            .order('nom_usuel')
+            .order('id'));
+        adoptes.filter(a => !dejaVus.has(a.id)).forEach(a => {
+            toutesLignes.push({
+                animalId:      a.id,
+                dateAdoption:  '',
+                nom: '', prenom: '',
+                puce:          a.puce || '',
+                nomUsuel:      a.nom_usuel || '',
+                nomAdoption:   a.nom_adoption || '',
+                couleur:       a.couleur || '',
+                sexe:          a.sexe || '',
+                dateNaissance: a.date_naissance || '',
+                adresse: '', codePostal: '', ville: '', portable: '', email: '',
+                totalParticipation: '',
+                icad: icadDe(a),
+                sansAdoption: true,
+            });
+        });
+    } catch (error) {
         document.getElementById('tbody').innerHTML = `<tr><td colspan="10" class="empty">Erreur de chargement : ${esc(error.message)}</td></tr>`;
         return;
     }
-
-    toutesLignes = (data || []).map(row => {
-        const a = row.animaux || {};
-        const p = row.personnes || {};
-        // animaux_sterilisation_icad est 1-1 (animal_id unique) mais Supabase le renvoie
-        // sous forme de tableau tant qu'aucune relation singulière n'est
-        // précisée : on prend la première (et seule) entrée.
-        const icadBrut = Array.isArray(a.animaux_sterilisation_icad) ? a.animaux_sterilisation_icad[0] : a.animaux_sterilisation_icad;
-        return {
-            animalId:      a.id,
-            dateAdoption:  row.date_adoption || '',
-            nom:           p.nom || '',
-            prenom:        p.prenom || '',
-            puce:          a.puce || '',
-            nomUsuel:      a.nom_usuel || '',
-            nomAdoption:   a.nom_adoption || '',
-            couleur:       a.couleur || '',
-            sexe:          a.sexe || '',
-            dateNaissance: a.date_naissance || '',
-            adresse:       p.adresse || '',
-            codePostal:    p.code_postal || '',
-            ville:         p.ville || '',
-            portable:      p.telephone || '',
-            email:         p.email || '',
-            totalParticipation: row.total_participation || '',
-            icad: icadBrut || null,
-        };
-    });
 
     filtrer();
 }
@@ -441,7 +503,7 @@ function rendreLignes() {
         return `<tr class="${rowClass}" id="row-${i}">
             <td>${chatCell}</td>
             <td><span class="puce" title="${esc(l.puce)}">${esc(l.puce) || '—'}</span></td>
-            <td>${esc(nom)}</td>
+            <td>${l.sansAdoption ? '<span class="badge" style="background:var(--amber-light);color:var(--amber);margin-left:0;" title="Statut Adopté, mais aucune adoption enregistrée pour ce chat">Adoption non enregistrée</span>' : esc(nom)}</td>
             <td>${fmtDate(l.dateAdoption)}</td>
             <td>${commentCell}</td>
             <td>${icadCell}</td>
@@ -775,7 +837,13 @@ async function init() {
     initRedimensionnementColonnes();
     await chargerDonnees(); // charge adoptions + statuts ICAD depuis Supabase (source de vérité unique)
 }
-init();
+// Le chargement attend la connexion : lancé tout de suite, il partait avant que
+// la session soit prête et la sécurité de la base renvoyait alors une liste vide.
+creerEntete({ dateId: 'dateRef', titre: 'Suivi ICAD' });
+let initFait = false;
+supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (session && !initFait) { initFait = true; setTimeout(init, 0); }
+});
 </script>
 </body>
 </html>
