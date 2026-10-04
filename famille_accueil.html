@@ -367,7 +367,19 @@ chargerListeSaisisseurs();
 
             if (error) throw error;
 
+            // Photo : enregistrée tout de suite, sans dépendre du PDF / mail
+            var photoBaseOk = true;
+            try {
+                photoBaseOk = await postSavePhotos(data, null);
+            } catch (ePhoto) {
+                console.error('[Photo] Échec :', ePhoto);
+                photoBaseOk = false;
+            }
+
             var avertissementMail = '';
+            if (photoBaseOk === false) {
+                avertissementMail += ' ⚠️ La photo n\'a pas pu être enregistrée (voir la console, lignes [Photo]).';
+            }
             if (ENVOYER_PDF_MAIL) {
                 data.filename = buildFilename(data);
                 try {
@@ -401,12 +413,6 @@ chargerListeSaisisseurs();
                     console.error('Erreur envoi PDF/mail :', e);
                     avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué (' + (e.message || e) + ').';
                 }
-                if (typeof postSavePhotos === 'function') {
-                    var photoBaseOk = await postSavePhotos(data, data.filename);
-                    if (photoBaseOk === false) {
-                        avertissementMail += ' ⚠️ La photo n\'a pas pu être mémorisée pour les prochains formulaires (elle est bien envoyée sur Drive).';
-                    }
-                }
             }
 
             formSaved = true;
@@ -429,19 +435,20 @@ chargerListeSaisisseurs();
         var nomEl    = document.getElementById('nomComplet') || document.getElementById('nom');
         var animalEl = document.getElementById('nom_animal');
         var dateEl   = document.getElementById('date_fait') || document.getElementById('dateFait');
-        await envoyerPhotoAnimal('Famille_Accueil_Provisoire',
+        var driveOk = await envoyerPhotoAnimal('Famille_Accueil_Provisoire',
             prenomEl ? prenomEl.value : '',
             nomEl    ? nomEl.value    : '',
             animalEl ? animalEl.value : '',
             dateEl   ? dateEl.value   : '');
-        // Mémorise aussi la photo en base pour les formulaires suivants
+        var baseOk = false;
         try {
-            return await enregistrerPhotoAnimalEnBase(
+            baseOk = await enregistrerPhotoAnimalEnBase(
                 selecteurAnimal ? selecteurAnimal.getAnimalId() : null, 'famille_accueil');
         } catch (e) {
-            console.error('Erreur enregistrement photo en base :', e);
-            return false;
+            console.error('[Photo] Enregistrement en base :', e);
         }
+        if (driveOk === false) console.error('[Photo] Envoi Drive échoué');
+        return baseOk;
     }
 </script>
 
