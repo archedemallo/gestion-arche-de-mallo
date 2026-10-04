@@ -631,6 +631,7 @@ async function onIcadFileChosen(e) {
             headers: { 'Content-Type': 'text/plain' }, // évite le préflight CORS, voir stocker-pdf-drive.js
             body: JSON.stringify({
                 action: 'icad_fichier', typeDoc, filename,
+                animal: nomPropre, puce: numPropre, // sert à ranger le fichier dans le dossier du chat
                 mimeType: file.type || 'application/octet-stream',
                 fichierBase64: base64
             })
