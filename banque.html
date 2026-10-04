@@ -55,6 +55,30 @@
   #login-screen{max-width:340px;margin:80px auto;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:28px;}
   #login-screen input{width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);font-size:13px;}
   #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+
+  /* ---- Panneau Rapprochement (même présentation que Compta) ---- */
+  .panel-overlay{position:fixed;inset:0;background:rgba(61,43,31,0.3);z-index:150;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(2px);}
+  .panel{background:var(--surface);border-radius:var(--radius) var(--radius) 0 0;width:100%;max-width:900px;max-height:85vh;overflow-y:auto;box-shadow:0 -4px 32px rgba(61,43,31,0.15);}
+  .panel-head{padding:12px 16px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--surface);z-index:1;}
+  .panel-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;}
+  .panel-close{background:none;border:none;font-size:18px;color:var(--text-3);cursor:pointer;}
+  .panel-body{padding:14px 16px;}
+  .panel-footer{padding:10px 16px;border-top:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;bottom:0;background:var(--surface);}
+  .rap-section{margin-bottom:14px;padding-bottom:12px;border-bottom:0.5px solid var(--border);}
+  .rap-section:last-child{border-bottom:none;}
+  .rap-section-title{font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+  .rap-select-row{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-bottom:6px;}
+  .rap-select-row .f-select{width:100%;}
+  .rap-linked{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface-2);border:0.5px solid var(--border);border-radius:var(--radius-sm);font-size:11px;margin-bottom:4px;}
+  .rap-linked-label{flex:1;}
+  .rap-remove{background:none;border:none;cursor:pointer;color:var(--red);font-size:14px;}
+  .suivi-tabs-bank{display:flex;gap:0;border-bottom:0.5px solid var(--border);margin-bottom:8px;overflow-x:auto;}
+  .suivi-tab-bank{padding:5px 10px;font-size:10px;font-weight:500;color:var(--text-3);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .suivi-tab-bank.active{color:var(--orange);border-bottom-color:var(--orange);}
+  .suivi-tab-bank-badge{font-size:9px;padding:1px 4px;border-radius:8px;background:var(--orange);color:white;margin-left:3px;}
+  .suivi-line-bank{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--radius-sm);border:0.5px solid var(--border);margin-bottom:4px;cursor:pointer;transition:all 0.12s;}
+  .suivi-line-bank:hover{background:var(--warm);border-color:var(--orange);}
+  .suivi-line-bank.selected{background:rgba(201,107,42,0.08);border-color:var(--orange);}
 </style>
 </head>
 <body>
@@ -202,12 +226,18 @@
   </div>
 </div>
 
-<!-- MODAL RAPPROCHEMENT -->
-<div class="modal-overlay hidden" id="modal-rappr">
-  <div class="modal">
-    <div class="modal-header"><span class="modal-title"><i class="ti ti-link"></i> Rapprochement</span><button class="modal-close" onclick="closeRapprochement()">×</button></div>
-    <div class="modal-body" id="rappr-body"></div>
-    <div class="modal-footer"><button class="btn btn-secondary btn-sm" onclick="closeRapprochement()">Fermer</button></div>
+<!-- PANNEAU RAPPROCHEMENT (même présentation que Compta : sections « Lier à… », onglets Suivi) -->
+<div class="panel-overlay hidden" id="modal-rappr">
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title"><i class="ti ti-link" style="color:var(--orange)"></i> Rapprochement — <span id="rappr-info"></span></div>
+      <button class="panel-close" onclick="closeRapprochement()">×</button>
+    </div>
+    <div class="panel-body" id="rappr-body"></div>
+    <div class="panel-footer">
+      <span style="font-size:10px;color:var(--text-3);">Chaque « Lier » est enregistré tout de suite et recopie le type de mouvement et la description sur la ligne bancaire.</span>
+      <button class="btn btn-secondary" onclick="closeRapprochement()">Fermer</button>
+    </div>
   </div>
 </div>
 
@@ -545,153 +575,165 @@ async function delier(type, id) {
 
 let rapprBankId = null; // mouvement actuellement ouvert dans le panneau Rapprochement
 
-// Remplace l'ancienne colonne "Rapproché" (chips CHQ/BRD/Suivi toujours
-// visibles) par une icône dans Actions — la colonne prenait trop de
-// place pour une info qu'on ne consulte qu'occasionnellement.
+// ============================================================
+// PANNEAU RAPPROCHEMENT — même présentation que Compta :
+// une section « Lier à… » par type de liaison (chèque, facture, remise,
+// sortie de caisse, ligne Suivi) avec liste déroulante + bouton « Lier »,
+// et pour le Suivi des onglets par sous-catégorie avec badges.
 //
-// Rétablit ici les sections "Lier à un chèque" / "Lier à une facture"
-// du panneau Rapprochement de l'ancien système (perdues lors de la
-// simplification initiale de la Fusion) : sélection dans une liste
-// déroulante des chèques en attente / factures non réglées, application
-// immédiate (contrairement à l'ancien système qui les mettait en
-// attente jusqu'à l'enregistrement global du formulaire).
+// Chaque « Lier » est appliqué immédiatement (RPC Supabase). Côté base
+// (063_banque_lier_copie_type_description.sql), le lien recopie le type de
+// mouvement et la description (+ nom, chat, n° de reçu…) sur la ligne
+// bancaire.
+// ============================================================
+const SUIVI_ONGLETS = [
+  { key: 'adoption',           label: 'Adoptions' },
+  { key: 'reservation_chat',   label: 'Rés. Chat' },
+  { key: 'reservation_chaton', label: 'Rés. Chaton' },
+  { key: 'reservation_autre',  label: 'Rés. autre' },
+  { key: 'don',                label: 'Dons' },
+  { key: 'adhesion',           label: 'Adhésions' },
+  { key: 'materiel',           label: 'Prêt matériel' },
+];
+const LABEL_TYPE_SUIVI = { adhesion: 'Adhésion', don: 'Don', adoption: 'Adoption', reservation: 'Réservation', materiel_mouvement: 'Prêt de matériel' };
+let suiviOngletActif = 'adoption', suiviCompteurs = {}, suiviResultats = [];
+
+function rapSection(couleur, icone, titre, contenu) {
+  return `<div class="rap-section">
+    <div class="rap-section-title" style="color:${couleur};"><i class="ti ${icone}" style="color:${couleur};"></i> ${titre}</div>
+    ${contenu}
+  </div>`;
+}
+function rapLie(label, onclickDelier) {
+  return `<div class="rap-linked"><span class="rap-linked-label">${label}</span><button class="rap-remove" onclick="${onclickDelier}" title="Délier"><i class="ti ti-x"></i></button></div>`;
+}
+function rapChoix(selectId, placeholder, optionsHtml, onclickLier) {
+  return `<div class="rap-select-row">
+    <select id="${selectId}" class="f-select"><option value="">${placeholder}</option>${optionsHtml}</select>
+    <button class="btn btn-primary btn-sm" onclick="${onclickLier}"><i class="ti ti-check"></i> Lier</button>
+  </div>`;
+}
+
 async function voirRapprochement(id) {
   const r = allRows.find(x => x.id === id); if (!r) return;
   rapprBankId = id;
-  ventMouvementId = id; ventMontantMouvement = parseFloat(r.credit || r.debit) || 0; ventLignes = [];
-  const lignes = [];
-  if (r.ref_cheque) {
-    const { data: chq } = await supabaseClient.from('cheques').select('numero_cheque, montant').eq('id', r.ref_cheque).maybeSingle();
-    lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);"><span>Chèque encaissé ${chq?'— N°'+escH(chq.numero_cheque)+' — '+fmt(chq.montant):''}</span><button class="btn btn-danger btn-sm" onclick="delier('cheque','${r.id}')">Délier</button></div>`);
-  }
-  if (r.ref_remise) {
-    const { data: rem } = await supabaseClient.from('remises_cheques').select('montant_total').eq('id', r.ref_remise).maybeSingle();
-    lignes.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);"><span>Remise de chèques ${remisesMap[r.ref_remise]?'— '+escH(remisesMap[r.ref_remise]):''} ${rem?'— '+fmt(rem.montant_total):''}</span><button class="btn btn-danger btn-sm" onclick="delier('remise','${r.id}')">Délier</button></div>`);
-  }
-  const { data: suiviLiens } = await supabaseClient.from('banque_mouvement_suivi_liens').select('id, montant, adhesion:adhesions(personnes(nom,prenom,raison_sociale)), don:dons(personnes(nom,prenom,raison_sociale)), adoption:adoptions(personnes(nom,prenom,raison_sociale)), reservation:reservations(personnes(nom,prenom,raison_sociale)), materiel:materiel_mouvements(materiel, personnes(nom,prenom,raison_sociale))').eq('banque_mouvement_id', id);
+  ventMouvementId = id; ventMontantMouvement = parseFloat(r.credit || r.debit) || 0; ventLignes = []; suiviResultats = [];
+  document.getElementById('rappr-info').textContent = formatDateFR(r.date_mouvement) + ' — ' + (r.libelle || '') + ' — ' + fmt(ventMontantMouvement);
+  document.getElementById('rappr-body').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-3);font-size:12px;">Chargement…</div>';
+  document.getElementById('modal-rappr').classList.remove('hidden');
+
+  const vide = Promise.resolve({ data: null });
+  const [chqLie, chqDispo, remLiee, remDispo, liensFact, facDispo, caisseLiees, caisseDispo, suiviLiens, compteurs] = await Promise.all([
+    r.ref_cheque ? supabaseClient.from('cheques').select('numero_cheque, beneficiaire, montant').eq('id', r.ref_cheque).maybeSingle() : vide,
+    r.ref_cheque ? vide : supabaseClient.from('cheques').select('id, numero_cheque, beneficiaire, montant').eq('statut', 'en_attente').order('date_emission', { ascending: false }),
+    r.ref_remise ? supabaseClient.from('remises_cheques').select('numero_bordereau, nb_cheques, montant_total').eq('id', r.ref_remise).maybeSingle() : vide,
+    r.ref_remise ? vide : supabaseClient.from('remises_cheques').select('id, numero_bordereau, date_remise, montant_total').eq('statut', 'en_attente').order('date_remise', { ascending: false }),
+    supabaseClient.from('banque_mouvement_facture_liens').select('facture_id, factures(id, numero_facture, fournisseur, montant_ttc, date_facture)').eq('banque_mouvement_id', id),
+    supabaseClient.from('factures').select('id, numero_facture, fournisseur, montant_ttc, date_facture, statut').or('statut.is.null,statut.neq.payee').order('date_facture', { ascending: false }),
+    supabaseClient.from('caisse_mouvements').select('id, caisse, date_mouvement, libelle, debit').eq('ref_banque', id),
+    supabaseClient.from('caisse_mouvements').select('id, caisse, date_mouvement, libelle, debit').is('ref_banque', null).gt('debit', 0).neq('flag_statut', 'verifie').order('date_mouvement', { ascending: false }),
+    supabaseClient.from('banque_mouvement_suivi_liens').select('id, montant, adhesion:adhesions(personnes(nom,prenom,raison_sociale)), don:dons(personnes(nom,prenom,raison_sociale)), adoption:adoptions(personnes(nom,prenom,raison_sociale)), reservation:reservations(personnes(nom,prenom,raison_sociale)), materiel:materiel_mouvements(materiel, personnes(nom,prenom,raison_sociale))').eq('banque_mouvement_id', id),
+    supabaseClient.rpc('compter_suivi_a_rapprocher'),
+  ]);
+  if (rapprBankId !== id) return; // panneau fermé ou autre ligne ouverte entre-temps
+
+  const blocs = [];
+
+  // Rappel de ce qui est actuellement porté par la ligne (résultat de la recopie)
+  blocs.push(`<div style="font-size:10px;color:var(--text-3);margin-bottom:12px;">Type : <strong>${escH(r.type_mouvement || '—')}</strong> · Description : <strong>${escH(r.description || '—')}</strong>${r.nom_chat ? ' · Chat : <strong>' + escH(r.nom_chat) + '</strong>' : ''}</div>`);
+
+  // ---- Chèque ----
+  blocs.push(rapSection('var(--blue)', 'ti-writing', 'Lier à un chèque',
+    r.ref_cheque
+      ? rapLie(`<strong>N°${escH(chqLie.data?.numero_cheque || '?')}</strong> — ${escH(chqLie.data?.beneficiaire || '')} — ${fmt(chqLie.data?.montant)}`, `delier('cheque','${r.id}')`)
+      : rapChoix('rap-cheque-select', '— Choisir un chèque en attente —',
+          (chqDispo.data || []).map(c => `<option value="${c.id}">N°${escH(c.numero_cheque)} — ${escH(c.beneficiaire)} — ${fmt(c.montant)}</option>`).join(''),
+          'lierChequeRapprochement()')));
+
+  // ---- Facture ----
+  const facturesLiees = (liensFact.data || []).map(l => l.factures).filter(Boolean);
+  blocs.push(rapSection('var(--purple)', 'ti-file-invoice', 'Lier à une facture',
+    facturesLiees.map(f => rapLie(`<strong>${escH(f.fournisseur || '?')}</strong> — ${escH(f.numero_facture || '')} — ${fmt(f.montant_ttc)}`, `delierFactureRapprochement('${f.id}')`)).join('')
+    + rapChoix('rap-facture-select', '— Choisir une facture non réglée —',
+        (facDispo.data || []).filter(f => !facturesLiees.find(fl => fl.id === f.id)).map(f => `<option value="${f.id}">${escH(f.fournisseur || '?')} — ${fmt(f.montant_ttc)} — ${formatDateFR(f.date_facture)}</option>`).join(''),
+        'lierFactureRapprochement()')));
+
+  // ---- Remise de chèques ----
+  blocs.push(rapSection('var(--green)', 'ti-stack', 'Lier à une remise de chèques',
+    r.ref_remise
+      ? rapLie(`<strong>BRD ${escH(remLiee.data?.numero_bordereau || remisesMap[r.ref_remise] || '?')}</strong> — ${remLiee.data?.nb_cheques || 0} chèque(s) — ${fmt(remLiee.data?.montant_total)}`, `delier('remise','${r.id}')`)
+      : rapChoix('rap-remise-select', '— Choisir une remise en attente —',
+          (remDispo.data || []).map(rm => `<option value="${rm.id}">${escH(rm.numero_bordereau || '?')} — ${formatDateFR(rm.date_remise)} — ${fmt(rm.montant_total)}</option>`).join(''),
+          'lierRemiseRapprochement()')));
+
+  // ---- Sortie de caisse ----
+  const labelCaisse = c => (c.caisse === 'caisse2' ? 'Caisse2' : 'Caisse1') + ' — ' + formatDateFR(c.date_mouvement) + ' — ' + (c.libelle || '') + ' — ' + fmt(c.debit);
+  blocs.push(rapSection('var(--amber)', 'ti-cash', 'Lier à une sortie de caisse (dépôt espèces en banque)',
+    '<div style="font-size:11px;color:var(--text-3);margin-bottom:8px;">Sorties de caisse non encore rapprochées avec la banque.</div>'
+    + (caisseLiees.data || []).map(c => rapLie(escH(labelCaisse(c)), `delierCaisseRapprochement('${c.id}')`)).join('')
+    + rapChoix('rap-caisse-select', '— Choisir une sortie caisse —',
+        (caisseDispo.data || []).map(c => `<option value="${c.id}">${escH(labelCaisse(c))}</option>`).join(''),
+        'lierCaisseRapprochement()')));
+
+  // ---- Ligne Suivi (onglets par sous-catégorie) ----
   const labelSuiviLien = l => {
     if (l.adhesion) return 'Adhésion — ' + nomPersonne(l.adhesion.personnes);
     if (l.don) return 'Don — ' + nomPersonne(l.don.personnes);
     if (l.adoption) return 'Adoption — ' + nomPersonne(l.adoption.personnes);
     if (l.reservation) return 'Réservation — ' + nomPersonne(l.reservation.personnes);
-    if (l.materiel) return 'Prêt matériel — ' + nomPersonne(l.materiel.personnes) + ' — ' + (l.materiel.materiel||'');
+    if (l.materiel) return 'Prêt matériel — ' + nomPersonne(l.materiel.personnes) + ' — ' + (l.materiel.materiel || '');
     return 'Lien Suivi';
   };
-  if (suiviLiens && suiviLiens.length) {
-    lignes.push(`<div style="padding:6px 0;border-bottom:0.5px solid var(--border);">
-      <div style="display:flex;justify-content:space-between;align-items:center;"><span>Enregistrement(s) Suivi (ventilation)</span><button class="btn btn-danger btn-sm" onclick="delier('suivi','${r.id}')">Tout délier</button></div>
-      ${suiviLiens.map(l => `<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-2);padding:2px 0 2px 10px;"><span>${escH(labelSuiviLien(l))}</span><span>${fmt(l.montant)}</span></div>`).join('')}
-    </div>`);
-  }
-
-  document.getElementById('rappr-body').innerHTML = lignes.join('') || '<div style="color:var(--text-3);font-size:12px;">Aucun rapprochement</div>';
-  document.getElementById('modal-rappr').classList.remove('hidden');
-
-  // Sections "Lier à..." chargées à part (async) sans bloquer l'affichage du reste.
-  const extra = [];
-  if (!r.ref_cheque) {
-    const { data: cheques } = await supabaseClient.from('cheques').select('id, numero_cheque, beneficiaire, montant').eq('statut', 'en_attente').order('date_emission', { ascending: false });
-    extra.push(`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);">
-      <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;"><i class="ti ti-writing"></i> Lier à un chèque</div>
-      <div style="display:flex;gap:8px;">
-        <select id="rap-cheque-select" class="f-select" style="flex:1;">
-          <option value="">— Choisir un chèque en attente —</option>
-          ${(cheques||[]).map(c => `<option value="${c.id}">N°${escH(c.numero_cheque)} — ${escH(c.beneficiaire)} — ${fmt(c.montant)}</option>`).join('')}
-        </select>
-        <button class="btn btn-primary btn-sm" onclick="lierChequeRapprochement()"><i class="ti ti-check"></i> Lier</button>
-      </div>
-    </div>`);
-  }
-  if (!r.ref_remise) {
-    const { data: remises } = await supabaseClient.from('remises_cheques').select('id, numero_bordereau, date_remise, montant_total').eq('statut', 'en_attente').order('date_remise', { ascending: false });
-    extra.push(`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);">
-      <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;"><i class="ti ti-stack"></i> Lier à une remise de chèques</div>
-      <div style="display:flex;gap:8px;">
-        <select id="rap-remise-select" class="f-select" style="flex:1;">
-          <option value="">— Choisir une remise en attente —</option>
-          ${(remises||[]).map(rm => `<option value="${rm.id}">${escH(rm.numero_bordereau||'?')} — ${formatDateFR(rm.date_remise)} — ${fmt(rm.montant_total)}</option>`).join('')}
-        </select>
-        <button class="btn btn-primary btn-sm" onclick="lierRemiseRapprochement()"><i class="ti ti-check"></i> Lier</button>
-      </div>
-    </div>`);
-  }
-
-  const { data: liens } = await supabaseClient.from('banque_mouvement_facture_liens').select('facture_id, factures(id, numero_facture, fournisseur, montant_ttc, date_facture)').eq('banque_mouvement_id', id);
-  const facturesLiees = (liens||[]).map(l => l.factures).filter(Boolean);
-  const { data: facturesDispo } = await supabaseClient
-  .from('factures')
-  .select('id, numero_facture, fournisseur, montant_ttc, date_facture, statut')
-  .or('statut.is.null,statut.neq.payee')
-  .order('date_facture', { ascending: false });
-  extra.push(`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);">
-    <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;"><i class="ti ti-file-invoice"></i> Lier à une facture</div>
-    ${facturesLiees.map(f => `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid var(--border);font-size:11px;"><span>${escH(f.fournisseur||'?')} — ${escH(f.numero_facture||'')} — ${fmt(f.montant_ttc)}</span><button class="btn btn-danger btn-sm" onclick="delierFactureRapprochement('${f.id}')">Délier</button></div>`).join('')}
-    <div style="display:flex;gap:8px;margin-top:6px;">
-      <select id="rap-facture-select" class="f-select" style="flex:1;">
-        <option value="">— Choisir une facture non réglée —</option>
-        ${(facturesDispo||[]).filter(f => !facturesLiees.find(fl=>fl.id===f.id)).map(f => `<option value="${f.id}">${escH(f.fournisseur||'?')} — ${fmt(f.montant_ttc)} — ${f.date_facture||'?'}</option>`).join('')}
-      </select>
-      <button class="btn btn-primary btn-sm" onclick="lierFactureRapprochement()"><i class="ti ti-check"></i> Lier</button>
-    </div>
-  </div>`);
-
-  const { data: caisseLiees } = await supabaseClient.from('caisse_mouvements').select('id, caisse, date_mouvement, libelle, debit').eq('ref_banque', id);
-  const { data: caisseDispo } = await supabaseClient.from('caisse_mouvements').select('id, caisse, date_mouvement, libelle, debit').is('ref_banque', null).gt('debit', 0).neq('flag_statut', 'verifie').order('date_mouvement', { ascending: false });
-  const labelCaisse = c => (c.caisse === 'caisse2' ? 'Caisse2' : 'Caisse1') + ' — ' + formatDateFR(c.date_mouvement) + ' — ' + (c.libelle||'') + ' — ' + fmt(c.debit);
-  extra.push(`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);">
-    <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;"><i class="ti ti-cash"></i> Lier à une sortie de caisse (dépôt espèces)</div>
-    ${(caisseLiees||[]).map(c => `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid var(--border);font-size:11px;"><span>${escH(labelCaisse(c))}</span><button class="btn btn-danger btn-sm" onclick="delierCaisseRapprochement('${c.id}')">Délier</button></div>`).join('')}
-    <div style="display:flex;gap:8px;margin-top:6px;">
-      <select id="rap-caisse-select" class="f-select" style="flex:1;">
-        <option value="">— Choisir une sortie caisse —</option>
-        ${(caisseDispo||[]).map(c => `<option value="${c.id}">${escH(labelCaisse(c))}</option>`).join('')}
-      </select>
-      <button class="btn btn-primary btn-sm" onclick="lierCaisseRapprochement()"><i class="ti ti-check"></i> Lier</button>
-    </div>
-  </div>`);
-
-  extra.push(`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);">
-    <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;"><i class="ti ti-git-merge"></i> Lier à une ligne Suivi (don, adhésion, adoption, réservation…)</div>
-    <div class="form-group"><input type="text" id="vent-search" class="f-input" style="width:100%;" placeholder="Rechercher par nom…" oninput="rechercherVentilation()"></div>
-    <div id="vent-resultats" style="max-height:140px;overflow-y:auto;margin-bottom:8px;"></div>
-    <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:4px;">Répartition à ajouter</div>
+  const liensSuivi = suiviLiens.data || [];
+  const dejaLieHtml = liensSuivi.length ? `
+    <div style="padding:6px 10px;background:var(--purple-bg);border:0.5px solid rgba(60,52,137,0.2);border-radius:var(--radius-sm);margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--purple);font-weight:600;"><span>Déjà lié (${liensSuivi.length})</span><button class="btn btn-danger btn-sm" onclick="delier('suivi','${r.id}')">Tout délier</button></div>
+      ${liensSuivi.map(l => `<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-2);padding:2px 0 2px 10px;"><span>${escH(labelSuiviLien(l))}</span><span>${fmt(l.montant)}</span></div>`).join('')}
+      <div style="font-size:10px;color:var(--text-3);margin-top:4px;">Toute nouvelle sélection s'ajoute aux liens existants (rien n'est écrasé).</div>
+    </div>` : '';
+  blocs.push(rapSection('var(--purple)', 'ti-database', 'Lier à une ligne Suivi',
+    `<div style="font-size:11px;color:var(--text-3);margin-bottom:8px;">Cliquez une ou plusieurs lignes (ex : 1 virement = 2 dons), ajustez les montants puis « Lier ».</div>
+    ${dejaLieHtml}
+    <div class="suivi-tabs-bank" id="suivi-tabs-bank"></div>
+    <input class="f-input" type="text" id="vent-search" placeholder="Rechercher un nom, un chat, un n° de reçu…" oninput="rechercherVentilation()" style="width:100%;margin-bottom:6px;">
+    <div id="vent-resultats" style="max-height:200px;overflow-y:auto;margin-bottom:8px;"></div>
+    <div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Sélection à lier</div>
     <div id="vent-lignes" style="margin-bottom:6px;"></div>
     <div style="display:flex;justify-content:space-between;font-size:11px;padding-top:6px;border-top:0.5px solid var(--border);">
-      <span>Total ventilé</span><span id="vent-total" style="font-weight:600;">0,00 €</span>
+      <span>Total sélectionné</span><span id="vent-total" style="font-weight:600;">0,00 €</span>
     </div>
     <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);margin-bottom:6px;">
       <span>Montant du mouvement</span><span id="vent-montant-mouvement">${fmt(ventMontantMouvement)}</span>
     </div>
     <div id="vent-err" class="hidden" style="color:var(--red);font-size:11px;padding:4px 0;"></div>
-    <button class="btn btn-primary btn-sm" onclick="confirmVentilation()"><i class="ti ti-check"></i> Enregistrer la ventilation</button>
-  </div>`);
+    <button class="btn btn-primary btn-sm" onclick="confirmVentilation()"><i class="ti ti-check"></i> Lier</button>`));
 
-  if (rapprBankId === id) {
-    document.getElementById('rappr-body').innerHTML += extra.join('');
-    document.getElementById('vent-search').value = '';
-    document.getElementById('vent-err').classList.add('hidden');
-    renderVentLignes();
-    rechercherVentilation();
-  }
+  document.getElementById('rappr-body').innerHTML = blocs.join('');
+
+  suiviCompteurs = {};
+  (compteurs.data || []).forEach(c => { suiviCompteurs[c.onglet] = c.nb; });
+  majOngletsSuivi();
+  renderVentLignes();
+  rechercherVentilation(true);
 }
 function closeRapprochement() { document.getElementById('modal-rappr').classList.add('hidden'); rapprBankId = null; }
 
 async function lierChequeRapprochement() {
   const chequeId = document.getElementById('rap-cheque-select')?.value;
   if (!chequeId || !rapprBankId) return;
-  try { const { error } = await supabaseClient.rpc('lier_banque_cheque', { p_banque_mouvement_id: rapprBankId, p_cheque_id: chequeId }); if (error) throw error; showToast('Chèque lié'); await loadData(); await voirRapprochement(rapprBankId); }
+  try { const { error } = await supabaseClient.rpc('lier_banque_cheque', { p_banque_mouvement_id: rapprBankId, p_cheque_id: chequeId }); if (error) throw error; showToast('Chèque lié — type et description recopiés'); await loadData(); await voirRapprochement(rapprBankId); }
   catch(e) { alert('Erreur : ' + e.message); }
 }
 async function lierRemiseRapprochement() {
   const remiseId = document.getElementById('rap-remise-select')?.value;
   if (!remiseId || !rapprBankId) return;
-  try { const { error } = await supabaseClient.rpc('lier_banque_remise', { p_banque_mouvement_id: rapprBankId, p_remise_id: remiseId }); if (error) throw error; showToast('Remise liée'); await loadData(); await voirRapprochement(rapprBankId); }
+  try { const { error } = await supabaseClient.rpc('lier_banque_remise', { p_banque_mouvement_id: rapprBankId, p_remise_id: remiseId }); if (error) throw error; showToast('Remise liée — type et description recopiés'); await loadData(); await voirRapprochement(rapprBankId); }
   catch(e) { alert('Erreur : ' + e.message); }
 }
 async function lierFactureRapprochement() {
   const factureId = document.getElementById('rap-facture-select')?.value;
   if (!factureId || !rapprBankId) return;
-  try { const { error } = await supabaseClient.rpc('lier_banque_facture', { p_banque_mouvement_id: rapprBankId, p_facture_id: factureId }); if (error) throw error; showToast('Facture liée'); await loadData(); await voirRapprochement(rapprBankId); }
+  try { const { error } = await supabaseClient.rpc('lier_banque_facture', { p_banque_mouvement_id: rapprBankId, p_facture_id: factureId }); if (error) throw error; showToast('Facture liée — type et description recopiés'); await loadData(); await voirRapprochement(rapprBankId); }
   catch(e) { alert('Erreur : ' + e.message); }
 }
 async function delierFactureRapprochement(factureId) {
@@ -703,7 +745,7 @@ async function delierFactureRapprochement(factureId) {
 async function lierCaisseRapprochement() {
   const caisseId = document.getElementById('rap-caisse-select')?.value;
   if (!caisseId || !rapprBankId) return;
-  try { const { error } = await supabaseClient.rpc('lier_banque_caisse', { p_banque_mouvement_id: rapprBankId, p_caisse_mouvement_id: caisseId }); if (error) throw error; showToast('Sortie de caisse liée'); await loadData(); await voirRapprochement(rapprBankId); }
+  try { const { error } = await supabaseClient.rpc('lier_banque_caisse', { p_banque_mouvement_id: rapprBankId, p_caisse_mouvement_id: caisseId }); if (error) throw error; showToast('Sortie de caisse liée — type et description recopiés'); await loadData(); await voirRapprochement(rapprBankId); }
   catch(e) { alert('Erreur : ' + e.message); }
 }
 async function delierCaisseRapprochement(caisseId) {
@@ -714,59 +756,112 @@ async function delierCaisseRapprochement(caisseId) {
 }
 
 // ============================================================
-// VENTILATION — lier un mouvement à un ou plusieurs enregistrements
-// Suivi en une fois (n'existait pas du tout avant, seul "délier"
-// fonctionnait).
+// LIGNES SUIVI — onglets par sous-catégorie, sélection multiple,
+// montant par ligne (ex. 1 virement = 2 dons), puis « Lier ».
 // ============================================================
 let ventMouvementId = null, ventMontantMouvement = 0, ventLignes = [];
-
 let ventSearchTimer = null;
-function rechercherVentilation() {
+
+function majOngletsSuivi() {
+  const bar = document.getElementById('suivi-tabs-bank');
+  if (!bar) return;
+  bar.innerHTML = SUIVI_ONGLETS.map(o =>
+    `<button class="suivi-tab-bank ${o.key === suiviOngletActif ? 'active' : ''}" onclick="changerOngletSuivi('${o.key}')">${o.label}<span class="suivi-tab-bank-badge">${suiviCompteurs[o.key] || 0}</span></button>`
+  ).join('');
+}
+function changerOngletSuivi(key) {
+  suiviOngletActif = key;
+  majOngletsSuivi();
+  rechercherVentilation(true);
+}
+
+function rechercherVentilation(immediat) {
   clearTimeout(ventSearchTimer);
-  const texte = document.getElementById('vent-search').value.trim();
-  ventSearchTimer = setTimeout(async () => {
+  const lancer = async () => {
+    const zone = document.getElementById('vent-resultats');
+    if (!zone) return;
+    const texte = (document.getElementById('vent-search')?.value || '').trim();
     try {
-      const { data, error } = await supabaseClient.rpc('rechercher_suivi_pour_ventilation', { p_recherche: texte || null });
+      const { data, error } = await supabaseClient.rpc('lister_suivi_pour_rapprochement', { p_onglet: suiviOngletActif, p_recherche: texte || null });
       if (error) throw error;
-      const labels = { adhesion:'Adhésion', don:'Don', adoption:'Adoption', reservation:'Réservation', materiel_mouvement:'Prêt de matériel' };
-      document.getElementById('vent-resultats').innerHTML = (data||[]).map(r => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-bottom:0.5px solid var(--border);font-size:11px;cursor:pointer;" onclick="ajouterLigneVentilation('${r.type}','${r.id}','${escH(labels[r.type]+' — '+r.nom_affiche)}',${parseFloat(r.montant_suggere)||0})">
-          <span>${escH(labels[r.type])} — ${escH(r.nom_affiche)} <span style="color:var(--text-3);">${r.date_operation||''}</span></span>
-          <span style="font-weight:500;">${fmt(r.montant_suggere)}</span>
-        </div>`).join('') || '<div style="padding:8px;color:var(--text-3);font-size:11px;">Aucun résultat</div>';
-    } catch(e) { console.error(e); document.getElementById('vent-resultats').innerHTML = '<div style="padding:8px;color:var(--red);font-size:11px;">Erreur de recherche : '+escH(e.message)+'</div>'; }
-  }, 300);
+      suiviResultats = data || [];
+      renderResultatsSuivi();
+    } catch(e) {
+      console.error(e);
+      zone.innerHTML = '<div style="padding:8px;color:var(--red);font-size:11px;">Erreur de recherche : ' + escH(e.message) + '</div>';
+    }
+  };
+  if (immediat === true) lancer(); else ventSearchTimer = setTimeout(lancer, 300);
 }
-function ajouterLigneVentilation(type, id, label, montantSuggere) {
-  const dejaMontant = ventLignes.reduce((s,l)=>s+l.montant,0);
-  const restant = Math.max(0, ventMontantMouvement - dejaMontant);
-  ventLignes.push({ type, id, label, montant: restant > 0 ? Math.min(restant, montantSuggere || restant) : (montantSuggere || 0) });
+
+function renderResultatsSuivi() {
+  const zone = document.getElementById('vent-resultats');
+  if (!zone) return;
+  const onglet = SUIVI_ONGLETS.find(o => o.key === suiviOngletActif);
+  zone.innerHTML = suiviResultats.length ? suiviResultats.map((x, i) => {
+    const sel = ventLignes.some(l => l.id === x.id);
+    return `<div class="suivi-line-bank ${sel ? 'selected' : ''}" onclick="basculerLigneSuivi(${i})">
+      <div style="flex:1;">
+        <div style="font-size:11px;font-weight:500;">${sel ? '<i class="ti ti-check" style="color:var(--purple);margin-right:4px;"></i>' : ''}${escH(x.nom_affiche || '—')}${x.nom_chat ? ' — ' + escH(x.nom_chat) : ''}</div>
+        <div style="font-size:10px;color:var(--text-3);">${escH(formatDateFR(x.date_operation))} · ${escH(onglet ? onglet.label : '')}${x.numero_recu ? ' · <span style="color:var(--purple)">Reçu : ' + escH(x.numero_recu) + '</span>' : ''}</div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--green);white-space:nowrap;">${fmt(x.montant_suggere)}</div>
+    </div>`;
+  }).join('') : '<div style="padding:12px;text-align:center;color:var(--text-3);font-size:11px;">Aucune ligne en attente</div>';
+}
+
+function basculerLigneSuivi(i) {
+  const x = suiviResultats[i];
+  if (!x) return;
+  const pos = ventLignes.findIndex(l => l.id === x.id);
+  if (pos >= 0) {
+    ventLignes.splice(pos, 1); // re-cliquer une ligne la retire de la sélection
+  } else {
+    const dejaMontant = ventLignes.reduce((s, l) => s + l.montant, 0);
+    const restant = Math.max(0, ventMontantMouvement - dejaMontant);
+    const suggere = parseFloat(x.montant_suggere) || 0;
+    const montant = restant > 0 ? Math.min(restant, suggere || restant) : suggere;
+    ventLignes.push({
+      type: x.type, id: x.id,
+      label: LABEL_TYPE_SUIVI[x.type] + ' — ' + (x.nom_affiche || '') + (x.nom_chat ? ' — ' + x.nom_chat : ''),
+      montant: Math.round(montant * 100) / 100,
+    });
+  }
   renderVentLignes();
+  renderResultatsSuivi();
 }
-function retirerLigneVentilation(i) { ventLignes.splice(i,1); renderVentLignes(); }
+function retirerLigneVentilation(i) { ventLignes.splice(i, 1); renderVentLignes(); renderResultatsSuivi(); }
 function majMontantVentilation(i, val) { ventLignes[i].montant = parseFloat(val) || 0; renderVentLignes(false); }
 function renderVentLignes(rerenderInputs) {
   const el = document.getElementById('vent-lignes');
+  if (!el) return;
   if (rerenderInputs !== false) {
-    el.innerHTML = ventLignes.map((l,i) => `
+    el.innerHTML = ventLignes.map((l, i) => `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
         <span style="flex:1;font-size:11px;">${escH(l.label)}</span>
         <input type="number" step="0.01" value="${l.montant}" oninput="majMontantVentilation(${i},this.value)" style="width:90px;font-size:11px;padding:3px 6px;border:0.5px solid var(--border-mid);border-radius:4px;text-align:right;">
         <button onclick="retirerLigneVentilation(${i})" style="border:none;background:none;color:var(--red);cursor:pointer;">✕</button>
-      </div>`).join('') || '<div style="font-size:11px;color:var(--text-3);">Aucune ligne — cherchez ci-dessus et cliquez sur un résultat.</div>';
+      </div>`).join('') || '<div style="font-size:11px;color:var(--text-3);">Aucune ligne sélectionnée — choisissez un onglet puis cliquez sur une ligne ci-dessus.</div>';
   }
-  const total = ventLignes.reduce((s,l)=>s+l.montant,0);
-  document.getElementById('vent-total').textContent = fmt(total);
-  document.getElementById('vent-total').style.color = Math.abs(total - ventMontantMouvement) < 0.01 ? 'var(--green)' : 'var(--amber)';
+  const total = ventLignes.reduce((s, l) => s + l.montant, 0);
+  const tot = document.getElementById('vent-total');
+  if (tot) {
+    tot.textContent = fmt(total);
+    tot.style.color = Math.abs(total - ventMontantMouvement) < 0.01 ? 'var(--green)' : 'var(--amber)';
+  }
 }
 async function confirmVentilation() {
-  if (!ventLignes.length) { const e=document.getElementById('vent-err'); e.textContent='Ajoutez au moins une ligne.'; e.classList.remove('hidden'); return; }
+  const err = document.getElementById('vent-err');
+  if (!ventLignes.length) { err.textContent = 'Sélectionnez au moins une ligne.'; err.classList.remove('hidden'); return; }
+  err.classList.add('hidden');
   const liens = ventLignes.map(l => ({ [l.type + '_id']: l.id, montant: l.montant }));
   try {
     const { error } = await supabaseClient.rpc('lier_banque_suivi', { p_banque_mouvement_id: ventMouvementId, p_liens: liens });
     if (error) throw error;
-    showToast('Ventilation enregistrée !'); await loadData(); await voirRapprochement(rapprBankId);
-  } catch(e) { const el=document.getElementById('vent-err'); el.textContent='Erreur : '+e.message; el.classList.remove('hidden'); }
+    showToast('Lié — type et description recopiés');
+    await loadData();
+    await voirRapprochement(rapprBankId);
+  } catch(e) { err.textContent = 'Erreur : ' + e.message; err.classList.remove('hidden'); }
 }
 
 function fmt(v) { if (v===null||v===undefined||v==='') return '—'; return parseFloat(v).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
