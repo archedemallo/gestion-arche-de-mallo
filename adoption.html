@@ -671,6 +671,7 @@ celui de sa famille ou la renonciation de celui-ci.</p>
 <script src="generer-pdf.js"></script>
 <script src="envoyer-mail.js"></script>
 <script src="stocker-pdf-drive.js"></script>
+<script src="pieces-adoption.js"></script>
 <script>
 creerEntete({ dateId: 'dateAdoption', dateLabel: 'Date de cession à charge :' });
 	
@@ -723,27 +724,8 @@ function aperçuPhoto(input, previewId) {
 // ouvrirPhoto() est désormais dans formulaires-arche-mallo.js (partagé) —
 // retirée d'ici pour éviter la duplication.
 
-    // Redimensionner une image avant envoi (max 1200px, qualité 0.7)
-    function redimensionnerImage(file, callback) {
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            var img = new Image();
-            img.onload = function() {
-                var canvas = document.createElement('canvas');
-                var max = 1200;
-                var w = img.width, h = img.height;
-                if (w > max || h > max) {
-                    if (w > h) { h = Math.round(h * max / w); w = max; }
-                    else       { w = Math.round(w * max / h); h = max; }
-                }
-                canvas.width = w; canvas.height = h;
-                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                callback(canvas.toDataURL('image/jpeg', 0.7).split(',')[1]);
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-    }
+    // (redimensionnerImage : version partagée de formulaires-arche-mallo.js,
+    //  qui gère les images illisibles.)
 
     // Envoi des photos à Apps Script
     async function envoyerPhotos(nomAdoptant, nomChat, dateStr) {
@@ -1302,60 +1284,48 @@ async function _saveFormOriginal() {
     }
 }
 
-// Regroupe toutes les photos prises dans un seul PDF (même circuit que le
-// contrat : génération PDF -> Drive -> lien enregistré dans soumission_fichiers).
+// Pièces justificatives : une pièce = un PDF déposé dans le dossier
+// adoption (Drive + soumission_fichiers), et la liste des 5 pièces attendues
+// est enregistrée (adoption_pieces) : celles fournies ce jour sont « reçues »,
+// les autres restent « manquantes » et pourront être transmises plus tard
+// (page completer_dossier_adoption.html). Voir pieces-adoption.js.
 async function deposerPhotosAdoption(adoptionId, data) {
-    var photos = [
-        { id: 'photoAnimal',        titre: "Photo de l'animal" },
-        { id: 'photoCNI_recto',     titre: "Pièce d'identité — recto" },
-        { id: 'photoCNI_verso',     titre: "Pièce d'identité — verso" },
-        { id: 'photoDomicile_1',    titre: 'Justificatif de domicile — page 1' },
-        { id: 'photoDomicile_2',    titre: 'Justificatif de domicile — page 2' },
-        { id: 'photoCBS_1',         titre: 'Certificat de bonne santé' },
-        { id: 'photoCarnetSante_1', titre: 'Carnet de santé — page vaccin 1' },
-        { id: 'photoCarnetSante_2', titre: 'Carnet de santé — page vaccin 2' }
-    ];
-    var blocs = [];
-    for (var i = 0; i < photos.length; i++) {
-        var input = document.getElementById(photos[i].id);
-        if (!input || !input.files || !input.files[0]) continue;
-        var b64 = await new Promise(function(resolve) {
-            redimensionnerImage(input.files[0], resolve, 1400);
-        });
-        if (!b64) {
-            console.error('[Photo] Image illisible, ignorée :', photos[i].id);
-            continue;
-        }
-        blocs.push('<div style="page-break-inside:avoid;margin:0 0 22px;">' +
-            '<p style="font-weight:bold;color:#c96b2a;margin:0 0 6px;">' + photos[i].titre + '</p>' +
-            '<img src="data:image/jpeg;base64,' + b64 + '" style="max-width:100%;max-height:22cm;border:1px solid #ccc;"></div>');
-    }
-    if (!blocs.length) return;
-
-    var esc = function(x) { return String(x || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); };
+    var groupes = {
+        cni_recto:    ['photoCNI_recto'],
+        cni_verso:    ['photoCNI_verso'],
+        domicile:     ['photoDomicile_1', 'photoDomicile_2'],
+        cbs:          ['photoCBS_1'],
+        carnet_sante: ['photoCarnetSante_1', 'photoCarnetSante_2']
+    };
     var animal = data.nomAdoption || data.nomUsuel || '';
-    var html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><style>' +
-        'body{font-family:Arial,sans-serif;color:#3d2b1f;margin:28px;font-size:13px;} h1{font-size:18px;color:#c96b2a;margin:0 0 4px;}' +
-        '.sous{color:#8a7968;margin-bottom:18px;}</style></head><body>' +
-        '<h1>Photos et pièces — adoption de ' + esc(animal) + '</h1>' +
-        '<div class="sous">' + esc(((data.prenom || '') + ' ' + (data.nom || '')).trim()) + ' — ' + esc(data.dateFait || '') + '</div>' +
-        blocs.join('') + '</body></html>';
-
-    var pdfBytes = await genererPdfDepuisHtml(html);
-    var filename = ['Photos', data.nom || 'Inconnu', animal || 'Animal', data.dateFait || '']
-        .filter(Boolean).join('_').replace(/\s+/g, '_');
-    await enregistrerPdfDrive({
+    var ctx = {
+        adoptionId: adoptionId,
         onglet: data.onglet,
         prenom: data.prenom,
         nom: data.nom,
         animal: animal,
         dateDossier: data.dateFait || null,
-        filename: filename,
-        pdfBytes: pdfBytes,
-        tableSource: 'adoptions',
-        enregistrementId: adoptionId,
-        typeFichier: 'Photos et pièces justificatives'
-    });
+        titreDossier: 'Adoption de ' + animal + ' — ' + ((data.prenom || '') + ' ' + (data.nom || '')).trim() + ' — ' + (data.dateFait || '')
+    };
+
+    // 1. La liste des pièces (toutes « manquantes » au départ)
+    await initialiserPiecesAdoption(adoptionId, {});
+
+    // 2. Dépôt de chaque pièce fournie ; une pièce qui échoue reste « manquante »
+    var erreurs = [];
+    for (var type in groupes) {
+        var fichiers = groupes[type]
+            .map(function(id) { var el = document.getElementById(id); return el && el.files && el.files[0]; })
+            .filter(Boolean);
+        if (!fichiers.length) continue;
+        try {
+            await deposerPieceAdoption(ctx, type, fichiers);
+        } catch (e) {
+            console.error('[Pièce adoption] ' + type, e);
+            erreurs.push(libellePieceAdoption(type) + ' (' + (e.message || e) + ')');
+        }
+    }
+    if (erreurs.length) throw new Error('pièces non déposées, à renvoyer depuis « Compléter un dossier d\'adoption » : ' + erreurs.join(' ; '));
 }
 
 // ← AJOUTÉ : envoi de la photo de l'animal après sauvegarde réussie
@@ -1437,9 +1407,8 @@ saveForm = async function() {
     var nomChat     = (document.getElementById('nomUsuel')    || {}).value || '';
     var dateRaw     = (document.getElementById('dateAdoption')|| {}).value || today;
     var dateFr      = dateRaw ? dateRaw.split('-').reverse().join('-') : today;
-    afficherPopupChargement('Envoi des photos en cours…');
-    try { await envoyerPhotos(nomAdoptant, nomChat, dateFr); }
-    finally { masquerPopupChargement(); }
+    // (L'ancien envoi photo par photo n'est plus utilisé : les pièces sont
+    //  déposées une par une en PDF par deposerPhotosAdoption(), avec suivi.)
 
     // Génération automatique du formulaire de don si "Dons libre" était coché
     if (donLibreCoche) {
