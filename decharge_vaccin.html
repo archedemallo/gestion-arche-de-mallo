@@ -310,6 +310,10 @@ initSessionSuivi();
 chargerListeSaisisseurs();
 
     async function saveForm() {
+        if (!selecteurAnimal || !selecteurAnimal.getAnimalId()) {
+            afficherMessage('⚠️ Sélectionnez un animal existant dans la liste (tapez son nom ou son numéro).', 'erreur');
+            return;
+        }
         var missing = validateRequiredFields();
         if (missing.length > 0) {
             afficherMessage('⚠️ Veuillez remplir les champs obligatoires :<br><br>• ' + missing.join('<br>• '), 'erreur');
@@ -391,8 +395,9 @@ chargerListeSaisisseurs();
 </script>
 
 <script>
+var selecteurAnimal = null;
 document.addEventListener('DOMContentLoaded', function() {
-    initSelecteurAnimal({
+    selecteurAnimal = initSelecteurAnimal({
         inputId: 'nomChat',
         contexte: 'recherche',
         champsVerrouilles: { dateNaissanceChat: 'date_naissance' }
