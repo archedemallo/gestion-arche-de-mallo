@@ -11,7 +11,7 @@ const MAINTENANCE = {
 // Pour une nouvelle annonce : changer dateDebut (+ texte).
 const MAJ = {
   active: true, // true = pop-up active / false = désactivée
-  dateDebut: "2026-08-23", // date de mise en ligne, format AAAA-MM-JJ
+  dateDebut: "2026-10-05", // date de mise en ligne, format AAAA-MM-JJ
   dureeJours: 7, // nombre de jours d'affichage à partir de dateDebut
   titre: "Mise à jour",
   // Texte libre. Utiliser <br> pour un retour à la ligne.
