@@ -624,6 +624,9 @@ async function saveForm() {
         var avertissementMail = '';
         if (ENVOYER_PDF_MAIL && !estAnonyme) {
             data.filename = buildFilename(data);
+            // Don par virement : le mail (avec PDF) n'est pas envoyé au donateur
+            var elVirement = document.getElementById('pay_virement');
+            var estVirement = !!(elVirement && elVirement.classList.contains('checked'));
             try {
                 const pdfBytes = await genererPdfFormulaire();
                 await envoyerMailFormulaire({
@@ -631,7 +634,7 @@ async function saveForm() {
                     corps: construireCorpsMail(data),
                     pdfBytes: pdfBytes,
                     pdfNomFichier: data.filename + '.pdf',
-                    emailClient: data.email,
+                    emailClient: estVirement ? undefined : data.email,
                     nomClient: estSociete ? (data.raisonSociale || '') : ((data.prenom || '') + ' ' + (data.nom || '')).trim()
                 });
                 try {
