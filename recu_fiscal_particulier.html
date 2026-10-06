@@ -301,6 +301,7 @@ function toggleDescriptionNature() {
 // ============================================================
 appliquerPrefill(); // remplit nom/prenom/adresse/codePostal/ville/email/montantDon/dateSignature (mêmes id que Dons.html)
 
+var paiementVirementPrefill = false; // don réglé (en tout ou partie) par virement : pas de mail au donateur
 (function completerPrefill() {
     try {
         var params = new URLSearchParams(window.location.search);
@@ -311,6 +312,7 @@ appliquerPrefill(); // remplit nom/prenom/adresse/codePostal/ville/email/montant
         donIdPrefill = data.donId || null;
 
         var paiement = (data.check_paiement || '').toLowerCase();
+        paiementVirementPrefill = paiement.indexOf('virement') >= 0;
         if (paiement.indexOf('espèce') >= 0 || paiement.indexOf('espece') >= 0) {
             document.getElementById('mv_espece').classList.add('checked');
         }
@@ -402,7 +404,7 @@ async function saveForm() {
                     corps: construireCorpsMail(data),
                     pdfBytes: pdfBytes,
                     pdfNomFichier: data.filename + '.pdf',
-                    emailClient: data.email,
+                    emailClient: paiementVirementPrefill ? undefined : data.email,
                     nomClient: ((data.prenom || '') + ' ' + (data.nom || '')).trim()
                 });
                 try {
