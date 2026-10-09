@@ -27,6 +27,18 @@
   .badge{display:inline-block;padding:2px 8px;border-radius:10px;background:var(--warm);font-size:10px;}
   .lien-pdf{color:var(--orange);text-decoration:none;font-size:11px;white-space:nowrap;}
   .lien-pdf:hover{text-decoration:underline;}
+  .filtres{display:flex;gap:10px;margin-bottom:10px;}
+  .filtres select{padding:12px 10px;font-size:14px;border:1px solid var(--warm);border-radius:10px;background:#fff;color:var(--brown);}
+  .filtres input{flex:1;min-width:0;}
+  .liste-animaux{background:#fff;border:1px solid var(--warm);border-radius:10px;max-height:300px;overflow-y:auto;margin-bottom:20px;}
+  .liste-animaux .ligne{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #f2ece1;cursor:pointer;font-size:13px;}
+  .liste-animaux .ligne:hover{background:#faf3e8;}
+  .liste-animaux .ligne.choisi{background:#f6e7d4;}
+  .liste-animaux .num{color:var(--grey);font-size:11px;min-width:64px;}
+  .liste-animaux .meta{margin-left:auto;color:var(--grey);font-size:11px;text-align:right;}
+  .compteur{font-size:11px;color:var(--grey);margin:-4px 0 8px;}
+  .pers{line-height:1.5;}
+  .pers small{color:var(--grey);}
   #login-err{color:#c00000;font-size:12px;margin-bottom:10px;min-height:16px;}
 </style>
 </head>
@@ -50,29 +62,86 @@
   </div>
 </header>
 <div class="wrap">
-  <div class="search-box">
-    <input type="text" id="recherche-input" placeholder="Tapez le nom du chat…">
+  <div class="filtres">
+    <select id="filtre-annee" title="Année d'arrivée à l'Arche"></select>
+    <input type="text" id="recherche-input" placeholder="Nom, n° interne ou puce (laisser vide pour tout voir)…" style="padding:12px 14px;font-size:14px;border:1px solid var(--warm);border-radius:10px;">
   </div>
+  <div class="compteur" id="compteur"></div>
+  <div class="liste-animaux" id="liste-animaux"></div>
   <div id="resultat"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
 <script src="formulaires-arche-mallo.js"></script>
-<script src="selecteur-animal.js"></script>
 <script>
 const supabaseClient = creerClientSupabase();
 initSessionSuivi();
 
-document.addEventListener('DOMContentLoaded', function() {
-  initSelecteurAnimal({
-    inputId: 'recherche-input',
-    contexte: 'recherche',
-    onSelect: function(animalId) { if (animalId) chargerFiche(animalId); else viderResultat(); }
+let animalChoisiId = null;
+let timerRecherche = null;
+
+const LIB_ORIGINE = { trappage:'Trappage', depot:'Dépôt', abandon:'Abandon', saisie:'Saisie', ne_a_association:"Né à l'association", transfert_autre_association:"Transfert d'une autre association" };
+const LIB_STATUT = { arrive:'Arrivé', en_observation:'En observation', au_veto:'Au vétérinaire', adoptable:'Adoptable', non_adoptable:'Non adoptable', reserve:'Réservé', adopte:'Adopté', famille_accueil:"En famille d'accueil", decede:'Décédé', relache:'Relâché', retour:'Retour', transfere:'Transféré', malade:'Malade', reservation_annulee:'Réservation annulée' };
+function libOrigine(o) { return o ? (LIB_ORIGINE[o] || o) : '—'; }
+function libStatut(s) { return s ? (LIB_STATUT[s] || s) : '—'; }
+
+document.addEventListener('DOMContentLoaded', async function() {
+  document.getElementById('filtre-annee').addEventListener('change', lancerRecherche);
+  document.getElementById('recherche-input').addEventListener('input', function() {
+    clearTimeout(timerRecherche);
+    timerRecherche = setTimeout(lancerRecherche, 250);
   });
+  await chargerAnnees();
+  lancerRecherche();
 });
 
-function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
+// Remplit la liste des années (année d'arrivée à l'Arche) ; année en cours par défaut
+async function chargerAnnees() {
+  const sel = document.getElementById('filtre-annee');
+  const { data, error } = await supabaseClient.rpc('annees_arrivee_animaux');
+  if (error) { sel.innerHTML = '<option value="">Toutes les années</option>'; console.error(error.message); return; }
+  const anneeCourante = new Date().getFullYear();
+  const annees = data || [];
+  let html = '<option value="">Toutes les années</option>';
+  annees.forEach(a => {
+    html += `<option value="${a.annee}">${a.annee === 0 ? 'Année inconnue' : a.annee} (${a.nb})</option>`;
+  });
+  sel.innerHTML = html;
+  const parDefaut = annees.find(a => a.annee === anneeCourante) || annees.find(a => a.annee > 0);
+  if (parDefaut) sel.value = String(parDefaut.annee);
+}
+
+async function lancerRecherche() {
+  const liste = document.getElementById('liste-animaux');
+  const compteur = document.getElementById('compteur');
+  const annee = document.getElementById('filtre-annee').value;
+  const texte = document.getElementById('recherche-input').value;
+  liste.innerHTML = '<div class="empty" style="padding:10px 12px;">Chargement…</div>';
+  const { data, error } = await supabaseClient.rpc('rechercher_animaux_fiche', {
+    p_recherche: texte,
+    p_annee: annee === '' ? null : parseInt(annee, 10)
+  });
+  if (error) { liste.innerHTML = `<div class="empty" style="padding:10px 12px;">Erreur : ${escH(error.message)}</div>`; compteur.textContent = ''; return; }
+  const animaux = data || [];
+  compteur.textContent = animaux.length + (animaux.length > 1 ? ' animaux' : ' animal');
+  if (!animaux.length) {
+    liste.innerHTML = '<div class="empty" style="padding:10px 12px;">Aucun animal trouvé' + (annee !== '' ? ' pour cette année — essayez « Toutes les années ».' : '.') + '</div>';
+    return;
+  }
+  liste.innerHTML = animaux.map(a => `<div class="ligne${a.id === animalChoisiId ? ' choisi' : ''}" data-id="${escH(a.id)}">
+      <span class="num">${escH(a.numero_interne || '')}</span>
+      <strong>${escH(a.nom_usuel)}</strong>${a.couleur ? ' <span style="color:var(--grey);">— ' + escH(a.couleur) + '</span>' : ''}
+      <span class="meta"><span class="badge">${escH(libStatut(a.statut_actuel))}</span><br>${a.date_arrivee ? 'arrivé le ' + fmtDate(a.date_arrivee) : 'arrivée inconnue'}${a.origine_arrivee ? ' · ' + escH(libOrigine(a.origine_arrivee)) : ''}</span>
+    </div>`).join('');
+  liste.querySelectorAll('.ligne').forEach(l => l.addEventListener('click', function() {
+    animalChoisiId = l.getAttribute('data-id');
+    liste.querySelectorAll('.ligne').forEach(x => x.classList.toggle('choisi', x === l));
+    chargerFiche(animalChoisiId);
+  }));
+}
+
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
 function fmtDate(d) { if (!d) return '—'; const s=String(d).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const p=s.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; } return s; }
 function nomPersonne(p) {
   if (!p) return '—';
@@ -84,6 +153,38 @@ function liensPdf(fichiers) {
   return fichiers.map((f,i) => `<a class="lien-pdf" href="${escH(f.url)}" target="_blank">📄 ${escH(f.type_fichier||('Document '+(i+1)))}</a>`).join(' · ');
 }
 function viderResultat() { document.getElementById('resultat').innerHTML = ''; }
+
+
+function infosPersonne(p) {
+  if (!p) return '<span class="empty">—</span>';
+  const det = [p.telephone, p.email, [p.adresse, p.code_postal, p.ville].filter(Boolean).join(' ')].filter(Boolean).map(escH).join(' · ');
+  return `<div class="pers"><strong>${escH(nomPersonne(p))}</strong>${det ? '<br><small>' + det + '</small>' : ''}</div>`;
+}
+function dateTri(d) { return d ? String(d).slice(0, 10) : ''; }
+
+// Chronologie unifiée : tout ce qui concerne l'animal, du plus récent au plus ancien
+function construireChronologie(d) {
+  const a = d.animal, ev = [];
+  const docsArr = d.documents_arrivee || [];
+  const motifArrivee = (d.statuts || []).slice().sort((x, y) => dateTri(x.date_debut).localeCompare(dateTri(y.date_debut)))[0];
+  ev.push({ date: a.date_arrivee, titre: 'Arrivée — ' + escH(libOrigine(a.origine_arrivee)),
+    pers: d.personne_origine, detail: motifArrivee && motifArrivee.motif ? escH(motifArrivee.motif) : '', docs: docsArr });
+  (d.statuts || []).forEach(h => ev.push({ date: h.date_debut, titre: 'Statut → ' + escH(libStatut(h.statut)), pers: null, detail: escH(h.motif || ''), docs: [] }));
+  (d.soins || []).forEach(sv => ev.push({ date: sv.date_soin, titre: 'Soin : ' + escH(sv.type_soin || '—'), pers: null, detail: escH([sv.veterinaire, sv.description].filter(Boolean).join(' — ')), docs: [] }));
+  if (d.sterilisation && d.sterilisation.sterilise) ev.push({ date: d.sterilisation.date_sterilisation, titre: 'Stérilisation', pers: null, detail: '', docs: d.sterilisation.fichier_sterilisation_url ? [{ url: d.sterilisation.fichier_sterilisation_url, type_fichier: 'Certificat de stérilisation' }] : [] });
+  if (d.icad) {
+    if (d.icad.date_transfert || d.icad.fichier_icad_url) ev.push({ date: d.icad.date_transfert, titre: 'Transfert ICAD', pers: null, detail: escH(d.icad.commentaire || ''), docs: d.icad.fichier_icad_url ? [{ url: d.icad.fichier_icad_url, type_fichier: 'Fichier ICAD' }] : [] });
+  }
+  (d.adoptions || []).forEach(r => ev.push({ date: r.date_adoption, titre: 'Adoption', pers: r.personne, detail: r.total_participation ? 'Participation : ' + r.total_participation + ' €' : '', docs: r.fichiers }));
+  (d.reservations || []).forEach(r => ev.push({ date: r.date_reservation, titre: 'Réservation' + (r.type_reservation ? ' (' + escH(r.type_reservation) + ')' : ''), pers: r.personne, detail: '', docs: r.fichiers }));
+  (d.depots || []).forEach(r => ev.push({ date: r.date_depot, titre: 'Dépôt (formulaire)', pers: r.personne, detail: escH(r.commune || ''), docs: r.fichiers }));
+  (d.abandons || []).forEach(r => ev.push({ date: r.date_fait, titre: 'Abandon (formulaire)', pers: r.personne, detail: escH(r.cause_abandon || ''), docs: r.fichiers }));
+  (d.familles_accueil || []).forEach(r => ev.push({ date: r.date_debut || r.date_fait, titre: "Famille d'accueil (" + escH(r.type_accueil || '—') + ')', pers: r.personne, detail: r.date_fin ? "jusqu'au " + fmtDate(r.date_fin) : 'en cours', docs: r.fichiers }));
+  (d.attestations || []).forEach(r => ev.push({ date: r.date_fait, titre: 'Attestation : ' + ({ cbs_absent: 'CBS absent', decharge_vaccin: 'Décharge vaccin' }[r.type_attestation] || escH(r.type_attestation || '—')), pers: r.personne, detail: escH(r.motif || ''), docs: r.fichiers }));
+  if (a.date_deces) ev.push({ date: a.date_deces, titre: 'Décès', pers: null, detail: '', docs: [] });
+  ev.sort((x, y) => dateTri(y.date).localeCompare(dateTri(x.date)));
+  return ev;
+}
 
 async function chargerFiche(animalId) {
   document.getElementById('resultat').innerHTML = '<div class="empty">Chargement…</div>';
@@ -105,7 +206,7 @@ function render(d) {
         ${photos.length>1 ? `<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">${photos.slice(1).map(ph=>`<a href="${escH(ph.url)}" target="_blank" title="${escH(libSource[ph.source]||'')} ${ph.cree_le?fmtDate(ph.cree_le):''}"><img src="${escH(ph.url)}" style="height:56px;border:1px solid #ddd;border-radius:4px;"></a>`).join('')}</div>` : ''}</div>`
     : '<div class="empty" style="margin-bottom:8px;">Aucune photo enregistrée</div>';
 
-  html += `<div class="card"><h2>🐱 ${escH(a.nom_usuel)} ${a.nom_adoption?('— '+escH(a.nom_adoption)):''} <span class="badge">${escH(a.statut_actuel||'—')}</span></h2>
+  html += `<div class="card"><h2>🐱 ${escH(a.nom_usuel)} ${a.nom_adoption?('— '+escH(a.nom_adoption)):''} <span class="badge">${escH(libStatut(a.statut_actuel))}</span></h2>
     ${photoHtml}
     <div class="grid2">
       <div><span class="lbl">Espèce / race :</span> ${escH(a.espece||'—')}${a.race?' — '+escH(a.race):''}</div>
@@ -122,11 +223,24 @@ function render(d) {
       ${a.date_deces ? `<div style="grid-column:1/-1;color:#c00000;"><span class="lbl">Décès :</span> ${fmtDate(a.date_deces)}</div>` : ''}
     </div></div>`;
 
-  html += `<div class="card"><h2>📥 Arrivée — documents</h2>${liensPdf(d.documents_arrivee)}</div>`;
+  const premierStatut = (d.statuts || []).slice().sort((x, y) => dateTri(x.date_debut).localeCompare(dateTri(y.date_debut)))[0];
+  html += `<div class="card"><h2>📥 Arrivée à l'Arche</h2>
+    <div class="grid2">
+      <div><span class="lbl">Origine :</span> <strong>${escH(libOrigine(a.origine_arrivee))}</strong></div>
+      <div><span class="lbl">Date d'arrivée :</span> ${fmtDate(a.date_arrivee)}</div>
+      <div><span class="lbl">${a.origine_arrivee === 'trappage' ? 'Commune de trappage :' : 'Motif / commune :'}</span> ${escH((premierStatut && premierStatut.motif) || '—')}</div>
+      <div><span class="lbl">Formulaire / fiche d'arrivée :</span> ${liensPdf(d.documents_arrivee)}</div>
+      <div style="grid-column:1/-1;"><span class="lbl">Personne à l'origine :</span> ${infosPersonne(d.personne_origine)}</div>
+    </div></div>`;
+
+  const chrono = construireChronologie(d);
+  html += `<div class="card"><h2>🕘 Tous les mouvements</h2><table><thead><tr><th>Date</th><th>Mouvement</th><th>Personne</th><th>Détail</th><th>Documents</th></tr></thead><tbody>
+    ${chrono.map(e => `<tr><td style="white-space:nowrap;">${fmtDate(e.date)}</td><td><strong>${e.titre}</strong></td><td>${e.pers ? infosPersonne(e.pers) : '—'}</td><td>${e.detail || '—'}</td><td>${liensPdf(e.docs)}</td></tr>`).join('')}
+    </tbody></table></div>`;
 
   html += `<div class="card"><h2>📋 Historique de statut</h2>${
-    d.statuts.length ? `<table><thead><tr><th>Statut</th><th>Du</th><th>Au</th></tr></thead><tbody>
-      ${d.statuts.map(h=>`<tr><td>${escH(h.statut)}</td><td>${fmtDate(h.date_debut)}</td><td>${h.date_fin?fmtDate(h.date_fin):'en cours'}</td></tr>`).join('')}
+    d.statuts.length ? `<table><thead><tr><th>Statut</th><th>Du</th><th>Au</th><th>Motif</th></tr></thead><tbody>
+      ${d.statuts.map(h=>`<tr><td>${escH(libStatut(h.statut))}</td><td>${fmtDate(h.date_debut)}</td><td>${h.date_fin?fmtDate(h.date_fin):'en cours'}</td><td>${escH(h.motif||'—')}</td></tr>`).join('')}
     </tbody></table>` : '<div class="empty">Aucun historique de statut</div>'}</div>`;
 
   html += `<div class="card"><h2>💉 Suivi médical</h2>${
@@ -136,17 +250,17 @@ function render(d) {
 
   const sections = [
     { key:'adoptions',        titre:'🏠 Adoption(s)',        cols:['Date','Personne','Participation','Documents'],
-      row:r=>[fmtDate(r.date_adoption), nomPersonne(r.personne), r.total_participation?r.total_participation+' €':'—', liensPdf(r.fichiers)] },
+      row:r=>[fmtDate(r.date_adoption), infosPersonne(r.personne), r.total_participation?r.total_participation+' €':'—', liensPdf(r.fichiers)] },
     { key:'reservations',     titre:'📅 Réservation(s)',     cols:['Date','Type','Personne','Documents'],
-      row:r=>[fmtDate(r.date_reservation), escH(r.type_reservation||'—'), nomPersonne(r.personne), liensPdf(r.fichiers)] },
-    { key:'depots',           titre:'📥 Dépôt(s)',           cols:['Date','Personne','Documents'],
-      row:r=>[fmtDate(r.date_depot), nomPersonne(r.personne), liensPdf(r.fichiers)] },
+      row:r=>[fmtDate(r.date_reservation), escH(r.type_reservation||'—'), infosPersonne(r.personne), liensPdf(r.fichiers)] },
+    { key:'depots',           titre:'📥 Dépôt(s)',           cols:['Date','Personne','Commune','Documents'],
+      row:r=>[fmtDate(r.date_depot), infosPersonne(r.personne), escH(r.commune||'—'), liensPdf(r.fichiers)] },
     { key:'abandons',         titre:'💔 Abandon(s)',         cols:['Date','Personne','Cause','Documents'],
-      row:r=>[fmtDate(r.date_fait), nomPersonne(r.personne), escH(r.cause_abandon||'—'), liensPdf(r.fichiers)] },
+      row:r=>[fmtDate(r.date_fait), infosPersonne(r.personne), escH(r.cause_abandon||'—'), liensPdf(r.fichiers)] },
     { key:'familles_accueil', titre:'🤝 Famille(s) d\'accueil', cols:['Type','Du','Au','Personne','Documents'],
-      row:r=>[escH(r.type_accueil||'—'), fmtDate(r.date_debut), r.date_fin?fmtDate(r.date_fin):'en cours', nomPersonne(r.personne), liensPdf(r.fichiers)] },
+      row:r=>[escH(r.type_accueil||'—'), fmtDate(r.date_debut), r.date_fin?fmtDate(r.date_fin):'en cours', infosPersonne(r.personne), liensPdf(r.fichiers)] },
     { key:'attestations',     titre:'📜 Attestation(s)',     cols:['Date','Type','Personne','Documents'],
-      row:r=>[fmtDate(r.date_fait), escH(r.type_attestation||'—'), nomPersonne(r.personne), liensPdf(r.fichiers)] },
+      row:r=>[fmtDate(r.date_fait), escH(r.type_attestation||'—'), infosPersonne(r.personne), liensPdf(r.fichiers)] },
   ];
   sections.forEach(sec => {
     const rows = d[sec.key] || [];
