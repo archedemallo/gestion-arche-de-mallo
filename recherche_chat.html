@@ -141,6 +141,23 @@ async function lancerRecherche() {
   }));
 }
 
+// Chrome bloque l'ouverture directe des URL "data:" : on les convertit en Blob avant ouverture
+document.addEventListener('click', function (e) {
+  const a = e.target.closest && e.target.closest('a[href^="data:"]');
+  if (!a) return;
+  e.preventDefault();
+  try {
+    const href = a.getAttribute('href');
+    const i = href.indexOf(',');
+    const mime = (href.slice(5, i).split(';')[0]) || 'application/octet-stream';
+    const bin = atob(href.slice(i + 1));
+    const arr = new Uint8Array(bin.length);
+    for (let k = 0; k < bin.length; k++) arr[k] = bin.charCodeAt(k);
+    const url = URL.createObjectURL(new Blob([arr], { type: mime }));
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (err) { alert("Impossible d'ouvrir ce fichier : " + err.message); }
+});
 function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
 function fmtDate(d) { if (!d) return '—'; const s=String(d).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const p=s.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; } return s; }
 function nomPersonne(p) {
