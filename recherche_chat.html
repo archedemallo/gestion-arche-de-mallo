@@ -82,7 +82,7 @@ let animalChoisiId = null;
 let timerRecherche = null;
 
 const LIB_ORIGINE = { trappage:'Trappage', depot:'Dépôt', abandon:'Abandon', saisie:'Saisie', ne_a_association:"Né à l'association", transfert_autre_association:"Transfert d'une autre association" };
-const LIB_STATUT = { arrive:'Arrivé', en_observation:'En observation', au_veto:'Au vétérinaire', adoptable:'Adoptable', non_adoptable:'Non adoptable', reserve:'Réservé', adopte:'Adopté', famille_accueil:"En famille d'accueil", decede:'Décédé', relache:'Relâché', retour:'Retour', transfere:'Transféré', malade:'Malade', reservation_annulee:'Réservation annulée' };
+const LIB_STATUT = { arrive:'Arrivé', au_veto:'Au vétérinaire', adoptable:'Adoptable', non_adoptable:'Non adoptable', reserve:'Réservé', adopte:'Adopté', famille_accueil:"En famille d'accueil", decede:'Décédé', relache:'Relâché', retour:'Retour', transfere:'Transféré', malade:'Malade', reservation_annulee:'Réservation annulée' };
 function libOrigine(o) { return o ? (LIB_ORIGINE[o] || o) : '—'; }
 function libStatut(s) { return s ? (LIB_STATUT[s] || s) : '—'; }
 
