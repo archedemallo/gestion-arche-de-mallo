@@ -151,7 +151,7 @@ initSessionSuivi();
 
 // Libellés (voir statuts_animaux.html / 030_transitions_statut_animal.sql)
 const LABELS_STATUT = {
-  en_observation: 'En observation', adoptable: 'Adoptable', non_adoptable: 'Non adoptable',
+  adoptable: 'Adoptable', non_adoptable: 'Non adoptable',
   malade: 'Malade', decede: 'Décédé', relache: 'Relâché', reservation_annulee: 'Réservation annulée',
   reserve: 'Réservé', au_veto: 'Au véto', famille_accueil: "Famille d'accueil", adopte: 'Adopté'
 };
@@ -159,7 +159,7 @@ const LABELS_ORIGINE = {
   depot: 'Dépôt', abandon: 'Abandon', saisie: 'Saisie',
   ne_a_association: "Né à l'association", trappage: 'Trappage'
 };
-const ORDRE_STATUT = ['en_observation', 'au_veto', 'malade', 'non_adoptable', 'adoptable',
+const ORDRE_STATUT = ['au_veto', 'malade', 'non_adoptable', 'adoptable',
   'reserve', 'reservation_annulee', 'famille_accueil', 'adopte', 'relache', 'decede'];
 const STATUTS_FINAUX = ['decede', 'relache', 'adopte'];
 
