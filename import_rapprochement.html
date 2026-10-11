@@ -66,6 +66,23 @@
   .sv-badge{display:inline-block;font-size:9px;padding:1px 5px;border-radius:10px;background:var(--orange);color:#fff;margin-left:3px;font-weight:600;}
   .sv-sub .sv-badge{margin-left:5px;} .imp-tab-btn.active .sv-badge{background:#fff;color:var(--orange);}
   tr.sv-done{opacity:.45;}
+  /* --- Assistant d'import en 4 étapes --- */
+  .steps .step{padding:12px 16px;font-size:13px;}
+  .steps .step.done .step-num{background:var(--green);border-color:transparent;color:#fff;}
+  .map-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-bottom:14px;}
+  .map-title i{color:var(--orange);}
+  .mapping-grid6{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;}
+  .mapping-grid6 .f-select,.mapping-grid6 .f-input{width:100%;box-sizing:border-box;padding:9px 10px;font-size:13px;}
+  .auto-tag{font-size:11px;color:var(--green);min-height:14px;}
+  .raw-table{font-size:11px;}
+  .raw-table th{font-family:ui-monospace,Menlo,Consolas,monospace;}
+  .raw-table td{font-family:ui-monospace,Menlo,Consolas,monospace;white-space:nowrap;}
+  .raw-table tbody tr{background:rgba(201,107,42,0.07);}
+  .raw-table td.raw-n,.raw-table th:first-child{color:var(--text-3);width:34px;}
+  .wiz-actions{display:flex;align-items:center;gap:10px;margin:4px 0 14px;}
+  .final-resume{font-size:13px;line-height:1.7;margin-bottom:14px;}
+  @media (max-width:1100px){.mapping-grid6{grid-template-columns:repeat(3,1fr);}}
+  @media (max-width:640px){.mapping-grid6{grid-template-columns:1fr 1fr;}.steps .step{font-size:11px;padding:10px 8px;}}
 </style>
 </head>
 <body>
@@ -116,7 +133,8 @@
 </aside>
 <div class="main">
   <div class="topbar">
-    <div class="topbar-title"><i class="ti ti-arrows-exchange" style="color:var(--orange)"></i> Import relevé bancaire</div>
+    <div class="topbar-title"><i class="ti ti-upload" style="color:var(--orange)"></i> Import relevé bancaire</div>
+    <div class="topbar-right"><span style="font-size:11px;color:var(--text-3);">CSV, XLS, XLSX</span></div>
   </div>
   <div class="page-content">
 
@@ -131,10 +149,12 @@
     <div id="tab-import" class="hidden">
     <!-- ÉTAPE IMPORT -->
     <div class="steps">
-      <div class="step" id="step-1"><span class="step-num">1</span> Fichier</div>
-      <div class="step" id="step-2"><span class="step-num">2</span> Colonnes</div>
-      <div class="step" id="step-3"><span class="step-num">3</span> Aperçu &amp; import</div>
+      <div class="step active" id="step-1"><span class="step-num">1</span> Charger le fichier</div>
+      <div class="step" id="step-2"><span class="step-num">2</span> Mapper les colonnes</div>
+      <div class="step" id="step-3"><span class="step-num">3</span> Vérifier &amp; sélectionner</div>
+      <div class="step" id="step-4"><span class="step-num">4</span> Importer</div>
     </div>
+    <div id="import-err" class="hidden" style="color:var(--red);font-size:12px;padding:0 0 10px;"></div>
 
     <div class="mapping-card" id="card-upload">
       <div class="form-row-2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
@@ -152,15 +172,32 @@
       </div>
     </div>
 
-    <div class="mapping-card hidden" id="card-mapping">
-      <div class="mapping-grid">
-        <div class="form-group"><label class="form-label req">Colonne Date</label><select id="map-date" class="f-select"></select></div>
-        <div class="form-group"><label class="form-label req">Colonne Libellé</label><select id="map-libelle" class="f-select"></select></div>
-        <div class="form-group"><label class="form-label req">Colonne Débit (ou Montant signé)</label><select id="map-debit" class="f-select"></select></div>
-        <div class="form-group"><label class="form-label">Colonne Crédit (si séparée)</label><select id="map-credit" class="f-select"><option value="">— Un seul montant signé —</option></select></div>
-        <div class="form-group"><label class="form-label">Lignes à ignorer en début</label><input type="number" id="map-skip" class="f-input" value="0" min="0" max="20"></div>
-        <div class="form-group" style="justify-content:flex-end;"><button class="btn btn-primary btn-sm" onclick="genererApercu()"><i class="ti ti-eye"></i> Aperçu</button></div>
+    <!-- ÉTAPE 2 : mapper les colonnes -->
+    <div id="card-mapping" class="hidden">
+      <div class="mapping-card">
+        <div class="map-title"><i class="ti ti-columns"></i> Correspondance des colonnes</div>
+        <div class="mapping-grid6">
+          <div class="form-group"><label class="form-label req">Date</label><select id="map-date" class="f-select" onchange="onMapChange('auto-date')"></select><div class="auto-tag" id="auto-date"></div></div>
+          <div class="form-group"><label class="form-label req">Libellé</label><select id="map-libelle" class="f-select" onchange="onMapChange('auto-libelle')"></select><div class="auto-tag" id="auto-libelle"></div></div>
+          <div class="form-group"><label class="form-label req">Débit (ou montant)</label><select id="map-debit" class="f-select" onchange="onMapChange('auto-debit')"></select><div class="auto-tag" id="auto-debit"></div></div>
+          <div class="form-group"><label class="form-label">Crédit (si séparé)</label><select id="map-credit" class="f-select" onchange="onMapChange('auto-credit')"></select><div class="auto-tag" id="auto-credit"></div></div>
+          <div class="form-group"><label class="form-label">Solde</label><select id="map-solde" class="f-select" onchange="onMapChange('auto-solde')"></select><div class="auto-tag" id="auto-solde"></div></div>
+          <div class="form-group"><label class="form-label">Lignes à ignorer en début</label><input type="number" id="map-skip" class="f-input" value="0" min="0" max="60" onchange="onSkipChange()"></div>
+        </div>
       </div>
+      <div class="mapping-card">
+        <div class="map-title" style="font-size:12.5px;margin-bottom:8px;">Aperçu du fichier (10 premières lignes)</div>
+        <div class="preview-table" id="raw-preview" style="margin-top:0;"></div>
+      </div>
+      <div class="wiz-actions">
+        <button class="btn btn-secondary" onclick="annulerImport()"><i class="ti ti-arrow-left"></i> Retour</button>
+        <button class="btn btn-primary" onclick="genererApercu()"><i class="ti ti-arrow-right"></i> Continuer</button>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 3 : vérifier & sélectionner -->
+    <div id="card-verif" class="hidden">
+      <div class="mapping-card">
       <div id="select-bar" class="select-bar hidden">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="select-all" onchange="toggleAllLines(this.checked)" style="width:14px;height:14px;accent-color:var(--orange);">
@@ -174,17 +211,31 @@
           <span><span class="dot" style="background:var(--amber);"></span><span id="cnt-doublon">0</span> doublons</span>
         </span>
       </div>
-      <div class="preview-table" id="preview-wrap"></div>
-      <div id="import-err" class="hidden" style="color:var(--red);font-size:11px;padding:8px 0;"></div>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap;">
+      <div class="preview-table" id="preview-wrap" style="max-height:420px;"></div>
+      </div>
+      <div class="wiz-actions">
+        <button class="btn btn-secondary" onclick="showStep(2)"><i class="ti ti-arrow-left"></i> Retour</button>
+        <button class="btn btn-primary" id="btn-continue-verif" onclick="allerEtapeImport()"><i class="ti ti-arrow-right"></i> Continuer</button>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 4 : importer -->
+    <div id="card-final" class="hidden">
+      <div class="mapping-card">
+        <div class="map-title"><i class="ti ti-checklist"></i> Récapitulatif</div>
+        <div class="final-resume" id="final-resume"></div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <div class="form-group" style="flex:1;min-width:200px;">
           <label class="form-label">Type de mouvement (optionnel)</label>
           <select class="f-select" id="imp-type-mouvement" style="width:100%;" onchange="onImpTypeChange()">
             <option value="">— Importer en attente (à rapprocher plus tard) —</option>
           </select>
         </div>
-        <button class="btn btn-secondary btn-sm" onclick="annulerImport()">Annuler</button>
-        <button class="btn btn-primary btn-sm" id="btn-confirm-import" onclick="confirmerImport()"><i class="ti ti-check"></i> Importer ces lignes</button>
+        </div>
+      </div>
+      <div class="wiz-actions">
+        <button class="btn btn-secondary" onclick="showStep(3)"><i class="ti ti-arrow-left"></i> Retour</button>
+        <button class="btn btn-primary" id="btn-confirm-import" onclick="confirmerImport()"><i class="ti ti-check"></i> Importer ces lignes</button>
       </div>
     </div>
     <!-- fin onglet Import -->
@@ -403,25 +454,93 @@ function lireFichierExcel(file) {
   reader.readAsArrayBuffer(file);
 }
 
+// ----- Assistant en 4 étapes -----
+function showStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('step-' + i);
+    el.classList.toggle('done', i < n);
+    el.classList.toggle('active', i === n);
+  }
+  document.getElementById('card-upload').classList.toggle('hidden', n !== 1);
+  document.getElementById('card-mapping').classList.toggle('hidden', n !== 2);
+  document.getElementById('card-verif').classList.toggle('hidden', n !== 3);
+  document.getElementById('card-final').classList.toggle('hidden', n !== 4);
+  document.getElementById('import-err').classList.add('hidden');
+}
+
+// Un export bancaire commence souvent par des lignes d'en-tête (titre,
+// IBAN, période…) avant la vraie ligne de titres de colonnes. On repère
+// la 1re ligne qui contient à la fois une colonne « date » et « libellé ».
+function detecterLigneEntete() {
+  const max = Math.min(csvRows.length, 40);
+  for (let r = 0; r < max; r++) {
+    const cells = (csvRows[r] || []).map(c => String(c == null ? '' : c).trim());
+    if (cells.some(c => c.length < 40 && /date/i.test(c)) && cells.some(c => c.length < 40 && /libell|label|intitul/i.test(c))) return r;
+  }
+  return 0;
+}
+
+function remplirMapping(skip) {
+  const row = csvRows[skip] || [];
+  let nb = row.length;
+  for (let r = skip; r < Math.min(csvRows.length, skip + 30); r++) nb = Math.max(nb, (csvRows[r] || []).length);
+  csvHeaders = [];
+  for (let i = 0; i < nb; i++) csvHeaders.push(String(row[i] == null ? '' : row[i]).trim() || ('Colonne ' + (i + 1)));
+  const opts = csvHeaders.map((h, i) => `<option value="${i}">${escH(h)}</option>`).join('');
+  document.getElementById('map-date').innerHTML = opts;
+  document.getElementById('map-libelle').innerHTML = opts;
+  document.getElementById('map-debit').innerHTML = opts;
+  document.getElementById('map-credit').innerHTML = '<option value="">— Un seul montant signé —</option>' + opts;
+  document.getElementById('map-solde').innerHTML = '<option value="">— Ignorer —</option>' + opts;
+
+  const trouver = (rx) => csvHeaders.findIndex(h => rx.test(h));
+  const iDate = trouver(/date/i);
+  const iLib = trouver(/libell|label|intitul|d[ée]tail|description/i);
+  let iDeb = trouver(/d[ée]bit/i);
+  const iCred = trouver(/cr[ée]dit/i);
+  if (iDeb < 0) iDeb = trouver(/montant|amount/i);
+  const iSolde = trouver(/solde|balance/i);
+  const poser = (id, idx, autoId) => {
+    if (idx >= 0) document.getElementById(id).value = String(idx);
+    document.getElementById(autoId).innerHTML = idx >= 0 ? '<i class="ti ti-check"></i> Auto' : '';
+  };
+  poser('map-date', iDate, 'auto-date');
+  poser('map-libelle', iLib, 'auto-libelle');
+  poser('map-debit', iDeb, 'auto-debit');
+  poser('map-credit', iCred, 'auto-credit');
+  poser('map-solde', iSolde, 'auto-solde');
+}
+
 function apresLectureFichier() {
-  document.getElementById('step-1').classList.add('done');
-  document.getElementById('step-2').classList.add('active');
-  document.getElementById('card-upload').classList.add('hidden');
-  document.getElementById('card-mapping').classList.remove('hidden');
-  const firstRow = csvRows[0] || [];
-  csvHeaders = firstRow.map((h, i) => h || ('Colonne ' + (i+1)));
-  ['map-date','map-libelle','map-debit'].forEach(id => {
-    document.getElementById(id).innerHTML = csvHeaders.map((h,i) => `<option value="${i}">${escH(h)}</option>`).join('');
-  });
-  document.getElementById('map-credit').innerHTML = '<option value="">— Un seul montant signé —</option>' + csvHeaders.map((h,i) => `<option value="${i}">${escH(h)}</option>`).join('');
-  // Détection basique par nom de colonne
-  csvHeaders.forEach((h,i) => {
-    const hl = (h||'').toLowerCase();
-    if (hl.includes('date')) document.getElementById('map-date').value = i;
-    if (hl.includes('libell') || hl.includes('label')) document.getElementById('map-libelle').value = i;
-    if (hl.includes('débit') || hl.includes('debit')) document.getElementById('map-debit').value = i;
-    if (hl.includes('crédit') || hl.includes('credit')) document.getElementById('map-credit').value = i;
-  });
+  const skip = detecterLigneEntete();
+  document.getElementById('map-skip').value = skip;
+  remplirMapping(skip);
+  renderRawPreview();
+  showStep(2);
+}
+
+function onSkipChange() {
+  const skip = Math.max(0, parseInt(document.getElementById('map-skip').value) || 0);
+  remplirMapping(skip);
+  renderRawPreview();
+}
+
+function onMapChange(autoId) {
+  document.getElementById(autoId).innerHTML = '';
+  renderRawPreview();
+}
+
+// Aperçu brut : les 10 premières lignes à partir de « Lignes à ignorer »,
+// limité aux colonnes choisies.
+function renderRawPreview() {
+  const skip = Math.max(0, parseInt(document.getElementById('map-skip').value) || 0);
+  const col = (id) => { const v = document.getElementById(id).value; return v === '' ? null : parseInt(v); };
+  const cols = ['map-date', 'map-libelle', 'map-debit', 'map-credit', 'map-solde'].map(col).filter(i => i !== null && !isNaN(i));
+  const th = cols.map(i => `<th>${escH(csvHeaders[i] || '')}</th>`).join('');
+  const trs = csvRows.slice(skip, skip + 10).map((row, k) =>
+    `<tr><td class="raw-n">${skip + k + 1}</td>${cols.map(i => `<td>${escH(String((row || [])[i] == null ? '' : row[i]))}</td>`).join('')}</tr>`
+  ).join('');
+  document.getElementById('raw-preview').innerHTML = `<table class="raw-table"><thead><tr><th>#</th>${th}</tr></thead><tbody>${trs}</tbody></table>`;
 }
 ['dragover','dragleave','drop'].forEach(evt => {
   document.getElementById('dropzone').addEventListener(evt, (e) => {
@@ -477,6 +596,7 @@ async function genererApercu() {
   const iLib  = parseInt(document.getElementById('map-libelle').value);
   const iDeb  = parseInt(document.getElementById('map-debit').value);
   const iCred = document.getElementById('map-credit').value === '' ? null : parseInt(document.getElementById('map-credit').value);
+  const iSolde = document.getElementById('map-solde').value === '' ? null : parseInt(document.getElementById('map-solde').value);
   const destination = document.getElementById('imp-destination').value;
 
   const lignesBrutes = [];
@@ -492,7 +612,7 @@ async function genererApercu() {
     } else {
       montant = parseNombreCsv(row[iDeb]);
     }
-    lignesBrutes.push({ date, libelle: row[iLib] || '', montant });
+    lignesBrutes.push({ date, libelle: row[iLib] || '', montant, solde: iSolde !== null ? String(row[iSolde] == null ? '' : row[iSolde]) : '' });
   }
 
   if (!lignesBrutes.length) { showImportErr('Aucune ligne valide détectée — vérifiez le mapping des colonnes.'); return; }
@@ -514,12 +634,12 @@ async function genererApercu() {
     return { ...l, statut: doublon ? 'doublon' : 'nouveau', selected: !doublon };
   });
 
-  document.getElementById('step-2').classList.add('done');
-  document.getElementById('step-3').classList.add('active');
   renderApercu();
+  showStep(3);
 }
 
 function renderApercu() {
+  const aSolde = parsedPreview.some(r => r.solde);
   const trs = parsedPreview.map((r, i) => {
     const cls = r.statut === 'nouveau' ? 'row-nouveau' : 'row-doublon';
     const badge = r.statut === 'nouveau'
@@ -529,10 +649,10 @@ function renderApercu() {
       <td><input type="checkbox" class="ligne-chk" data-i="${i}" ${r.selected ? 'checked' : ''} onchange="onSelectLigne(${i}, this.checked)" style="width:14px;height:14px;accent-color:var(--orange);"></td>
       <td>${badge}</td>
       <td>${r.date}</td><td>${escH(r.libelle)}</td>
-      <td class="r ${r.montant>=0?'amount-c':'amount-d'}">${fmt(r.montant)}</td>
+      <td class="r ${r.montant>=0?'amount-c':'amount-d'}">${fmt(r.montant)}</td>${aSolde ? `<td class="r">${escH(r.solde || '')}</td>` : ''}
     </tr>`;
   }).join('');
-  document.getElementById('preview-wrap').innerHTML = `<table><thead><tr><th style="width:26px;"></th><th>Statut</th><th>Date</th><th>Libellé</th><th class="r">Montant</th></tr></thead><tbody>${trs}</tbody></table>`;
+  document.getElementById('preview-wrap').innerHTML = `<table><thead><tr><th style="width:26px;"></th><th>Statut</th><th>Date</th><th>Libellé</th><th class="r">Montant</th>${aSolde ? '<th class="r">Solde</th>' : ''}</tr></thead><tbody>${trs}</tbody></table>`;
   document.getElementById('select-bar').classList.remove('hidden');
   document.getElementById('cnt-nouveau').textContent = parsedPreview.filter(r => r.statut === 'nouveau').length;
   document.getElementById('cnt-doublon').textContent = parsedPreview.filter(r => r.statut === 'doublon').length;
@@ -560,6 +680,22 @@ function updateSelCount() {
   document.getElementById('select-all').checked = n === parsedPreview.length;
   const btn = document.getElementById('btn-confirm-import');
   if (btn) btn.disabled = n === 0;
+  const suite = document.getElementById('btn-continue-verif');
+  if (suite) suite.disabled = n === 0;
+}
+
+function allerEtapeImport() {
+  const sel = parsedPreview.filter(r => r.selected);
+  if (!sel.length) { showImportErr('Sélectionnez au moins une ligne à importer.'); return; }
+  const entrees = sel.filter(r => r.montant > 0).reduce((t, r) => t + r.montant, 0);
+  const sorties = sel.filter(r => r.montant < 0).reduce((t, r) => t + r.montant, 0);
+  const dest = document.getElementById('imp-destination');
+  const per = document.getElementById('imp-periode');
+  document.getElementById('final-resume').innerHTML =
+    `<b>${sel.length}</b> ligne(s) à importer vers <b>${escH(dest.options[dest.selectedIndex] ? dest.options[dest.selectedIndex].text : '')}</b>` +
+    ` · période <b>${escH(per.options[per.selectedIndex] ? per.options[per.selectedIndex].text : '')}</b><br>` +
+    `Entrées : <span class="amount-c">${fmt(entrees)}</span> · Sorties : <span class="amount-d">${fmt(sorties)}</span>`;
+  showStep(4);
 }
 
 async function confirmerImport() {
@@ -584,14 +720,10 @@ async function confirmerImport() {
 function annulerImport() {
   csvRows = []; parsedPreview = [];
   document.getElementById('file-input').value = '';
-  document.getElementById('card-mapping').classList.add('hidden');
-  document.getElementById('card-upload').classList.remove('hidden');
   document.getElementById('select-bar').classList.add('hidden');
   document.getElementById('imp-type-mouvement').value = '';
   onImpTypeChange();
-  ['step-1','step-2','step-3'].forEach(id => document.getElementById(id).classList.remove('active','done'));
-  document.getElementById('step-1').classList.add('active');
-  document.getElementById('import-err').classList.add('hidden');
+  showStep(1);
 }
 function showImportErr(m) { const e = document.getElementById('import-err'); e.textContent = m; e.classList.remove('hidden'); }
 
