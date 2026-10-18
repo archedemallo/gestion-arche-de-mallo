@@ -176,7 +176,7 @@
       <textarea id="arr-autre-info" data-uppercase="true" placeholder="Toute autre information utile sur l'animal…"></textarea>
     </div>
     <div class="champ">
-      <label>Photo de l'animal *</label>
+      <label>Photo de l'animal (facultative)</label>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <label class="btn" style="cursor:pointer;">
           📷 Prendre en photo
@@ -323,7 +323,6 @@ async function declarerArrivee() {
   }
   if (origine === 'trappage' && !motif) { msg.textContent = 'La commune est obligatoire.'; msg.className = 'msg err'; return; }
   const fichierPhoto = document.getElementById('photoAnimal').files[0];
-  if (!fichierPhoto) { msg.textContent = 'La photo de l\'animal est obligatoire.'; msg.className = 'msg err'; return; }
 
   afficherPopupChargement();
 
@@ -467,7 +466,7 @@ async function deposerPdfArrivee(animalId, nom, date, fichierPhoto) {
   const v = id => (document.getElementById(id).value || '').trim();
   const lib = id => { const e = document.getElementById(id); return e.tagName === 'SELECT' ? (e.options[e.selectedIndex]?.text || '') : e.value.trim(); };
   const esc = x => String(x || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  const photo = await new Promise(res => redimensionnerImage(fichierPhoto, b64 => res(b64 ? 'data:image/jpeg;base64,' + b64 : ''), 800));
+  const photo = fichierPhoto ? await new Promise(res => redimensionnerImage(fichierPhoto, b64 => res(b64 ? 'data:image/jpeg;base64,' + b64 : ''), 800)) : '';
   const cases = [['arr-sterilise','Stérilisé(e)'],['arr-vermifuge','Vermifugé(e)'],['arr-antipuce','Antipuce'],['arr-chaton','Chaton']]
     .filter(c => document.getElementById(c[0]).checked).map(c => c[1]).join(', ');
   const lignes = [
