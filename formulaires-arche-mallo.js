@@ -626,18 +626,6 @@ function validateRequiredFields() {
         }
     });
 
-    // Photo de l'animal — obligatoire si le champ existe dans le formulaire
-    var photoAnimalInput = document.getElementById('photoAnimal');
-    if (photoAnimalInput) {
-        var lblAnimal = photoAnimalInput.parentElement;
-        if (!photoAnimalInput.files || !photoAnimalInput.files[0]) {
-            missing.push("Photo de l'animal (obligatoire)");
-            if (lblAnimal) lblAnimal.style.outline = '2px solid red';
-        } else {
-            if (lblAnimal) lblAnimal.style.outline = '';
-        }
-    }
-
     return missing;
 }
 
@@ -1160,7 +1148,7 @@ function appliquerPrefill() {
 
         // Afficher la photo prise lors de la réservation (référence visuelle
         // uniquement — un input[type=file] ne peut pas être prérempli par
-        // script, la capture de la photo d'adoption reste obligatoire).
+        // script, la photo d'adoption est facultative).
         if (data.photoReservation) afficherPhotoAnimal(data.photoReservation, 'reservation', null);
 
         // Gérer le sexe (case à cocher radio) — cherche la case dont le texte correspond
@@ -1197,7 +1185,7 @@ function appliquerPrefill() {
 // avec son origine dans "source"). Quand un animal est choisi dans un
 // formulaire, sa dernière photo, toutes origines confondues, s'affiche
 // en référence dans #photoPrecedentePreview (zone "no-print", jamais
-// dans le PDF). La photo du formulaire en cours reste obligatoire.
+// dans le PDF). La photo du formulaire en cours est facultative.
 // ============================================================
 
 var LIBELLES_SOURCE_PHOTO = {
