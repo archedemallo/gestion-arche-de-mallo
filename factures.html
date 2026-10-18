@@ -151,7 +151,7 @@
       </div>
       <div class="form-group"><label class="form-label">Photo ou PDF de la facture</label>
         <input type="file" id="f-fichier" accept="application/pdf,image/*">
-        <div style="font-size:10px;color:var(--text-3);margin-top:3px;">Déposé dans le Drive (dossier Factures de l'année en cours) au clic sur Enregistrer.</div>
+        <div style="font-size:10px;color:var(--text-3);margin-top:3px;">Déposé dans le Drive (dossier Factures, sous-dossier de la période choisie ci-dessous) au clic sur Enregistrer.</div>
       </div>
       <div class="form-group"><label class="form-label">Lien PDF de la facture</label><input type="text" id="f-lien-pdf" placeholder="Lien vers le PDF (Drive, etc.)"></div>
       <div class="form-group"><label class="form-label">Commentaire</label><input type="text" id="f-comment"></div>
@@ -353,7 +353,7 @@ async function submitFacture() {
     const fichier = document.getElementById('f-fichier').files[0];
     if (fichier) {
       btn.innerHTML = '<i class="ti ti-loader"></i> Envoi du fichier…';
-      params.p_lien_pdf = await deposerFactureDrive(fichier, { fournisseur: fourn, numero: params.p_numero_facture, montant, date });
+      params.p_lien_pdf = await deposerFactureDrive(fichier, { fournisseur: fourn, numero: params.p_numero_facture, montant, date, periode: params.p_periode });
     }
     btn.innerHTML = libelleBtn;
     if (editId) { const { error } = await supabaseClient.rpc('modifier_facture', { p_id: editId, ...params }); if (error) throw error; showToast('Facture modifiée !'); }
@@ -399,7 +399,7 @@ function blobEnBase64(blob) {
   });
 }
 
-async function deposerFactureDrive(fichier, { fournisseur, numero, montant, date }) {
+async function deposerFactureDrive(fichier, { fournisseur, numero, montant, date, periode }) {
   const { data: cfg, error: errCfg } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'factures_drive_dossier_id').maybeSingle();
   const dossierId = (cfg && typeof cfg.valeur === 'string') ? cfg.valeur.trim() : '';
   if (errCfg || !dossierId) throw new Error("Dossier Drive des factures non configuré : renseignez-le dans Configuration.");
@@ -421,6 +421,7 @@ async function deposerFactureDrive(fichier, { fournisseur, numero, montant, date
     body: JSON.stringify({
       action: 'facture_fichier',
       dossierId,
+      periode: periode || '',
       filename: nomFichierFacture(fournisseur, numero, montant, date, ext),
       mimeType: mime,
       fichierBase64: await blobEnBase64(blob)
