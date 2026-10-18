@@ -267,7 +267,7 @@
 
 <!-- Photo de l'animal -->
 <div class="section">
-    <p class="bold blue no-print">📷 Photo de l'animal <span class="red">*</span> (obligatoire)</p>
+    <p class="bold blue no-print">📷 Photo de l'animal (facultative)</p>
     <div class="no-print" style="margin:8px 0;">
         <label style="display:inline-block; padding:8px 14px; background:#0563c1; color:white; border-radius:5px; cursor:pointer; font-size:13px;">
             📷 Prendre en photo
@@ -572,16 +572,6 @@ chargerListeSaisisseurs();
             }
         });
 
-        // Photo de l'animal obligatoire
-        var photoAnimal = document.getElementById('photoAnimal');
-        if (!photoAnimal || !photoAnimal.files || !photoAnimal.files[0]) {
-            missing.push("Photo de l'animal (obligatoire)");
-            var lblAnimal = photoAnimal ? photoAnimal.parentElement : null;
-            if (lblAnimal) lblAnimal.style.outline = '2px solid red';
-        } else {
-            var lblAnimal2 = photoAnimal.parentElement;
-            if (lblAnimal2) lblAnimal2.style.outline = '';
-        }
 
         if (!typeReservationChoisi()) {
             missing.push('Espèce de l\'animal (Chat / Chaton / Lapin / Chien / Autre)');
