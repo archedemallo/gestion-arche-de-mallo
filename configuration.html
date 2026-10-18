@@ -108,6 +108,17 @@
     </div>
   </div>
 
+  <!-- Dossier Drive des factures -->
+  <div class="carte">
+    <h2>Dossier Drive des factures</h2>
+    <p style="font-size:12.5px;color:#888;margin-top:-6px;">ID du dossier Drive <strong>Compta / Comptabilite / Factures</strong>. À chaque facture enregistrée avec une photo ou un PDF, le fichier est rangé dans un sous-dossier de l'année en cours (créé automatiquement) à l'intérieur de ce dossier. L'ID est la partie après <code>/folders/</code> dans l'adresse du dossier Drive — vous pouvez aussi coller l'adresse complète.</p>
+    <div class="ligne-ajout admin-only">
+      <input type="text" id="factures-drive-id" placeholder="ID ou adresse du dossier Factures">
+      <button onclick="enregistrerDossierFactures()">Enregistrer</button>
+    </div>
+    <div id="factures-drive-etat" style="font-size:12px;color:#888;margin-top:8px;"></div>
+  </div>
+
   <!-- Périodes -->
   <div class="carte">
     <h2>Périodes</h2>
@@ -220,6 +231,7 @@ async function demarrerApp(user) {
     chargerDescriptions();
     chargerLibcomp();
     chargerFournisseurs();
+    chargerDossierFactures();
     chargerPeriodes();
     chargerUtilisateurs();
     chargerComptesSuivi();
@@ -416,6 +428,26 @@ async function chargerFournisseurs() {
         ligne.innerHTML = '<span' + clic + '>' + f.nom + (f.actif ? '' : ' (inactif)') + '</span>';
         conteneur.appendChild(ligne);
     });
+}
+
+// ---------------- Dossier Drive des factures (config_compta, cle='factures_drive_dossier_id') ----------------
+async function chargerDossierFactures() {
+    const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'factures_drive_dossier_id').maybeSingle();
+    var id = (data && typeof data.valeur === 'string') ? data.valeur : '';
+    document.getElementById('factures-drive-id').value = id;
+    document.getElementById('factures-drive-etat').textContent = id ? 'Dossier configuré.' : 'Aucun dossier configuré — l\'envoi des factures vers le Drive est impossible tant que ce champ est vide.';
+}
+
+async function enregistrerDossierFactures() {
+    var saisie = document.getElementById('factures-drive-id').value.trim();
+    // Accepte l'adresse complète du dossier : on en extrait l'ID.
+    var m = saisie.match(/\/folders\/([A-Za-z0-9_-]+)/);
+    var id = m ? m[1] : saisie;
+    if (!id) { afficherMessage('Indiquez l\'ID du dossier.', 'err'); return; }
+    if (!/^[A-Za-z0-9_-]{10,}$/.test(id)) { afficherMessage('ID de dossier invalide.', 'err'); return; }
+    await appelerRpc('definir_config_compta', { p_cle: 'factures_drive_dossier_id', p_valeur: id });
+    afficherMessage('Dossier Drive des factures enregistré.');
+    chargerDossierFactures();
 }
 
 async function ajouterFournisseur() {
