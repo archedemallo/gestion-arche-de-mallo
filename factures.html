@@ -149,6 +149,10 @@
         <div class="form-group"><label class="form-label">Date règlement</label><input type="date" id="f-date-reg"></div>
         <div class="form-group"><label class="form-label">Mode règlement</label><input type="text" id="f-mode-reg" placeholder="Virement, CB…"></div>
       </div>
+      <div class="form-group"><label class="form-label">Photo ou PDF de la facture</label>
+        <input type="file" id="f-fichier" accept="application/pdf,image/*">
+        <div style="font-size:10px;color:var(--text-3);margin-top:3px;">Déposé dans le Drive (dossier Factures de l'année en cours) au clic sur Enregistrer.</div>
+      </div>
       <div class="form-group"><label class="form-label">Lien PDF de la facture</label><input type="text" id="f-lien-pdf" placeholder="Lien vers le PDF (Drive, etc.)"></div>
       <div class="form-group"><label class="form-label">Commentaire</label><input type="text" id="f-comment"></div>
       <div class="form-group"><label class="form-label">Nom du chat</label><input type="text" id="f-nom-chat"></div>
@@ -174,6 +178,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
+<script src="config.js"></script>
 <script src="compta-commun.js"></script>
 <script>
 const supabaseClient = creerClientSupabase();
@@ -314,6 +319,7 @@ function reset() {
   document.getElementById('f-cat').selectedIndex = 0;
   document.getElementById('f-desc').innerHTML = '<option value="">— Choisir un type d\'abord —</option>';
   document.getElementById('f-mode-reg').value = '';
+  document.getElementById('f-fichier').value = '';
   document.getElementById('form-err').classList.add('hidden');
   document.getElementById('form-mode-lbl').textContent = 'Nouvelle facture';
   editId = null;
@@ -342,12 +348,90 @@ async function submitFacture() {
     p_periode: document.getElementById('f-per').value,
   };
   const btn = document.getElementById('btn-submit'); btn.disabled = true;
+  const libelleBtn = btn.innerHTML;
   try {
+    const fichier = document.getElementById('f-fichier').files[0];
+    if (fichier) {
+      btn.innerHTML = '<i class="ti ti-loader"></i> Envoi du fichier…';
+      params.p_lien_pdf = await deposerFactureDrive(fichier, { fournisseur: fourn, numero: params.p_numero_facture, montant, date });
+    }
+    btn.innerHTML = libelleBtn;
     if (editId) { const { error } = await supabaseClient.rpc('modifier_facture', { p_id: editId, ...params }); if (error) throw error; showToast('Facture modifiée !'); }
     else { const { error } = await supabaseClient.rpc('creer_facture', params); if (error) throw error; showToast('Facture enregistrée !'); }
     closeNewFacture(); await loadData();
   } catch(e) { showErr('Erreur : ' + (e.message||'?')); }
-  finally { btn.disabled = false; }
+  finally { btn.disabled = false; btn.innerHTML = libelleBtn; }
+}
+
+// ---------------- Dépôt du fichier de la facture sur Drive ----------------
+// Nom : Fournisseur_NuméroFacture_MontantTTC_JJ-MM-AAAA.ext
+function nomFichierFacture(fournisseur, numero, montant, date, ext) {
+  const nettoyer = s => String(s || '').replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim();
+  const [a, m, j] = date.split('-');
+  return [nettoyer(fournisseur), nettoyer(numero) || 'SansNumero', Number(montant).toFixed(2), j + '-' + m + '-' + a].join('_') + '.' + ext;
+}
+
+// Réduit les photos (téléphone : plusieurs Mo) avant envoi ; renvoie le fichier d'origine si la réduction échoue.
+function reduireImage(fichier, maxPx) {
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(fichier);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const k = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(b => { URL.revokeObjectURL(url); resolve(b ? { blob: b, ext: 'jpg', mime: 'image/jpeg' } : null); }, 'image/jpeg', 0.85);
+      } catch (e) { URL.revokeObjectURL(url); resolve(null); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
+function blobEnBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1]);
+    r.onerror = () => reject(new Error('Lecture du fichier impossible.'));
+    r.readAsDataURL(blob);
+  });
+}
+
+async function deposerFactureDrive(fichier, { fournisseur, numero, montant, date }) {
+  const { data: cfg, error: errCfg } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'factures_drive_dossier_id').maybeSingle();
+  const dossierId = (cfg && typeof cfg.valeur === 'string') ? cfg.valeur.trim() : '';
+  if (errCfg || !dossierId) throw new Error("Dossier Drive des factures non configuré : renseignez-le dans Configuration.");
+
+  let blob = fichier, ext, mime;
+  if (fichier.type === 'application/pdf' || /\.pdf$/i.test(fichier.name)) {
+    ext = 'pdf'; mime = 'application/pdf';
+  } else {
+    const r = await reduireImage(fichier, 2200);
+    if (r) { blob = r.blob; ext = r.ext; mime = r.mime; }
+    else { ext = ((fichier.name.match(/\.([A-Za-z0-9]+)$/) || [])[1] || 'jpg').toLowerCase(); mime = fichier.type || 'image/jpeg'; }
+  }
+  if (blob.size > 20 * 1024 * 1024) throw new Error('Fichier trop volumineux (20 Mo maximum).');
+
+  const resp = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    // text/plain exprès : évite la pré-vérification CORS (OPTIONS) que l'Apps Script ne gère pas.
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({
+      action: 'facture_fichier',
+      dossierId,
+      filename: nomFichierFacture(fournisseur, numero, montant, date, ext),
+      mimeType: mime,
+      fichierBase64: await blobEnBase64(blob)
+    })
+  });
+  let result = {};
+  try { result = await resp.json(); } catch (e) { /* réponse non-JSON */ }
+  if (!resp.ok || result.status !== 'ok' || !result.url) {
+    throw new Error('Dépôt sur Drive échoué : ' + (result.message || ('HTTP ' + resp.status)));
+  }
+  return result.url;
 }
 
 function openEdit(id) {
@@ -363,6 +447,7 @@ function openEdit(id) {
   document.getElementById('f-date-reg').value = r.date_reglement || '';
   document.getElementById('f-mode-reg').value = r.mode_reglement || '';
   document.getElementById('f-lien-pdf').value = r.lien_pdf || '';
+  document.getElementById('f-fichier').value = '';
   document.getElementById('f-comment').value = r.commentaire || '';
   document.getElementById('f-nom-chat').value = r.nom_chat || '';
   document.getElementById('f-per').value = r.periode || '';
