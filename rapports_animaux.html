@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="logo_arche.png">
+<link rel="stylesheet" href="entete-site.css">
+<title>Rapports animaux — L'Arche de Mallo</title>
+<style>
+  :root{ --cream:#faf7f2; --warm:#f0e8d8; --brown:#3d2b1f; --orange:#c96b2a; --grey:#8a7968; --red:#c00000; --green:#2e7d32; }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:Arial,sans-serif;background:var(--cream);color:var(--brown);}
+  .wrap{max-width:1000px;margin:0 auto;padding:20px 16px 60px;}
+  .card{background:#fff;border:1px solid var(--warm);border-radius:12px;padding:16px 18px;margin-bottom:18px;}
+  .card h2{font-size:13px;margin:0 0 12px;color:var(--orange);}
+  .champ{margin-bottom:10px;}
+  .champ label{display:block;font-size:11px;color:var(--grey);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:3px;}
+  .champ input, .champ select{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--warm);border-radius:6px;font-size:13px;background:#fff;font-family:inherit;}
+  .ligne2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .cases{display:flex;gap:18px;flex-wrap:wrap;}
+  .cases label{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;text-transform:none;}
+  .btn{padding:9px 18px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;margin-right:8px;}
+  .btn:hover{opacity:0.92;}
+  .msg{font-size:12px;margin-top:8px;min-height:16px;}
+  .msg.ok{color:var(--green);} .msg.err{color:var(--red);}
+  #login-err{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+  .empty{color:var(--grey);font-size:12px;font-style:italic;}
+
+  .entete-print{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:18px;padding:16px;background:#fff;border-bottom:3px solid var(--orange);}
+  .entete-print::before{content:'';}
+  .entete-print img{width:80px;height:80px;object-fit:contain;}
+  .entete-print .entete-left{display:flex;align-items:center;justify-content:center;gap:16px;}
+  .entete-print p{margin:0;font-size:11px;line-height:1.5;}
+  .entete-print p.bold{font-weight:bold;}
+  .entete-print .entete-right{text-align:right;}
+  .entete-print .entete-right p.bold{font-size:14px;color:var(--orange);}
+  .entete-print a{color:var(--orange);}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 18px;font-size:12.5px;}
+  .grid2 .lbl{color:var(--grey);}
+
+  table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:4px;}
+  th{text-align:left;font-size:10px;color:var(--grey);text-transform:uppercase;padding:5px 6px;border-bottom:1px solid var(--warm);}
+  td{padding:5px 6px;border-bottom:1px solid #f2ece1;}
+
+  @media print {
+    #login-screen, .no-print { display:none !important; }
+    body{background:#fff;}
+    .wrap{max-width:100%;padding:0 4px;}
+    .card{border:none;border-radius:0;padding:0;margin-bottom:14px;box-shadow:none;}
+    thead{display:table-header-group;}
+    tr{page-break-inside:avoid;}
+  }
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:6px;}
+  .kpi{background:var(--cream);border:1px solid var(--warm);border-radius:10px;padding:10px 12px;cursor:default;}
+  .kpi.clic{cursor:pointer;} .kpi.clic:hover{border-color:var(--orange);}
+  .kpi .v{font-size:22px;font-weight:bold;color:var(--brown);} .kpi .l{font-size:10px;color:var(--grey);text-transform:uppercase;letter-spacing:.3px;}
+  td.n, th.n{text-align:right;font-variant-numeric:tabular-nums;} td.n.clic{cursor:pointer;color:var(--orange);font-weight:bold;} td.n.clic:hover{text-decoration:underline;}
+  tr.total td{font-weight:bold;border-top:2px solid var(--warm);}
+  .note{font-size:11.5px;color:var(--grey);margin:6px 0 0;line-height:1.5;}
+  .alerte{background:#fff4e5;border:1px solid #f0d3a8;color:#7a4b00;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:12px;}
+  .flux{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px;}
+  .flux b{font-size:20px;} .flux span.op{color:var(--grey);font-size:18px;}
+</style>
+</head>
+<body>
+<div id="login-screen" style="position:fixed;inset:0;background:var(--cream);z-index:99999;display:flex;align-items:center;justify-content:center;">
+  <div style="max-width:340px;width:90%;background:#fff;border:1px solid var(--warm);border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:16px;margin:0 0 4px;">L'Arche de Mallo</h1>
+    <p style="font-size:12px;color:var(--grey);margin-bottom:16px;">Connexion requise.</p>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <input type="password" id="login-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+    <div id="login-err"></div>
+    <button type="button" onclick="seConnecterSuivi()" style="width:100%;padding:9px;background:var(--orange);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;">Se connecter</button>
+  </div>
+</div>
+
+<div class="entete-print">
+  <div class="entete-left">
+    <img src="logo_arche.png" alt="Logo">
+    <div>
+      <p class="bold">Association L'ARCHE DE MALLO</p>
+      <p>8 ter rue d'Eschène<br>90140 AUTRECHÊNE<br>07.71.64.69.89<br><a href="mailto:archedemallo@gmail.com">archedemallo@gmail.com</a></p>
+    </div>
+  </div>
+  <div class="entete-right">
+    <p class="bold">Rapports animaux</p>
+    <p id="entete-sous-titre">—</p>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="no-print" style="margin-bottom:10px;"><a href="index.html" style="font-size:12px;color:var(--orange);text-decoration:none;">← Retour à l'accueil</a></div>
+
+  <div class="card no-print">
+    <h2>Période du rapport</h2>
+    <div class="ligne2">
+      <div class="champ"><label>Période comptable</label><select id="sel-periode" onchange="onPeriodeChange()"></select></div>
+      <div class="champ"><label>Définition d'un chaton</label>
+        <select id="sel-chaton">
+          <option value="flag">Case « chaton » cochée à l'arrivée</option>
+          <option value="6m">Moins de 6 mois à la fin de la période (ou à la sortie)</option>
+          <option value="12m">Moins de 12 mois à la fin de la période (ou à la sortie)</option>
+        </select></div>
+    </div>
+    <div class="ligne2">
+      <div class="champ"><label>Du</label><input type="date" id="date-debut"></div>
+      <div class="champ"><label>Au</label><input type="date" id="date-fin"></div>
+    </div>
+    <p class="note" id="note-dates"></p>
+    <div style="margin-top:10px;">
+      <button type="button" class="btn" onclick="genererRapport()">Générer le rapport</button>
+      <button type="button" class="btn" id="btn-sauver-dates" style="background:var(--grey);" onclick="sauverDates()">Enregistrer ces dates pour cette période</button>
+      <button type="button" class="btn" id="btn-imprimer" style="display:none;" onclick="window.print()">🖨️ Imprimer</button>
+      <button type="button" class="btn" id="btn-csv" style="display:none;background:var(--grey);" onclick="exporterCSV()">⬇ Export CSV</button>
+    </div>
+    <div id="gen-msg" class="msg"></div>
+  </div>
+
+  <div id="resultats" style="display:none;">
+    <div id="alertes"></div>
+
+    <div class="card"><h2>1. Animaux présents sur la période</h2><div id="r-effectifs"></div></div>
+    <div class="card"><h2>2. Mouvements de la période</h2><div id="r-flux"></div></div>
+    <div class="card"><h2>3. Provenance (origine d'arrivée)</h2><div id="r-origine"></div></div>
+    <div class="card"><h2>4. D'où viennent-ils : période d'arrivée</h2><div id="r-arrivee"></div></div>
+    <div class="card"><h2>5. Communes de dépôt</h2><div id="r-communes"></div></div>
+    <div class="card" id="card-detail" style="display:none;"><h2 id="detail-titre">Détail</h2><div id="r-detail"></div></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="formulaires-arche-mallo.js"></script>
+<script>
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+initSessionSuivi();
+// Le chargement des périodes attend que la session soit établie (connexion déjà active ou faite sur cette page)
+let rapportsDemarres = false;
+function lancerRapportsUneFois() { if (rapportsDemarres) return; rapportsDemarres = true; demarrerRapports(); }
+supabaseClient.auth.getSession().then(function(r) { if (r.data.session) lancerRapportsUneFois(); });
+supabaseClient.auth.onAuthStateChange(function(ev, session) { if (session) lancerRapportsUneFois(); });
+
+const LABELS_ORIGINE = { depot:'Dépôt', abandon:'Abandon', saisie:'Saisie', ne_a_association:"Né à l'association", trappage:'Trappage', '':'Origine non renseignée' };
+const LABELS_STATUT = { decede:'Décédé', relache:'Relâché', adopte:'Adopté' };
+const STATUTS_FINAUX = ['decede','relache','adopte'];
+const ORDRE_ORIGINE = ['depot','abandon','saisie','trappage','ne_a_association',''];
+
+let periodes = [], datesPeriodes = {}, lignes = [], contexte = null, rapportCourant = null;
+
+function escH(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+function fmtDate(d) { if (!d) return '—'; const s=String(d).trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const p=s.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; } return s; }
+function normPer(p) { return String(p||'').trim().replace(/\s*[-–]\s*/, ' - '); }
+
+// Dates par défaut d'une période « 2025 - 2026 » : 1er novembre 2025 → 31 octobre 2026
+function datesParDefaut(label) {
+  const m = normPer(label).match(/^(\d{4}) - (\d{4})$/);
+  if (!m) return { debut: '', fin: '' };
+  return { debut: m[1] + '-11-01', fin: m[2] + '-10-31' };
+}
+
+async function demarrerRapports() {
+  // Périodes + dates enregistrées (lecture possible pour les comptes Compta ; sinon repli sur des valeurs par défaut)
+  try {
+    const r1 = await supabaseClient.from('config_compta').select('cle, valeur').in('cle', ['periodes','periodes_dates']);
+    (r1.data || []).forEach(function(r) {
+      if (r.cle === 'periodes' && Array.isArray(r.valeur)) periodes = r.valeur;
+      if (r.cle === 'periodes_dates' && r.valeur) datesPeriodes = r.valeur;
+    });
+  } catch (e) { console.warn('[rapports] config_compta illisible :', e); }
+  if (!periodes.length) {
+    const y = new Date().getFullYear(), m = new Date().getMonth() + 1, start = m >= 11 ? y : y - 1;
+    for (let i = 2024; i <= start; i++) periodes.push(i + ' - ' + (i + 1));
+  }
+  let courante = periodes[periodes.length - 1];
+  try {
+    const r2 = await supabaseClient.from('parametres').select('valeur').eq('cle','periode_courante').maybeSingle();
+    if (r2.data && r2.data.valeur) { const t = periodes.find(function(p){ return normPer(p) === normPer(r2.data.valeur); }); if (t) courante = t; }
+  } catch (e) {}
+  const sel = document.getElementById('sel-periode');
+  sel.innerHTML = periodes.map(function(p){ return '<option>' + escH(p) + '</option>'; }).join('') + '<option value="__libre">Dates libres…</option>';
+  sel.value = courante;
+  onPeriodeChange();
+}
+
+function onPeriodeChange() {
+  const p = document.getElementById('sel-periode').value;
+  const note = document.getElementById('note-dates');
+  if (p === '__libre') { note.textContent = 'Saisissez librement les dates de début et de fin.'; document.getElementById('btn-sauver-dates').style.display = 'none'; return; }
+  document.getElementById('btn-sauver-dates').style.display = '';
+  const k = Object.keys(datesPeriodes).find(function(x){ return normPer(x) === normPer(p); });
+  const d = k ? datesPeriodes[k] : null;
+  const def = datesParDefaut(p);
+  document.getElementById('date-debut').value = d ? d.debut : def.debut;
+  document.getElementById('date-fin').value = d ? d.fin : def.fin;
+  note.textContent = d ? 'Dates enregistrées pour cette période.' : 'Dates par défaut (1er novembre → 31 octobre) : corrigez-les si votre exercice est différent, puis « Enregistrer ces dates ».';
+}
+
+async function sauverDates() {
+  const msg = document.getElementById('gen-msg');
+  const p = document.getElementById('sel-periode').value;
+  const debut = document.getElementById('date-debut').value, fin = document.getElementById('date-fin').value;
+  if (!debut || !fin || debut > fin) { msg.textContent = 'Dates invalides.'; msg.className = 'msg err'; return; }
+  const k = Object.keys(datesPeriodes).find(function(x){ return normPer(x) === normPer(p); }) || p;
+  const nouveau = Object.assign({}, datesPeriodes); nouveau[k] = { debut: debut, fin: fin };
+  const res = await supabaseClient.rpc('definir_config_compta', { p_cle: 'periodes_dates', p_valeur: nouveau });
+  if (res.error) { msg.textContent = 'Enregistrement impossible (réservé aux admins Compta) : ' + res.error.message; msg.className = 'msg err'; return; }
+  datesPeriodes = nouveau; msg.textContent = 'Dates enregistrées.'; msg.className = 'msg ok';
+  document.getElementById('note-dates').textContent = 'Dates enregistrées pour cette période.';
+}
+
+function ageEnMois(naissance, aLaDate) {
+  const n = new Date(naissance), d = new Date(aLaDate);
+  return (d.getFullYear() - n.getFullYear()) * 12 + (d.getMonth() - n.getMonth()) - (d.getDate() < n.getDate() ? 1 : 0);
+}
+function estChaton(a, mode, dateRef) {
+  if (mode !== 'flag' && a.date_naissance) return ageEnMois(a.date_naissance, dateRef) < (mode === '6m' ? 6 : 12);
+  return !!a.est_chaton;           // repli : case cochée à l'arrivée
+}
+function categorie(l) { if (l.espece !== 'chat') return 'autres'; return l.chaton ? 'chatons' : 'chats'; }
+
+async function genererRapport() {
+  const msg = document.getElementById('gen-msg'); msg.textContent = 'Chargement…'; msg.className = 'msg';
+  const pDebut = document.getElementById('date-debut').value, pFin = document.getElementById('date-fin').value;
+  const mode = document.getElementById('sel-chaton').value;
+  if (!pDebut || !pFin || pDebut > pFin) { msg.textContent = 'Choisissez des dates valides (début avant fin).'; msg.className = 'msg err'; return; }
+
+  const r = await Promise.all([
+    supabaseClient.from('animaux').select('id,numero_interne,nom_usuel,espece,sexe,date_naissance,est_chaton,date_arrivee,origine_arrivee,statut_actuel,date_deces'),
+    supabaseClient.from('animaux_statuts_historique').select('animal_id,statut,date_debut,date_fin').order('date_debut'),
+    supabaseClient.from('depot_chat_animaux').select('animal_id, depots_chat(commune)')
+  ]);
+  if (r[0].error) { msg.textContent = 'Erreur : ' + r[0].error.message; msg.className = 'msg err'; return; }
+  if (r[1].error) { msg.textContent = 'Erreur : ' + r[1].error.message; msg.className = 'msg err'; return; }
+  const communeParAnimal = {};
+  (r[2].data || []).forEach(function(x) { if (x.depots_chat && x.depots_chat.commune) communeParAnimal[x.animal_id] = x.depots_chat.commune.trim(); });
+  const histo = {};
+  (r[1].data || []).forEach(function(h) { (histo[h.animal_id] = histo[h.animal_id] || []).push(h); });
+
+  lignes = []; let sansDate = 0;
+  (r[0].data || []).forEach(function(a) {
+    const hs = histo[a.id] || [];
+    const arrivee = a.date_arrivee || (hs[0] ? hs[0].date_debut : null);
+    if (!arrivee) { sansDate++; return; }
+    const sortieH = hs.find(function(h){ return STATUTS_FINAUX.indexOf(h.statut) !== -1; });
+    let sortie = sortieH ? sortieH.date_debut : null, sortieStatut = sortieH ? sortieH.statut : null;
+    if (!sortie && a.date_deces) { sortie = a.date_deces; sortieStatut = 'decede'; }
+    if (!(arrivee <= pFin && (!sortie || sortie >= pDebut))) return;      // pas présent sur la période
+    const dateRef = (sortie && sortie < pFin) ? sortie : pFin;
+    const l = {
+      numero: a.numero_interne, nom: a.nom_usuel, espece: a.espece || 'chat', sexe: a.sexe,
+      arrivee: arrivee, sortie: sortie, sortieStatut: sortieStatut, origine: a.origine_arrivee || '',
+      commune: communeParAnimal[a.id] || '', chaton: false
+    };
+    l.chaton = estChaton(a, mode, dateRef);
+    l.reporte = arrivee < pDebut;                                          // déjà là au début de la période
+    l.arriveePendant = arrivee >= pDebut && arrivee <= pFin;
+    l.sortiePendant = !!sortie && sortie >= pDebut && sortie <= pFin;
+    l.presentFin = !sortie || sortie > pFin;
+    lignes.push(l);
+  });
+  contexte = { pDebut: pDebut, pFin: pFin, mode: mode, sansDate: sansDate };
+  afficher();
+  msg.textContent = '';
+}
+
+function compter(arr) {
+  const c = { chats:0, chatons:0, autres:0, total:0 };
+  arr.forEach(function(l) { c[categorie(l)]++; c.total++; });
+  return c;
+}
+function cell(arr, cle, titre) {           // cellule cliquable → détail
+  rapportCourant.push({ titre: titre, lignes: arr });
+  return '<td class="n ' + (arr.length ? 'clic' : '') + '" ' + (arr.length ? 'onclick="detail(' + (rapportCourant.length - 1) + ')"' : '') + '>' + arr.length + '</td>';
+}
+function ligneTableau(label, arr, gras) {
+  const c = { chats: arr.filter(function(l){return categorie(l)==='chats';}), chatons: arr.filter(function(l){return categorie(l)==='chatons';}), autres: arr.filter(function(l){return categorie(l)==='autres';}) };
+  return '<tr' + (gras ? ' class="total"' : '') + '><td>' + escH(label) + '</td>' +
+    cell(c.chats, 'chats', label + ' — chats') + cell(c.chatons, 'chatons', label + ' — chatons') +
+    cell(c.autres, 'autres', label + ' — autres espèces') + cell(arr, 'total', label + ' — total') + '</tr>';
+}
+const ENTETE3 = '<th class="n">Chats</th><th class="n">Chatons</th><th class="n">Autres espèces</th><th class="n">Total</th>';
+
+function afficher() {
+  rapportCourant = [];
+  document.getElementById('entete-sous-titre').textContent = 'Du ' + fmtDate(contexte.pDebut) + ' au ' + fmtDate(contexte.pFin);
+  document.getElementById('card-detail').style.display = 'none';
+  const modeTxt = { flag:'case « chaton » cochée à l\'arrivée', '6m':'moins de 6 mois', '12m':'moins de 12 mois' }[contexte.mode];
+  let alertes = '';
+  if (contexte.sansDate) alertes += '<div class="alerte">' + contexte.sansDate + ' animal(aux) sans aucune date d\'arrivée ne sont pas comptés : à compléter dans leur fiche.</div>';
+  const sansOrigine = lignes.filter(function(l){ return !l.origine; }).length;
+  if (sansOrigine) alertes += '<div class="alerte">' + sansOrigine + ' animal(aux) présent(s) n\'ont pas d\'origine renseignée (ligne « Origine non renseignée »).</div>';
+  document.getElementById('alertes').innerHTML = alertes;
+
+  // 1. Effectifs
+  const c = compter(lignes);
+  const sexes = { M: lignes.filter(function(l){return l.sexe==='M';}).length, F: lignes.filter(function(l){return l.sexe==='F';}).length };
+  document.getElementById('r-effectifs').innerHTML =
+    '<div class="kpis">' +
+    '<div class="kpi"><div class="v">' + c.total + '</div><div class="l">Animaux présents</div></div>' +
+    '<div class="kpi"><div class="v">' + c.chats + '</div><div class="l">Chats</div></div>' +
+    '<div class="kpi"><div class="v">' + c.chatons + '</div><div class="l">Chatons</div></div>' +
+    '<div class="kpi"><div class="v">' + c.autres + '</div><div class="l">Autres espèces</div></div>' +
+    '<div class="kpi"><div class="v">' + sexes.M + ' / ' + sexes.F + '</div><div class="l">Mâles / Femelles</div></div></div>' +
+    '<p class="note">Présent = arrivé avant la fin de la période et pas sorti (adopté, décédé, relâché) avant son début. Chaton : ' + modeTxt + '.</p>';
+
+  // 2. Flux
+  const debut = lignes.filter(function(l){ return l.reporte; });
+  const arr = lignes.filter(function(l){ return l.arriveePendant; });
+  const sort = lignes.filter(function(l){ return l.sortiePendant; });
+  const fin = lignes.filter(function(l){ return l.presentFin; });
+  const adop = sort.filter(function(l){return l.sortieStatut==='adopte';}), dec = sort.filter(function(l){return l.sortieStatut==='decede';}), rel = sort.filter(function(l){return l.sortieStatut==='relache';});
+  document.getElementById('r-flux').innerHTML =
+    '<div class="flux"><div><b>' + debut.length + '</b><br><small>présents au début</small></div><span class="op">+</span>' +
+    '<div><b>' + arr.length + '</b><br><small>arrivées</small></div><span class="op">−</span>' +
+    '<div><b>' + sort.length + '</b><br><small>sorties</small></div><span class="op">=</span>' +
+    '<div><b>' + fin.length + '</b><br><small>présents à la fin</small></div></div>' +
+    '<table style="margin-top:12px;"><thead><tr><th></th>' + ENTETE3 + '</tr></thead><tbody>' +
+    ligneTableau('Présents au début de la période', debut) + ligneTableau('Arrivées pendant la période', arr) +
+    ligneTableau('Sorties : adoptés', adop) + ligneTableau('Sorties : décédés', dec) + ligneTableau('Sorties : relâchés', rel) +
+    ligneTableau('Présents à la fin de la période', fin, true) + '</tbody></table>';
+
+  // 3. Origine
+  const origines = ORDRE_ORIGINE.filter(function(o){ return lignes.some(function(l){ return l.origine === o; }); });
+  document.getElementById('r-origine').innerHTML =
+    '<table><thead><tr><th>Origine</th>' + ENTETE3 + '</tr></thead><tbody>' +
+    origines.map(function(o){ return ligneTableau(LABELS_ORIGINE[o] || o, lignes.filter(function(l){ return l.origine === o; })); }).join('') +
+    ligneTableau('Total présents', lignes, true) + '</tbody></table>' +
+    '<p class="note">Cliquez sur un chiffre pour voir la liste des animaux concernés.</p>';
+
+  // 4. Période d'arrivée
+  const annees = {};
+  debut.forEach(function(l){ const y = l.arrivee.slice(0,4); (annees[y] = annees[y] || []).push(l); });
+  document.getElementById('r-arrivee').innerHTML =
+    '<table><thead><tr><th>Arrivés</th>' + ENTETE3 + '</tr></thead><tbody>' +
+    ligneTableau('Pendant cette période', arr) +
+    Object.keys(annees).sort().reverse().map(function(y){ return ligneTableau('Avant la période — arrivés en ' + y, annees[y]); }).join('') +
+    ligneTableau('Total présents', lignes, true) + '</tbody></table>' +
+    '<h2 style="margin-top:16px;">Origine × période d\'arrivée</h2>' +
+    '<table><thead><tr><th>Origine</th><th class="n">Arrivés pendant la période</th><th class="n">Reportés des périodes précédentes</th><th class="n">Total</th></tr></thead><tbody>' +
+    origines.map(function(o){
+      const x = lignes.filter(function(l){ return l.origine === o; });
+      const a = x.filter(function(l){return l.arriveePendant;}), b = x.filter(function(l){return l.reporte;});
+      return '<tr><td>' + escH(LABELS_ORIGINE[o] || o) + '</td>' + cell(a,'', (LABELS_ORIGINE[o]||o) + ' — arrivés pendant la période') + cell(b,'', (LABELS_ORIGINE[o]||o) + ' — reportés') + cell(x,'', (LABELS_ORIGINE[o]||o) + ' — total') + '</tr>';
+    }).join('') + '</tbody></table>';
+
+  // 5. Communes
+  const communes = {};
+  lignes.forEach(function(l){ const k = l.commune || ''; (communes[k] = communes[k] || []).push(l); });
+  const cles = Object.keys(communes).filter(function(k){return k;}).sort(function(a,b){ return communes[b].length - communes[a].length; });
+  document.getElementById('r-communes').innerHTML = cles.length
+    ? '<table><thead><tr><th>Commune</th>' + ENTETE3 + '</tr></thead><tbody>' + cles.map(function(k){ return ligneTableau(k, communes[k]); }).join('') +
+      (communes[''] ? ligneTableau('Pas de dépôt lié / commune non saisie', communes['']) : '') + '</tbody></table>' +
+      '<p class="note">Seuls les animaux liés à un formulaire de dépôt renseignent une commune.</p>'
+    : '<p class="empty">Aucune commune de dépôt renseignée pour les animaux de cette période.</p>';
+
+  document.getElementById('resultats').style.display = 'block';
+  document.getElementById('btn-imprimer').style.display = '';
+  document.getElementById('btn-csv').style.display = '';
+}
+
+function detail(i) {
+  const d = rapportCourant[i]; if (!d) return;
+  document.getElementById('detail-titre').textContent = d.titre + ' (' + d.lignes.length + ')';
+  document.getElementById('r-detail').innerHTML = '<table><thead><tr><th>N°</th><th>Nom</th><th>Espèce</th><th>Sexe</th><th>Arrivée</th><th>Origine</th><th>Commune</th><th>Sortie</th></tr></thead><tbody>' +
+    d.lignes.slice().sort(function(a,b){ return (a.nom||'').localeCompare(b.nom||'','fr'); }).map(function(l){
+      return '<tr><td>' + escH(l.numero||'') + '</td><td>' + escH(l.nom) + (l.chaton && l.espece==='chat' ? ' <small>(chaton)</small>' : '') + '</td><td>' + escH(l.espece) + '</td><td>' + escH(l.sexe||'—') + '</td><td>' + fmtDate(l.arrivee) +
+        '</td><td>' + escH(LABELS_ORIGINE[l.origine]||l.origine) + '</td><td>' + escH(l.commune||'—') + '</td><td>' + (l.sortie ? fmtDate(l.sortie) + ' (' + escH(LABELS_STATUT[l.sortieStatut]||'') + ')' : '—') + '</td></tr>'; }).join('') + '</tbody></table>';
+  const card = document.getElementById('card-detail'); card.style.display = 'block'; card.scrollIntoView({ behavior: 'smooth' });
+}
+
+function exporterCSV() {
+  const cols = [['numero','N°'],['nom','Nom'],['espece','Espèce'],['sexe','Sexe'],['chaton','Chaton'],['arrivee','Arrivée'],['origine','Origine'],['commune','Commune'],['reporte','Reporté des périodes précédentes'],['sortie','Sortie'],['sortieStatut','Motif de sortie']];
+  const csv = [cols.map(function(c){return c[1];}).join(';')].concat(lignes.map(function(l){
+    return cols.map(function(c){ let v = l[c[0]]; if (c[0]==='chaton'||c[0]==='reporte') v = v ? 'oui' : 'non'; return '"' + String(v == null ? '' : v).replace(/"/g,'""') + '"'; }).join(';'); })).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'rapport_animaux_' + contexte.pDebut + '_' + contexte.pFin + '.csv'; a.click();
+}
+</script>
+</body>
+</html>
