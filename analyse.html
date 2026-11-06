@@ -99,6 +99,7 @@
   <a class="nav-item" href="cheques.html"><i class="ti ti-file-dollar"></i>Chèques</a>
   <a class="nav-item" href="remise_cheques.html"><i class="ti ti-file-invoice"></i>Remises de chèques</a>
   <a class="nav-item" href="import_rapprochement.html"><i class="ti ti-arrows-exchange"></i>Import / rapprochement</a>
+  <a class="nav-item" href="ecritures_diverses.html"><i class="ti ti-adjustments-horizontal"></i>Écritures diverses</a>
 
   <div class="nav-section">Suivi</div>
   <a class="nav-item" href="factures.html"><i class="ti ti-receipt"></i>Factures</a>
@@ -144,6 +145,10 @@
     <div id="tab-ag" class="tab-pane active">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div style="font-size:13px;color:var(--text-3);" id="ag-periode-label"></div>
+        <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="chk-od" checked onchange="inclureOD=this.checked; renderAG(); renderRepartition();">
+          Inclure les écritures diverses
+        </label>
       </div>
       <div class="kpi-top">
         <div class="kpi"><div class="kpi-label">Recettes</div><div class="kpi-value v-green" id="ag-kpi-recettes">—</div></div>
@@ -266,6 +271,8 @@ const supabaseClient = creerClientSupabase();
 let roleActuel = null;
 let allCaisse = [], allBanque = [], allFactures = [], allCheques = [], allRemiseDetails = [];
 let allLiensCaisse = [], allLiensBanque = [];
+let allOD = [];                 // écritures diverses (066)
+let inclureOD = true;           // case « Inclure les écritures diverses »
 let periodes = [], activePer = '';
 let charts = {};
 
@@ -370,7 +377,7 @@ async function loadData() {
   document.getElementById('global-loading').style.display = 'block';
   document.getElementById('tabs-bar').style.display = 'none';
   try {
-    const [c, b, f, ch, rd, lc, lb] = await Promise.all([
+    const [c, b, f, ch, rd, lc, lb, od] = await Promise.all([
       supabaseClient.from('caisse_mouvements').select('*'),
       supabaseClient.from('banque_mouvements').select('*'),
       supabaseClient.from('factures').select('*'),
@@ -388,6 +395,7 @@ async function loadData() {
         adoptions(personnes(nom,prenom,raison_sociale,type_personne), animaux(nom_usuel)),
         reservations(personnes(nom,prenom,raison_sociale,type_personne), animaux(nom_usuel)),
         materiel_mouvements(personnes(nom,prenom,raison_sociale,type_personne))`),
+      supabaseClient.from('ecritures_diverses').select('*'),
     ]);
     allFactures = f.data || [];
     allCheques = ch.data || [];
@@ -396,6 +404,7 @@ async function loadData() {
     allLiensBanque = lb.data || [];
     allCaisse = decomposerVentilation(c.data || [], allLiensCaisse, 'caisse_mouvement_id');
     allBanque = decomposerVentilation(b.data || [], allLiensBanque, 'banque_mouvement_id');
+    allOD = (od && od.data) || [];   // si la table n'existe pas encore : liste vide, rien ne casse
   } catch(e) { console.error('loadData', e); }
 
   await loadAgConfig();
@@ -618,6 +627,7 @@ function computeAgResults() {
   const cheques = allCheques.filter(r => periodeNormaliser(r.periode)===periodeNormaliser(activePer));
   const remises = allRemiseDetails.filter(r => periodeNormaliser(r.periode)===periodeNormaliser(activePer));
   const factures = allFactures.filter(r => periodeNormaliser(r.periode)===periodeNormaliser(activePer));
+  const ods = inclureOD ? allOD.filter(r => periodeNormaliser(r.periode)===periodeNormaliser(activePer)) : [];
 
   // Quand une ligne banque/caisse est rapprochée d'une facture ou d'un
   // chèque, on classe avec les infos de la FACTURE/du CHÈQUE, pas de la
@@ -657,6 +667,14 @@ function computeAgResults() {
     if (srcs.includes('banque')) banque.forEach(r => { if (r.ref_remise) return; const {type,description} = resoudre(r); if (matchType(type) && matchDescription(description)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Banque',date:r.date_mouvement,libelle:r.libelle_complementaire||r.description||r.libelle,type,montant:v});} } });
     if (srcs.includes('cheques')) cheques.forEach(r => { if (chequesRapproches.has(r.id)) return; if (matchType(r.type_mouvement) && matchDescription(r.description)) { const v=-fmtN(r.montant); if(v){total+=v;ops.push({src:'Chèque',date:r.date_emission,libelle:r.beneficiaire,type:r.type_mouvement,montant:v});} } });
     if (srcs.includes('remises')) remises.forEach(r => { if (matchType(r.type_mouvement) && matchDescription(r.description)) { const v=fmtN(r.montant); if(v){total+=v;ops.push({src:'Remise',date:r.date_remise,libelle:r.donateur||r.description,type:r.type_mouvement,montant:v});} } });
+    // Écritures diverses : comptées dans toute catégorie qui lit déjà banque/caisse/chèques/remises
+    // (même filtrage par type et description). Une catégorie qui ne lit que les factures les ignore.
+    if (srcs.some(s => ['banque','caisse','caisse2','cheques','remises'].includes(s))) ods.forEach(r => {
+      if (matchType(r.type_mouvement) && matchDescription(r.description)) {
+        const v = fmtN(r.credit) - fmtN(r.debit);
+        if (v) { total += v; ops.push({ src:'OD', date:r.date_ecriture, libelle:r.libelle + (r.motif ? ' — ' + r.motif : ''), type:r.type_mouvement, montant:v }); }
+      }
+    });
     if (srcs.includes('factures')) factures.forEach(r => { if (r.numero_facture && facturesRapprochees.has(r.numero_facture)) return; if (matchType(r.categorie) && matchDescription(r.description)) { const v=-fmtN(r.montant_ttc); if(v){total+=v;ops.push({src:'Facture',date:r.date_facture,libelle:r.description||r.fournisseur,type:r.categorie,montant:v});} } });
 
     return { ...cat, total, ops };
@@ -674,6 +692,14 @@ function renderAG() {
   const resEl = document.getElementById('ag-kpi-resultat');
   resEl.textContent = fmt(resultat);
   resEl.className = 'kpi-value ' + (resultat>=0?'v-green':'v-red');
+  // Détail de l'effet des OD sur le résultat présenté
+  const odPer = allOD.filter(r => periodeNormaliser(r.periode)===periodeNormaliser(activePer));
+  const odNet = odPer.reduce((s,r) => s + fmtN(r.credit) - fmtN(r.debit), 0);
+  const subEl = document.getElementById('ag-od-sub') || (() => { const d = document.createElement('div'); d.id='ag-od-sub'; d.style.cssText='font-size:11px;color:var(--text-3);margin-top:2px;'; resEl.parentNode.appendChild(d); return d; })();
+  subEl.textContent = odPer.length
+    ? (inclureOD ? 'dont écritures diverses : ' + fmt(odNet) + ' — résultat réel : ' + fmt(resultat - odNet)
+                 : 'sans écritures diverses (' + odPer.length + ' écriture(s) ignorée(s), effet net ' + fmt(odNet) + ')')
+    : '';
 
   const rows = results.map((r,i) => {
     const isOpen = agOpenCats.has(r.cat);
