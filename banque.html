@@ -427,20 +427,14 @@ function renderTable() {
     return `<tr class="${isVerified?'verified-row':''}">
       <td style="text-align:center;"><input type="checkbox" ${isVerified?'checked':''} ${roleActuel!=='admin'?'disabled':''} onchange="toggleVerified('${r.id}',this.checked)"></td>
       <td style="white-space:nowrap;">${formatDateFR(r.date_mouvement)}</td>
-      <td title="${escH(r.libelle||'')}">${r.libelle||''}</td>
+      <td title="${escH(r.libelle||'')}"><div class="cell-ell2">${r.libelle||''}</div></td>
       <td class="r amount-d">${r.debit?fmt(r.debit):''}</td>
       <td class="r amount-c">${r.credit?fmt(r.credit):''}</td>
       <td class="r" style="font-size:10px;">${fmt(soldeMap.get(r.id))}</td>
       <td>${puceType(r.type_mouvement)}</td>
       <td>${puceDescription(r.description)}</td>
-      <td style="font-size:10px;">${escH(r.fournisseur||'')||'—'}</td>
-      <td style="font-size:10px;">${r.nom_chat||''}</td>
-      <td class="r" style="white-space:nowrap;">
-        ${roleActuel==='admin' ? `
-          <button class="flag-btn ${flagged?'on':''}" onclick="openFlag('${r.id}','${escH(r.libelle||'')}','${escH(r.flag_commentaire||'')}')" title="${flagged ? 'Annotation : '+escH(r.flag_commentaire||'') : 'Annoter'}"><i class="ti ti-flag"></i></button>
-          <button class="search-btn ${flagged?'on':''}" onclick="openFlag('${r.id}','${escH(r.libelle||'')}','${escH(r.flag_commentaire||'')}')" title="${flagged ? escH(r.flag_commentaire||'') : 'Aucune annotation'}"><i class="ti ti-search"></i></button>
-        ` : (flagged ? `<i class="ti ti-flag" style="color:var(--green);" title="${escH(r.flag_commentaire||'')}"></i>` : '')}
-      </td>
+      <td style="font-size:10px;"><div class="cell-ell" title="${escH(r.fournisseur||'')}">${escH(r.fournisseur||'')||'—'}</div></td>
+      <td style="font-size:10px;"><div class="cell-ell" title="${escH(r.nom_chat||'')}">${escH(r.nom_chat||'')}</div></td>
       <td class="r" style="white-space:nowrap;">
         ${roleActuel==='admin' ? (isVerified
           ? `<span class="lock-icon"><i class="ti ti-lock"></i></span>`
@@ -456,7 +450,7 @@ function renderTable() {
     <th style="width:36px;">✓</th>
     ${mkTh('Date','date_mouvement')}${mkTh('Libellé','libelle')}${mkTh('Débit','debit')}${mkTh('Crédit','credit')}
     <th class="r">Solde</th>${mkTh('Type de mouvement','type_mouvement')}${mkTh('Description','description')}${mkTh('Fournisseur','fournisseur')}
-    <th>Chat</th><th class="r">Annoter</th><th class="r">Actions</th>
+    <th>Chat</th><th class="r">Actions</th>
   </tr></thead><tbody>${trs}</tbody></table>`;
 }
 function setSort(col) { if (sortCol===col) sortAsc=!sortAsc; else { sortCol=col; sortAsc=true; } renderTable(); }
