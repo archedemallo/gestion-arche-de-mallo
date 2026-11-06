@@ -85,8 +85,46 @@ function remplirSelectsPeriodes(ids, periodes, courante) {
 /** Raccourci : charge le contexte et remplit les selects. Renvoie {periodes, courante}. */
 async function initPeriodes(client, ids) {
   const ctx = await chargerContextePeriodes(client);
+  // La période choisie dans le menu est mémorisée (navigateur) et reprise sur TOUTES les pages
+  let memo = null;
+  try { memo = localStorage.getItem(CLE_PERIODE_ACTIVE); } catch (e) {}
+  const trouvee = memo && ctx.periodes.find(p => periodeNormaliser(p) === periodeNormaliser(memo));
+  if (trouvee) ctx.courante = trouvee;
   remplirSelectsPeriodes(ids, ctx.periodes, ctx.courante);
+  installerSelecteurPeriodeMenu(ctx.periodes, ctx.courante, ids);
   return ctx;
+}
+
+// ---- Sélecteur de période unique, dans le menu latéral ----
+const CLE_PERIODE_ACTIVE = 'compta_periode_active';
+const IDS_FILTRES_PERIODE = ['fl-per', 'fl-periode', 'periode-select'];   // filtres de page, remplacés par le menu
+const IDS_PERIODE_NON_SYNCHRO = ['f-per-ext'];                             // choix propres à un formulaire
+let _idsPeriodePage = [];
+function installerSelecteurPeriodeMenu(periodes, courante, ids) {
+  _idsPeriodePage = Array.from(new Set(_idsPeriodePage.concat(Array.isArray(ids) ? ids : [ids])));
+  const logo = document.querySelector('.sidebar .sidebar-logo');
+  if (logo) {
+    let sel = document.getElementById('sb-periode');
+    if (!sel) {
+      logo.insertAdjacentHTML('afterend', '<div class="sidebar-periode"><label for="sb-periode">Période active</label><select id="sb-periode"></select></div>');
+      sel = document.getElementById('sb-periode');
+      sel.addEventListener('change', function () { appliquerPeriodeActive(sel.value); });
+    }
+    sel.innerHTML = periodes.map(function (p) { return '<option value="' + p + '">' + p + '</option>'; }).join('');
+    sel.value = courante;
+    // Les filtres de période propres à la page sont masqués : un seul choix, dans le menu
+    IDS_FILTRES_PERIODE.forEach(function (id) { const s = document.getElementById(id); if (s) s.style.display = 'none'; });
+  }
+}
+function appliquerPeriodeActive(p) {
+  try { localStorage.setItem(CLE_PERIODE_ACTIVE, p); } catch (e) {}
+  _idsPeriodePage.forEach(function (id) {
+    if (IDS_PERIODE_NON_SYNCHRO.indexOf(id) !== -1) return;
+    const s = document.getElementById(id);
+    if (!s) return;
+    s.value = p;
+    if (IDS_FILTRES_PERIODE.indexOf(id) !== -1) s.dispatchEvent(new Event('change'));   // relance le calcul de la page
+  });
 }
 
 // ============================================================
