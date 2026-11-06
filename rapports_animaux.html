@@ -97,12 +97,6 @@
     <h2>Période du rapport</h2>
     <div class="ligne2">
       <div class="champ"><label>Période comptable</label><select id="sel-periode" onchange="onPeriodeChange()"></select></div>
-      <div class="champ"><label>Définition d'un chaton</label>
-        <select id="sel-chaton">
-          <option value="flag">Case « chaton » cochée à l'arrivée</option>
-          <option value="6m">Moins de 6 mois à la fin de la période (ou à la sortie)</option>
-          <option value="12m">Moins de 12 mois à la fin de la période (ou à la sortie)</option>
-        </select></div>
     </div>
     <div class="ligne2">
       <div class="champ"><label>Du</label><input type="date" id="date-debut"></div>
@@ -238,7 +232,7 @@ function categorie(l) { if (l.espece !== 'chat') return 'autres'; return l.chato
 async function genererRapport() {
   const msg = document.getElementById('gen-msg'); msg.textContent = 'Chargement…'; msg.className = 'msg';
   const pDebut = document.getElementById('date-debut').value, pFin = document.getElementById('date-fin').value;
-  const mode = document.getElementById('sel-chaton').value;
+  const mode = 'flag';   // chaton = case « chaton » cochée à l'arrivée, sinon chat
   if (!pDebut || !pFin || pDebut > pFin) { msg.textContent = 'Choisissez des dates valides (début avant fin).'; msg.className = 'msg err'; return; }
 
   const r = await Promise.all([
