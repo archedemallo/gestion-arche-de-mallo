@@ -467,23 +467,17 @@ function renderTable() {
           onchange="toggleVerified('${r.id}',this.checked)">
       </td>
       <td style="white-space:nowrap;">${formatDateFR(r.date_mouvement)}</td>
-      <td title="${escH(r.libelle||'')}">${r.libelle||''}</td>
+      <td title="${escH(r.libelle||'')}"><div class="cell-ell2">${r.libelle||''}</div></td>
       <td class="r amount-d">${r.debit?fmt(r.debit):''}</td>
       <td class="r amount-c">${r.credit?fmt(r.credit):''}</td>
       <td class="r" style="font-size:10px;">${fmt(soldeMap.get(r.id)||0)}</td>
       <td>${puceType(r.type_mouvement)}</td>
       <td>${puceDescription(r.description)}</td>
-      <td style="font-size:10px;">${r.libelle_complementaire||''}</td>
-      <td style="font-size:10px;">${r.nom_chat||''}</td>
+      <td style="font-size:10px;"><div class="cell-ell" title="${escH(r.libelle_complementaire||'')}">${escH(r.libelle_complementaire||'')}</div></td>
+      <td style="font-size:10px;"><div class="cell-ell" title="${escH(r.nom_chat||'')}">${escH(r.nom_chat||'')}</div></td>
       <td style="font-size:10px;">${r.numero_recu||''}</td>
       <td style="font-size:10px;">${r.numero_bordereau?`<span class="chip-brd">${escH(r.numero_bordereau)} ${roleActuel==='admin'?`<button onclick="delierBordereau('${r.id}')" style="border:none;background:none;color:var(--red);cursor:pointer;">x</button>`:''}</span>`:''}</td>
       <td style="font-size:10px;">${roleActuel==='admin'&&!isVerified?`<button onclick="openVentilation('${r.id}','${escH(r.libelle||'')}',${parseFloat(r.credit||r.debit)||0})" title="Lier à un/des enregistrement(s) Suivi" style="border:0.5px solid var(--border-mid);border-radius:4px;background:${r.suivi_ref?'var(--warm)':'none'};cursor:pointer;font-size:9px;padding:1px 6px;color:var(--text-2);">${r.suivi_ref?'Suivi ✓':'+ lier'}</button>`:(r.suivi_ref?'<span class="chip-suivi">Suivi</span>':'—')}</td>
-      <td class="r" style="white-space:nowrap;">
-        ${roleActuel==='admin' ? `
-          <button class="flag-btn ${flagged?'on':''}" onclick="openFlag('${r.id}','${escH(r.libelle||'')}','${escH(r.flag_commentaire||'')}')" title="${flagged ? 'Annotation : '+escH(r.flag_commentaire||'') : 'Annoter'}"><i class="ti ti-flag"></i></button>
-          <button class="search-btn ${flagged?'on':''}" onclick="openFlag('${r.id}','${escH(r.libelle||'')}','${escH(r.flag_commentaire||'')}')" title="${flagged ? escH(r.flag_commentaire||'') : 'Aucune annotation'}"><i class="ti ti-search"></i></button>
-        ` : (flagged ? `<i class="ti ti-flag" style="color:var(--green);" title="${escH(r.flag_commentaire||'')}"></i>` : '')}
-      </td>
       <td class="r" style="white-space:nowrap;">
         ${roleActuel==='admin' ? (isVerified
           ? `<span class="lock-icon" title="Verrouillée"><i class="ti ti-lock"></i></span>`
@@ -510,7 +504,6 @@ function renderTable() {
         <th>N° reçu</th>
         <th>Bord. remise</th>
         <th>Rapproché</th>
-        <th class="r">Annoter</th>
         <th class="r">Actions</th>
       </tr></thead>
       <tbody>${trs}</tbody>
