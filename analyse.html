@@ -149,6 +149,7 @@
           <input type="checkbox" id="chk-od" checked onchange="inclureOD=this.checked; renderAG(); renderRepartition();">
           Inclure les écritures diverses
         </label>
+        <button class="btn btn-primary btn-sm" onclick="exporterAG()"><i class="ti ti-file-spreadsheet"></i> Exporter pour l'AG (Excel)</button>
       </div>
       <div class="kpi-top">
         <div class="kpi"><div class="kpi-label">Recettes</div><div class="kpi-value v-green" id="ag-kpi-recettes">—</div></div>
@@ -265,6 +266,7 @@
 <script src="supabase-config.js"></script>
 <script src="compta-commun.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script>
 const supabaseClient = creerClientSupabase();
 
@@ -717,6 +719,136 @@ function renderAG() {
   }).join('');
   document.getElementById('ag-table-wrap').innerHTML = `<table><thead><tr><th>Catégorie</th><th>Sens</th><th class="r">Total</th><th class="r">Opér.</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
+
+// ============================================================
+// EXPORT EXCEL « Chiffres AG » : Recap Recettes/Dépenses, Synthèse détaillée,
+// Détail des opérations, Graphiques — mêmes feuilles que le fichier de l'AG,
+// calculées avec les catégories de l'onglet Paramètres (et les écritures diverses si cochées).
+// ============================================================
+async function exporterAG() {
+  if (typeof ExcelJS === 'undefined') { showToast('Bibliothèque Excel non chargée (connexion ?)'); return; }
+  const per = activePer;
+  const results = computeAgResults();
+  const rec = results.filter(r => r.sens === 'recette' && r.total !== 0).map(r => ({ nom: r.cat, montant: Math.max(0, r.total), ops: r.ops }));
+  const dep = results.filter(r => r.sens === 'depense' && r.total !== 0).map(r => ({ nom: r.cat, montant: Math.abs(Math.min(0, r.total)), ops: r.ops }));
+  const totRec = rec.reduce((a, r) => a + r.montant, 0), totDep = dep.reduce((a, r) => a + r.montant, 0);
+
+  // Trésorerie actuelle = soldes initiaux (Configuration) + mouvements de la période, banque + caisse 1 + caisse 2
+  let init = {};
+  try { const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'soldes_initiaux').maybeSingle();
+    const v = (data && data.valeur) || {}; const k = Object.keys(v).find(x => periodeNormaliser(x) === periodeNormaliser(per)); init = k ? v[k] : {}; } catch (e) {}
+  const net = rows => rows.reduce((a, r) => a + fmtN(r.credit) - fmtN(r.debit), 0);
+  const delaPer = rows => rows.filter(r => periodeNormaliser(r.periode) === periodeNormaliser(per));
+  const sBanque = fmtN(init.banque) + net(delaPer(allBanque));
+  const sC1 = fmtN(init.caisse1) + net(delaPer(allCaisse.filter(r => r.caisse === 'caisse1')));
+  const sC2 = fmtN(init.caisse2) + net(delaPer(allCaisse.filter(r => r.caisse === 'caisse2')));
+
+  const EUR = '#,##0.00" €"', EUR_R = '#,##0.00" €";[Red]-#,##0.00" €"';
+  const BLEU = 'FF2F75B5', ORANGE = 'FFC65911', MARINE = 'FF1F3864', CLAIR = 'FFD9E2F3';
+  const wb = new ExcelJS.Workbook();
+  const fill = c => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: c } });
+  const entete = cell => { cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }; cell.fill = fill(MARINE); };
+
+  // ---- Feuille 1 : Recap Recettes Depenses ----
+  const w1 = wb.addWorksheet('Recap Recettes Depenses');
+  [['A', 3], ['B', 31.7], ['C', 31.9], ['D', 12.4], ['E', 30], ['F', 25.3]].forEach(([c, w]) => w1.getColumn(c).width = w);
+  w1.mergeCells('B2:C2'); w1.mergeCells('E2:F2');
+  w1.getCell('B2').value = 'RECETTES ' + per; w1.getCell('E2').value = 'DEPENSES ' + per;
+  [w1.getCell('B2'), w1.getCell('E2')].forEach(c => { c.font = { bold: true, size: 13 }; c.alignment = { horizontal: 'center' }; });
+  const n = Math.max(rec.length, dep.length, 1);
+  for (let i = 0; i < n; i++) {
+    const r = 3 + i;
+    if (rec[i]) { w1.getCell('B' + r).value = rec[i].nom.toUpperCase(); w1.getCell('C' + r).value = rec[i].montant; w1.getCell('C' + r).numFmt = EUR; }
+    if (dep[i]) { w1.getCell('E' + r).value = dep[i].nom.toUpperCase(); w1.getCell('F' + r).value = dep[i].montant; w1.getCell('F' + r).numFmt = EUR; }
+  }
+  const rt = 3 + n;
+  w1.getCell('B' + rt).value = 'RECETTES'; w1.getCell('C' + rt).value = { formula: `SUM(C3:C${rt - 1})`, result: totRec };
+  w1.getCell('E' + rt).value = 'DEPENSES'; w1.getCell('F' + rt).value = { formula: `SUM(F3:F${rt - 1})`, result: totDep };
+  ['B', 'C'].forEach(c => { const x = w1.getCell(c + rt); x.fill = fill(BLEU); x.font = { bold: true, color: { argb: 'FFFFFFFF' } }; });
+  ['E', 'F'].forEach(c => { const x = w1.getCell(c + rt); x.fill = fill(ORANGE); x.font = { bold: true, color: { argb: 'FFFFFFFF' } }; });
+  w1.getCell('C' + rt).numFmt = EUR; w1.getCell('F' + rt).numFmt = EUR;
+  const rs = rt + 2;
+  w1.getCell('B' + rs).value = 'RESULTAT (recettes − dépenses)'; w1.getCell('C' + rs).value = { formula: `C${rt}-F${rt}`, result: totRec - totDep }; w1.getCell('C' + rs).numFmt = EUR_R;
+  w1.getCell('B' + rs).font = { bold: true }; w1.getCell('C' + rs).font = { bold: true };
+  const rtr = rs + 2;
+  w1.getCell('C' + rtr).value = 'TRESORERIE actuelle'; w1.getCell('C' + rtr).alignment = { horizontal: 'right' };
+  w1.getCell('D' + rtr).value = { formula: `${sBanque.toFixed(2)}+${sC1.toFixed(2)}+${sC2.toFixed(2)}`, result: sBanque + sC1 + sC2 }; w1.getCell('D' + rtr).numFmt = EUR; w1.getCell('D' + rtr).font = { bold: true };
+  w1.getCell('E' + rtr).value = '(Solde Banque + Caisse 1 + Caisse 2)';
+  w1.getCell('E' + (rtr + 1)).value = 'Banque ' + sBanque.toFixed(2) + ' € · Caisse 1 ' + sC1.toFixed(2) + ' € · Caisse 2 ' + sC2.toFixed(2) + ' €';
+  w1.getCell('E' + (rtr + 1)).font = { size: 9, color: { argb: 'FF6B5B4D' } };
+
+  // ---- Feuille 2 : Synthèse détaillée ----
+  const w2 = wb.addWorksheet('Synthèse détaillée');
+  [['A', 3], ['B', 34], ['C', 18], ['D', 14]].forEach(([c, w]) => w2.getColumn(c).width = w);
+  w2.getCell('B1').value = 'Synthèse financière — ' + per; w2.getCell('B1').font = { bold: true, size: 14 };
+  w2.getCell('B2').value = 'Montants regroupés par catégorie (toutes sources confondues : caisses, banque, remises de chèques, chèques, factures' + (inclureOD ? ', écritures diverses' : '') + ').';
+  w2.getCell('B2').font = { italic: true, size: 9 };
+  let r2 = 4;
+  const bloc = (titre, lignes, total) => {
+    w2.getCell('B' + r2).value = titre; w2.getCell('B' + r2).font = { bold: true }; r2++;
+    ['Catégorie', 'Montant', '% du total'].forEach((h, i) => { const c = w2.getCell(r2, 2 + i); c.value = h; entete(c); }); r2++;
+    const debut = r2;
+    lignes.forEach(l => {
+      w2.getCell('B' + r2).value = l.nom;
+      w2.getCell('C' + r2).value = l.montant; w2.getCell('C' + r2).numFmt = EUR_R;
+      w2.getCell('D' + r2).value = { formula: `IF(C${debut + lignes.length}=0,0,C${r2}/C${debut + lignes.length})`, result: total ? l.montant / total : 0 }; w2.getCell('D' + r2).numFmt = '0.0%';
+      r2++;
+    });
+    w2.getCell('B' + r2).value = 'TOTAL ' + titre.split(' ')[0].toUpperCase();
+    w2.getCell('C' + r2).value = { formula: `SUM(C${debut}:C${r2 - 1})`, result: total }; w2.getCell('C' + r2).numFmt = EUR_R;
+    w2.getCell('D' + r2).value = { formula: `SUM(D${debut}:D${r2 - 1})`, result: total ? 1 : 0 }; w2.getCell('D' + r2).numFmt = '0.0%';
+    ['B', 'C', 'D'].forEach(c => { const x = w2.getCell(c + r2); x.font = { bold: true }; x.fill = fill(CLAIR); });
+    const ligneTotal = r2; r2 += 3; return ligneTotal;
+  };
+  w2.getCell('B4').value = 'Bilan global'; w2.getCell('B4').font = { bold: true };
+  ['Bilan global', 'Montant'].forEach((h, i) => { const c = w2.getCell(5, 2 + i); c.value = h; entete(c); });
+  w2.getCell('B6').value = 'Total recettes'; w2.getCell('C6').value = totRec;
+  w2.getCell('B7').value = 'Total dépenses'; w2.getCell('C7').value = totDep;
+  w2.getCell('B8').value = 'Solde (recettes − dépenses)'; w2.getCell('C8').value = { formula: 'C6-C7', result: totRec - totDep };
+  ['C6', 'C7', 'C8'].forEach(a => { w2.getCell(a).numFmt = EUR_R; w2.getCell(a).font = { bold: true }; });
+  ['B8', 'C8'].forEach(a => { w2.getCell(a).fill = fill(CLAIR); w2.getCell(a).font = { bold: true }; });
+  w2.getCell('B4').value = null;
+  r2 = 10;
+  bloc('Recettes par catégorie', rec, totRec);
+  bloc('Dépenses par catégorie', dep, totDep);
+  w2.getCell('B' + r2).value = 'Notes'; w2.getCell('B' + r2).font = { bold: true };
+  w2.getCell('B' + (r2 + 1)).value = '• Généré le ' + new Date().toLocaleDateString('fr-FR') + ' depuis la page Analyse (onglet Synthèse), période ' + per + '.';
+  w2.getCell('B' + (r2 + 2)).value = '• ' + (inclureOD ? 'Les écritures diverses (OD) sont incluses.' : 'Les écritures diverses (OD) ne sont PAS incluses.');
+  w2.getCell('B' + (r2 + 3)).value = '• La trésorerie (feuille « Recap ») = soldes initiaux de la Configuration + mouvements de la période.';
+
+  // ---- Feuille 3 : Détail des opérations ----
+  const w3 = wb.addWorksheet('Détail des opérations');
+  [['A', 22], ['B', 11], ['C', 12], ['D', 12], ['E', 50], ['F', 24], ['G', 14]].forEach(([c, w]) => w3.getColumn(c).width = w);
+  ['Catégorie', 'Sens', 'Date', 'Source', 'Libellé', 'Type de mouvement', 'Montant'].forEach((h, i) => entete(w3.getCell(1, 1 + i)));
+  ['Catégorie', 'Sens', 'Date', 'Source', 'Libellé', 'Type de mouvement', 'Montant'].forEach((h, i) => w3.getCell(1, 1 + i).value = h);
+  let r3 = 2;
+  results.filter(r => r.ops.length).forEach(cat => {
+    cat.ops.slice().sort((a, b) => (a.date || '').localeCompare(b.date || '')).forEach(o => {
+      w3.getRow(r3).values = [cat.cat, cat.sens === 'recette' ? 'Recette' : 'Dépense', o.date ? new Date(o.date) : '', o.src, o.libelle || '', o.type || '', o.montant];
+      w3.getCell('C' + r3).numFmt = 'dd/mm/yyyy'; w3.getCell('G' + r3).numFmt = EUR_R; r3++;
+    });
+  });
+  w3.views = [{ state: 'frozen', ySplit: 1 }]; w3.autoFilter = 'A1:G' + Math.max(2, r3 - 1);
+
+  // ---- Feuille 4 : Graphiques (images générées avec Chart.js) ----
+  const w4 = wb.addWorksheet('Graphiques');
+  const PALETTE = ['#2F75B5', '#C65911', '#548235', '#7F6000', '#7030A0', '#C00000', '#00808A', '#BF8F00', '#1F3864', '#A5A5A5', '#9DC3E6', '#F4B183'];
+  const camembert = (titre, items) => {
+    const cv = document.createElement('canvas'); cv.width = 720; cv.height = 440;
+    const ch = new Chart(cv.getContext('2d'), { type: 'pie', data: { labels: items.map(i => i.nom), datasets: [{ data: items.map(i => Math.round(i.montant * 100) / 100), backgroundColor: items.map((_, k) => PALETTE[k % PALETTE.length]) }] },
+      options: { animation: false, responsive: false, plugins: { title: { display: true, text: titre, font: { size: 16 } }, legend: { position: 'right' } } } });
+    const img = cv.toDataURL('image/png'); ch.destroy(); return img;
+  };
+  if (rec.length) { const id = wb.addImage({ base64: camembert('RECETTES ' + per, rec), extension: 'png' }); w4.addImage(id, { tl: { col: 1, row: 1 }, ext: { width: 720, height: 440 } }); }
+  if (dep.length) { const id = wb.addImage({ base64: camembert('DEPENSES ' + per, dep), extension: 'png' }); w4.addImage(id, { tl: { col: 1, row: 25 }, ext: { width: 720, height: 440 } }); }
+
+  const buf = await wb.xlsx.writeBuffer();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  a.download = 'Chiffres_AG_' + per.replace(/\s/g, '') + '.xlsx'; a.click();
+  showToast('Fichier AG généré');
+}
+
 function toggleAgCat(cat) { agOpenCats.has(cat) ? agOpenCats.delete(cat) : agOpenCats.add(cat); renderAG(); }
 
 function renderRepartition() {
