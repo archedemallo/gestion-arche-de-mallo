@@ -109,6 +109,29 @@ tr.done-row td { opacity:.75; }
 .btn-upload:disabled { opacity:.6; cursor:wait; }
 .btn-upload.done { border-color:var(--green); color:var(--green); background:var(--green-light); }
 
+/* PANNEAU « DOSSIER I-CAD » (copier / coller vers i-cad.fr) */
+.btn-prep { background:var(--orange); color:#fff; border:none; border-radius:6px; padding:5px 10px; font-size:12px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; white-space:nowrap; }
+.btn-prep:hover { background:var(--orange-light); }
+.icad-panel { position:fixed; top:0; right:0; bottom:0; width:440px; max-width:100%; background:var(--white); box-shadow:-8px 0 40px rgba(61,43,31,.25); z-index:210; transform:translateX(105%); transition:transform .2s; display:flex; flex-direction:column; }
+.icad-panel.open { transform:none; }
+.icad-panel-head { display:flex; justify-content:space-between; align-items:center; padding:16px 18px; border-bottom:1px solid var(--warm); }
+.icad-panel-title { font-family:'Playfair Display',serif; font-size:18px; color:var(--brown); }
+.icad-panel-body { flex:1; overflow-y:auto; padding:6px 18px 12px; }
+.icad-panel-foot { padding:12px 18px; border-top:1px solid var(--warm); display:flex; flex-direction:column; gap:8px; }
+.cp-h { font-size:11px; font-weight:600; color:#6b5b4d; text-transform:uppercase; letter-spacing:.06em; margin:14px 0 4px; }
+.cp-row { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--warm); }
+.cp-l { width:108px; flex:none; font-size:11px; color:#6b5b4d; }
+.cp-v { flex:1; font-weight:600; font-size:13px; color:var(--brown); word-break:break-word; }
+.cp-v.miss { color:#8a3700; }
+.cp-btn { flex:none; border:1.5px solid var(--orange); background:var(--white); color:#a8531a; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; min-width:84px; }
+.cp-btn.ok { background:var(--green-light); border-color:var(--green); color:var(--green); }
+.cp-btn:disabled { opacity:.45; cursor:default; }
+.cp-alerte { background:var(--amber-light); color:#8a3700; border-radius:8px; padding:8px 12px; font-size:12px; margin:10px 0 0; }
+.cp-actions { display:flex; gap:8px; }
+.cp-actions button { flex:1; }
+.cp-btn-plein { background:var(--orange); color:#fff; border:none; border-radius:8px; padding:10px 12px; font-size:13px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.cp-btn-clair { background:var(--warm); color:var(--brown); border:none; border-radius:8px; padding:10px 12px; font-size:13px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; }
+
 /* MODAL DÉTAIL */
 .modal-overlay { display:none; position:fixed; inset:0; background:rgba(61,43,31,.45); z-index:200; align-items:center; justify-content:center; }
 .modal-overlay.open { display:flex; }
@@ -146,7 +169,7 @@ tr.done-row td { opacity:.75; }
 .empty { text-align:center; padding:40px; color:var(--grey); font-size:14px; font-style:italic; }
 
 @media print {
-    #entete, .entete-site, .btn-back, .tabs, .filters, .stats, .print-bar, .btn-open, .icad-action, .comment-input, .modal-overlay { display:none !important; }
+    #entete, .entete-site, .btn-back, .tabs, .filters, .stats, .print-bar, .btn-open, .btn-prep, .icad-panel, .icad-action, .comment-input, .modal-overlay { display:none !important; }
     .table-wrap { box-shadow:none; }
     body { background:white; }
     .print-title { display:block !important; }
@@ -258,6 +281,13 @@ tr.done-row td { opacity:.75; }
     </div>
 </div>
 
+<!-- PANNEAU DOSSIER I-CAD -->
+<aside class="icad-panel" id="icad-panel" aria-label="Dossier i-CAD">
+    <div class="icad-panel-head"><div class="icad-panel-title" id="cp-titre">Dossier i-CAD</div><button class="modal-close" onclick="fermerDossier()">✕</button></div>
+    <div class="icad-panel-body" id="cp-body"></div>
+    <div class="icad-panel-foot" id="cp-foot"></div>
+</aside>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <script src="supabase-config.js"></script>
 <script src="config.js"></script>
@@ -308,7 +338,7 @@ async function lireTout(construire) {
     return tout;
 }
 
-const CHAMPS_ANIMAL = `id, nom_usuel, nom_adoption, couleur, sexe, date_naissance, puce,
+const CHAMPS_ANIMAL = `id, nom_usuel, nom_adoption, couleur, sexe, date_naissance, puce, espece, race,
     animaux_sterilisation_icad ( date_transfert, commentaire, fichier_icad_url, fichier_sterilisation_url )`;
 
 function icadDe(a) {
@@ -327,7 +357,7 @@ async function chargerDonnees() {
             .select(`
                 id, date_adoption, total_participation,
                 animaux!inner ( ${CHAMPS_ANIMAL} ),
-                personnes!inner ( nom, prenom, adresse, code_postal, ville, telephone, email )
+                personnes!inner ( civilite, type_personne, raison_sociale, nom, prenom, adresse, code_postal, ville, telephone, email )
             `)
             .order('date_adoption', { ascending: false })
             .order('id'));
@@ -345,12 +375,17 @@ async function chargerDonnees() {
                 nomAdoption:   a.nom_adoption || '',
                 couleur:       a.couleur || '',
                 sexe:          a.sexe || '',
+                espece:        a.espece || '',
+                race:          a.race || '',
                 dateNaissance: a.date_naissance || '',
                 adresse:       p.adresse || '',
                 codePostal:    p.code_postal || '',
                 ville:         p.ville || '',
                 portable:      p.telephone || '',
                 email:         p.email || '',
+                civilite:      p.civilite || '',
+                typePersonne:  p.type_personne || '',
+                raisonSociale: p.raison_sociale || '',
                 totalParticipation: row.total_participation || '',
                 icad: icadDe(a),
                 sansAdoption: false,
@@ -377,8 +412,10 @@ async function chargerDonnees() {
                 nomAdoption:   a.nom_adoption || '',
                 couleur:       a.couleur || '',
                 sexe:          a.sexe || '',
+                espece:        a.espece || '',
+                race:          a.race || '',
                 dateNaissance: a.date_naissance || '',
-                adresse: '', codePostal: '', ville: '', portable: '', email: '',
+                adresse: '', codePostal: '', ville: '', portable: '', email: '', civilite: '', typePersonne: '', raisonSociale: '',
                 totalParticipation: '',
                 icad: icadDe(a),
                 sansAdoption: true,
@@ -508,7 +545,7 @@ function rendreLignes() {
             <td>${commentCell}</td>
             <td>${icadCell}</td>
             <td>${statutCell}</td>
-            <td><button class="btn-open" onclick="ouvrirDetail(${lignesFiltres.indexOf(l)})">Ouvrir</button></td>
+            <td><div style="display:flex;flex-direction:column;gap:4px;"><button class="btn-open" onclick="ouvrirDetail(${lignesFiltres.indexOf(l)})">Ouvrir</button><button class="btn-prep" onclick="ouvrirDossierICAD(${lignesFiltres.indexOf(l)})" title="Préparer la saisie sur i-cad.fr (copier / coller)">📋 i-CAD</button></div></td>
             <td>${celluleCertificat(l.animalId, 'sterilisation', i, l, icad.fichier_sterilisation_url)}</td>
             <td>${celluleCertificat(l.animalId, 'icad', i, l, icad.fichier_icad_url)}</td>
         </tr>`;
@@ -689,6 +726,104 @@ function resetFiltres() {
 // ============================================================
 // MODAL DÉTAIL
 // ============================================================
+
+// ============================================================
+// DOSSIER I-CAD : panneau de copie (chaque valeur se copie en un clic
+// pour la coller dans le formulaire de transfert sur i-cad.fr)
+// ============================================================
+let dossierIdx = null, dossierCopies = new Set();
+
+function champsDossier(l) {
+    const puceBrute = String(l.puce || '').replace(/\s+/g, '');
+    const puceAff = puceBrute.length === 15 ? puceBrute.replace(/(\d{3})(\d{3})(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4 $5') : (l.puce || '');
+    const sexe = { M: 'Mâle', F: 'Femelle' }[String(l.sexe || '').toUpperCase()] || l.sexe || '';
+    const espece = l.espece ? l.espece.charAt(0).toUpperCase() + l.espece.slice(1) : 'Chat';
+    const entreprise = l.typePersonne === 'entreprise';
+    const detenteurNom = entreprise ? (l.raisonSociale || '') : (l.nom || '');
+    // k = clé, g = groupe, l = libellé, v = valeur copiée, a = valeur affichée, o = obligatoire
+    return [
+        { k:'puce',   g:'Animal', l:'N° de puce',      v:puceBrute, a:puceAff, o:true },
+        { k:'nom',    g:'Animal', l:'Nom',             v:l.nomUsuel || '', o:true },
+        { k:'espece', g:'Animal', l:'Espèce',          v:espece, o:true },
+        { k:'sexe',   g:'Animal', l:'Sexe',            v:sexe, o:true },
+        { k:'naiss',  g:'Animal', l:'Date de naissance', v:l.dateNaissance ? fmtDate(l.dateNaissance) : '', o:true },
+        { k:'race',   g:'Animal', l:'Race',            v:l.race || '', o:false },
+        { k:'robe',   g:'Animal', l:'Couleur / robe',  v:l.couleur || '', o:false },
+        { k:'civ',    g:'Nouveau détenteur', l:'Civilité', v:entreprise ? '' : (l.civilite || ''), o:false },
+        { k:'dnom',   g:'Nouveau détenteur', l:entreprise ? 'Raison sociale' : 'Nom', v:detenteurNom, o:true },
+        { k:'dpre',   g:'Nouveau détenteur', l:'Prénom', v:entreprise ? '' : (l.prenom || ''), o:!entreprise },
+        { k:'adr',    g:'Nouveau détenteur', l:'Adresse', v:l.adresse || '', o:true },
+        { k:'cp',     g:'Nouveau détenteur', l:'Code postal', v:l.codePostal || '', o:true },
+        { k:'ville',  g:'Nouveau détenteur', l:'Ville', v:l.ville || '', o:true },
+        { k:'tel',    g:'Nouveau détenteur', l:'Téléphone', v:l.portable || '', o:false },
+        { k:'mail',   g:'Nouveau détenteur', l:'E-mail', v:l.email || '', o:true }
+    ];
+}
+
+function ouvrirDossierICAD(idx) {
+    if (!lignesFiltres[idx]) return;
+    dossierIdx = idx; dossierCopies = new Set();
+    rendreDossier();
+    document.getElementById('icad-panel').classList.add('open');
+}
+function fermerDossier() { document.getElementById('icad-panel').classList.remove('open'); dossierIdx = null; }
+
+function rendreDossier() {
+    const l = lignesFiltres[dossierIdx]; if (!l) return;
+    const champs = champsDossier(l);
+    const manquants = champs.filter(c => c.o && !c.v);
+    document.getElementById('cp-titre').textContent = 'Dossier i-CAD — ' + (l.nomUsuel || '?');
+    let html = '';
+    if (l.sansAdoption) html += '<div class="cp-alerte">Aucune adoption enregistrée pour ce chat : les informations du nouveau détenteur sont à renseigner (formulaire d\'adoption).</div>';
+    else if (manquants.length) html += '<div class="cp-alerte"><b>' + manquants.length + ' information(s) obligatoire(s) manquante(s)</b> : ' + manquants.map(c => esc(c.l)).join(', ') + '. À compléter dans la fiche de l\'animal ou de l\'adoptant.</div>';
+    let groupe = '';
+    champs.forEach(c => {
+        if (c.g !== groupe) { groupe = c.g; html += '<div class="cp-h">' + esc(groupe) + '</div>'; }
+        const copie = dossierCopies.has(c.k);
+        html += '<div class="cp-row"><span class="cp-l">' + esc(c.l) + '</span>' +
+            (c.v ? '<span class="cp-v">' + esc(c.a || c.v) + '</span><button class="cp-btn ' + (copie ? 'ok' : '') + '" onclick="copierChamp(\'' + c.k + '\')">' + (copie ? '✓ Copié' : 'Copier') + '</button>'
+                 : '<span class="cp-v miss">' + (c.o ? 'non renseigné' : '—') + '</span><button class="cp-btn" disabled>Copier</button>') + '</div>';
+    });
+    html += '<div class="cp-h">Adoption</div><div class="cp-row"><span class="cp-l">Date d\'adoption</span><span class="cp-v">' + (l.dateAdoption ? fmtDate(l.dateAdoption) : '—') + '</span></div>';
+    document.getElementById('cp-body').innerHTML = html;
+
+    const icad = l.icad || {};
+    const foot = '<div class="cp-actions"><button class="cp-btn-plein" onclick="window.open(\'https://www.i-cad.fr\',\'_blank\',\'noopener\')">Ouvrir i-cad.fr</button><button class="cp-btn-clair" onclick="copierTout()">Tout copier (texte)</button></div>' +
+        (estFait(icad)
+            ? '<div style="font-size:12px;color:var(--green);font-weight:600;">✓ Transfert ICAD enregistré le ' + fmtDate(icad.date_transfert) + '</div>'
+            : '<div class="cp-actions" style="align-items:center;"><input type="date" id="cp-date" class="date-icad" title="Date du transfert sur i-cad.fr" style="flex:1;"><button class="cp-btn-plein" style="flex:1;" onclick="validerDepuisPanneau()">✓ Transfert fait</button></div>');
+    document.getElementById('cp-foot').innerHTML = foot;
+}
+
+function copierTexte(texte) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(texte);
+    return new Promise(function (ok) {                      // repli (page ouverte en http / fichier local)
+        const t = document.createElement('textarea'); t.value = texte; t.style.position = 'fixed'; t.style.opacity = '0';
+        document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); ok();
+    });
+}
+function copierChamp(k) {
+    const c = champsDossier(lignesFiltres[dossierIdx]).find(x => x.k === k);
+    if (!c || !c.v) return;
+    copierTexte(c.v).then(function () { dossierCopies.add(k); rendreDossier(); });
+}
+function copierTout() {
+    const champs = champsDossier(lignesFiltres[dossierIdx]).filter(c => c.v);
+    copierTexte(champs.map(c => c.l + ' : ' + (c.a || c.v)).join('\n')).then(function () {
+        champs.forEach(c => dossierCopies.add(c.k)); rendreDossier();
+    });
+}
+function validerDepuisPanneau() {
+    const l = lignesFiltres[dossierIdx]; if (!l) return;
+    const d = document.getElementById('cp-date').value;
+    if (!d) { document.getElementById('cp-date').style.border = '1.5px solid var(--amber)'; alert('Indiquez la date du transfert sur i-cad.fr.'); return; }
+    const champ = document.getElementById('date-' + dossierIdx);
+    if (!champ) return;
+    champ.value = d;
+    fermerDossier();
+    validerICAD(l.animalId, dossierIdx);
+}
+
 function ouvrirDetail(idx) {
     const l = lignesFiltres[idx];
     if (!l) return;
