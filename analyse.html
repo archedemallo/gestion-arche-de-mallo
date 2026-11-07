@@ -707,11 +707,16 @@ function computeAgResults() {
     if (srcs.includes('caisse')) caisse1.forEach(r => { if (r.ref_remise) return; const {type,description} = resoudre(r); if (matchType(type) && matchDescription(description)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Caisse 1',date:r.date_mouvement,libelle:r.libelle,type,montant:v});} } });
     if (srcs.includes('caisse2')) caisse2.forEach(r => { if (r.ref_remise) return; const {type,description} = resoudre(r); if (matchType(type) && matchDescription(description)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Caisse 2',date:r.date_mouvement,libelle:r.libelle,type,montant:v});} } });
     if (srcs.includes('banque')) banque.forEach(r => { if (banqueEstReglementDocument(r)) return; const {type,description} = resoudre(r); if (matchType(type) && matchDescription(description)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Banque',date:r.date_mouvement,libelle:r.libelle_complementaire||r.description||r.libelle,type,montant:v});} } });
-    if (srcs.includes('banque')) {
-      factures.forEach(r => { if (!(r.numero_facture && facturesRapprochees.has(r.numero_facture))) return; if (matchType(r.categorie) && matchDescription(r.description)) { const v=-fmtN(r.montant_ttc); if(v){total+=v;ops.push({src:'Facture (réglée banque)',date:r.date_facture,libelle:r.description||r.fournisseur,type:r.categorie,montant:v});} } });
-      cheques.forEach(r => { if (!chequesRapproches.has(r.id)) return; if (matchType(r.type_mouvement) && matchDescription(r.description)) { const v=-fmtN(r.montant); if(v){total+=v;ops.push({src:'Chèque (encaissé banque)',date:r.date_emission,libelle:r.beneficiaire,type:r.type_mouvement,montant:v});} } });
-    }
-    if (srcs.includes('cheques')) cheques.forEach(r => { if (chequesRapproches.has(r.id)) return; if (matchType(r.type_mouvement) && matchDescription(r.description)) { const v=-fmtN(r.montant); if(v){total+=v;ops.push({src:'Chèque',date:r.date_emission,libelle:r.beneficiaire,type:r.type_mouvement,montant:v});} } });
+    // Chèques : « Chèques » coché = tous les chèques de la période (réglés ou non). Seul « Banque » coché =
+    // uniquement ceux déjà encaissés en banque (la ligne banque elle-même est ignorée). Jamais comptés deux fois.
+    // Catégorie fourre-tout (aucun type ni descriptif choisi) : les chèques déjà encaissés restent exclus, comme avant.
+    const fourreTout = !types.length && !descs.length;
+    cheques.forEach(r => {
+      const reglee = chequesRapproches.has(r.id);
+      const compte = srcs.includes('cheques') ? !(reglee && fourreTout) : (srcs.includes('banque') && reglee);
+      if (!compte) return;
+      if (matchType(r.type_mouvement) && matchDescription(r.description)) { const v=-fmtN(r.montant); if(v){total+=v;ops.push({src:'Chèque',date:r.date_emission,libelle:r.beneficiaire,type:r.type_mouvement,montant:v});} }
+    });
     if (srcs.includes('remises')) remises.forEach(r => { if (matchType(r.type_mouvement) && matchDescription(r.description)) { const v=fmtN(r.montant); if(v){total+=v;ops.push({src:'Remise',date:r.date_remise,libelle:r.donateur||r.description,type:r.type_mouvement,montant:v});} } });
     // Écritures diverses : comptées dans toute catégorie qui lit déjà banque/caisse/chèques/remises
     // (même filtrage par type et description). Une catégorie qui ne lit que les factures les ignore.
@@ -721,7 +726,15 @@ function computeAgResults() {
         if (v) { total += v; ops.push({ src:'OD', date:r.date_ecriture, libelle:r.libelle + (r.motif ? ' — ' + r.motif : ''), type:r.type_mouvement, montant:v }); }
       }
     });
-    if (srcs.includes('factures')) factures.forEach(r => { if (r.numero_facture && facturesRapprochees.has(r.numero_facture)) return; if (matchType(r.categorie) && matchDescription(r.description)) { const v=-fmtN(r.montant_ttc); if(v){total+=v;ops.push({src:'Facture',date:r.date_facture,libelle:r.description||r.fournisseur,type:r.categorie,montant:v});} } });
+    // Factures : « Factures » coché = toutes les factures de la période (payées par la banque ou non), à la période
+    // de la facture. Seul « Banque » coché = uniquement celles déjà réglées par une ligne banque. Jamais comptées deux fois.
+    // Catégorie fourre-tout (aucun type ni descriptif choisi) : les factures déjà réglées par la banque restent exclues.
+    factures.forEach(r => {
+      const reglee = !!(r.numero_facture && facturesRapprochees.has(r.numero_facture));
+      const compte = srcs.includes('factures') ? !(reglee && fourreTout) : (srcs.includes('banque') && reglee);
+      if (!compte) return;
+      if (matchType(r.categorie) && matchDescription(r.description)) { const v=-fmtN(r.montant_ttc); if(v){total+=v;ops.push({src:'Facture',date:r.date_facture,libelle:r.description||r.fournisseur,type:r.categorie,montant:v});} }
+    });
 
     return { ...cat, total, ops };
   });
