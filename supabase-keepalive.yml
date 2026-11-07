@@ -21,8 +21,8 @@ jobs:
     steps:
       - name: Requête vers la base Supabase
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_URL: https://supabase.com/dashboard/project/tjefuqqceazdxyhcjupt
+          SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqZWZ1cXFjZWF6ZHh5aGNqdXB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4MDAzMDEsImV4cCI6MjEwNDM3NjMwMX0.d-IEnu_A4Fb0xECYax0JZy8CI6OzfHMVkSJ9Cvay0uM'
         run: |
           # Appel d'une fonction lecture seule de la base (accessible avec la clé anon).
           # Sans connexion elle répond « Accès refusé » (HTTP 4xx) : c'est normal, la requête
