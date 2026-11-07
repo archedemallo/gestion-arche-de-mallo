@@ -286,7 +286,7 @@ async function demarrerApp(user) {
 (async function initSession() { try { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(data.session.user); } catch (e) { afficherErreurChargement(e); } })();
 
 // Période par défaut : définie une seule fois dans Configuration
-async function chargerPeriodes() { await initPeriodes(supabaseClient, ['f-per','fl-per']); }
+async function chargerPeriodes() { await initPeriodes(supabaseClient, ['f-per','fl-per'], { toutes: true }); }
 async function chargerTypesEtDescriptions() {
   const { data: types } = await supabaseClient.from('types_mouvement').select('id, valeur, ordre').order('ordre');
   const { data: descs } = await supabaseClient.from('descriptions_mouvement').select('id, type_mouvement_id, valeur, ordre').order('ordre');
@@ -318,10 +318,14 @@ async function loadData() {
 
 async function renderKPIs() {
   const per = document.getElementById('fl-per')?.value;
-  const rows = allRows.filter(r => r.periode === per);
+  const rows = allRows.filter(r => periodeCorrespond(r.periode, per));
   const inn = rows.reduce((s,r) => s + (parseFloat(r.credit)||0), 0);
   const out = rows.reduce((s,r) => s + (parseFloat(r.debit)||0), 0);
-  const { data: soldeRow } = await supabaseClient.from('soldes').select('montant').eq('periode', per).eq('compte', 'banque').eq('type_solde', 'initial').maybeSingle();
+  // « Toutes les périodes » : le solde initial est celui de la 1re période qui a des lignes
+  const perSolde = per === PERIODE_TOUTES ? premierePeriodeAvecLignes(allRows) : per;
+  const { data: soldeRow } = perSolde
+    ? await supabaseClient.from('soldes').select('montant').eq('periode', perSolde).eq('compte', 'banque').eq('type_solde', 'initial').maybeSingle()
+    : { data: null };
   const soldInit = soldeRow ? parseFloat(soldeRow.montant) || 0 : 0;
   soldeInitialActuel = soldInit; // utilisé par renderTable() pour le solde cumulé ligne par ligne
   const soldActuel = soldInit + inn - out;
@@ -342,6 +346,17 @@ async function renderKPIs() {
 // signalé (le solde affiché ne correspondait pas à la bonne ligne dès
 // que deux mouvements avaient la même date).
 // ============================================================
+// Ligne rapprochée d'une facture / d'un chèque / d'une remise SANS type recopié (069) :
+// le type, la description et le chat sont portés par le document, on affiche donc le lien.
+function libelleDocLie(r) {
+  if (r.type_mouvement) return '';
+  const pastille = (txt, icone) => `<span class="chip" style="background:#EEEDFE;color:#3C3489;border:1px solid #CDCAF3;border-radius:10px;padding:1px 7px;font-size:10px;white-space:nowrap;"><i class="ti ${icone}" style="margin-right:3px;"></i>${escH(txt)}</span>`;
+  if (r.numero_facture) return pastille('Facture ' + r.numero_facture, 'ti-receipt');
+  if (r.ref_cheque)     return pastille('Chèque', 'ti-writing');
+  if (r.ref_remise)     return pastille('Remise de chèques', 'ti-cash');
+  return '';
+}
+
 function renderTable() {
   const per     = document.getElementById('fl-per')?.value;
   const search  = (document.getElementById('fl-search')?.value || '').toLowerCase();
@@ -359,7 +374,7 @@ function renderTable() {
 
   const bordereauDe = r => r.ref_remise ? (remisesMap[r.ref_remise] || '') : '';
 
-  const perRows = allRows.filter(r => r.periode === per);
+  const perRows = allRows.filter(r => periodeCorrespond(r.periode, per));
   let rows = perRows;
   if (typeF)  rows = rows.filter(r => r.type_mouvement === typeF);
   if (descF)  rows = rows.filter(r => r.description === descF);
@@ -367,7 +382,7 @@ function renderTable() {
   if (sensF==='debit')  rows = rows.filter(r => parseFloat(r.debit) > 0);
   if (flagF==='verifie')     rows = rows.filter(r => r.statut === 'verifie');
   if (flagF==='non-verifie') rows = rows.filter(r => r.statut !== 'verifie');
-  if (chatF)  rows = rows.filter(r => r.nom_chat === chatF);
+  if (chatF)  rows = rows.filter(r => chatTokens(r.nom_chat).includes(chatF));
   if (recuF)  rows = rows.filter(r => r.numero_don_fiscal === recuF);
   if (bordF)  rows = rows.filter(r => bordereauDe(r) === bordF);
   if (dFrom)  rows = rows.filter(r => r.date_mouvement >= dFrom);
@@ -397,7 +412,7 @@ function renderTable() {
   };
   remplirSelect('fl-type', [...new Set(perRows.map(r => r.type_mouvement).filter(Boolean))].sort(), 'Tous les types de mouvement');
   remplirSelect('fl-desc', [...new Set(perRows.map(r => r.description).filter(Boolean))].sort(), 'Toutes les descriptions');
-  remplirSelect('fl-chat', [...new Set(perRows.map(r => r.nom_chat).filter(Boolean))].sort(), 'Tous chats');
+  remplirSelect('fl-chat', [...new Set(perRows.flatMap(r => chatTokens(r.nom_chat)))].sort((x,y) => x.localeCompare(y,'fr')), 'Tous chats');
   remplirSelect('fl-recu', [...new Set(perRows.map(r => r.numero_don_fiscal).filter(Boolean))].sort(), 'Tous reçus');
   remplirSelect('fl-bordereau', [...new Set(perRows.map(bordereauDe).filter(Boolean))].sort(), 'Tous bordereaux');
 
@@ -431,8 +446,8 @@ function renderTable() {
       <td class="r amount-d">${r.debit?fmt(r.debit):''}</td>
       <td class="r amount-c">${r.credit?fmt(r.credit):''}</td>
       <td class="r" style="font-size:10px;">${fmt(soldeMap.get(r.id))}</td>
-      <td>${puceType(r.type_mouvement)}</td>
-      <td>${puceDescription(r.description)}</td>
+      <td>${libelleDocLie(r) || puceType(r.type_mouvement)}</td>
+      <td>${libelleDocLie(r) ? '' : puceDescription(r.description)}</td>
       <td style="font-size:10px;"><div class="cell-ell" title="${escH(r.fournisseur||'')}">${escH(r.fournisseur||'')||'—'}</div></td>
       <td style="font-size:10px;"><div class="cell-ell" title="${escH(r.nom_chat||'')}">${escH(r.nom_chat||'')}</div></td>
       <td class="r" style="white-space:nowrap;">

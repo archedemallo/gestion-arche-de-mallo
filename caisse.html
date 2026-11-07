@@ -308,7 +308,7 @@ async function demarrerApp(user) {
 // PÉRIODES (config_compta, clé 'periodes')
 // ============================================================
 // Période par défaut : définie une seule fois dans Configuration
-async function chargerPeriodes() { await initPeriodes(supabaseClient, ['f-per','fl-per']); }
+async function chargerPeriodes() { await initPeriodes(supabaseClient, ['f-per','fl-per'], { toutes: true }); }
 
 // ============================================================
 // TYPES / DESCRIPTIONS — cascade : la description proposée dépend du
@@ -365,11 +365,15 @@ async function loadData() {
 async function renderKPIs() {
   const caisse = document.getElementById('f-caisse').value;
   const per = document.getElementById('fl-per')?.value;
-  const rows = allRows.filter(r => r.periode === per);
+  const rows = allRows.filter(r => periodeCorrespond(r.periode, per));
   const inn = rows.reduce((s,r) => s + (parseFloat(r.credit)||0), 0);
   const out = rows.reduce((s,r) => s + (parseFloat(r.debit)||0), 0);
 
-  const { data: soldeRow } = await supabaseClient.from('soldes').select('montant').eq('periode', per).eq('compte', caisse).eq('type_solde', 'initial').maybeSingle();
+  // « Toutes les périodes » : le solde initial est celui de la 1re période qui a des lignes
+  const perSolde = per === PERIODE_TOUTES ? premierePeriodeAvecLignes(allRows) : per;
+  const { data: soldeRow } = perSolde
+    ? await supabaseClient.from('soldes').select('montant').eq('periode', perSolde).eq('compte', caisse).eq('type_solde', 'initial').maybeSingle()
+    : { data: null };
   const soldInit = soldeRow ? parseFloat(soldeRow.montant) || 0 : 0;
   soldeInitialActuel = soldInit; // utilisé par renderTable() pour le solde cumulé ligne par ligne
   const soldActuel = soldInit + inn - out;
@@ -399,7 +403,7 @@ function renderTable() {
   const recuF   = document.getElementById('fl-recu')?.value || '';
   const bordF   = document.getElementById('fl-bordereau')?.value || '';
 
-  let rows = allRows.filter(r => r.periode === per);
+  let rows = allRows.filter(r => periodeCorrespond(r.periode, per));
   if (typeF)                rows = rows.filter(r => r.type_mouvement === typeF);
   if (descF)                rows = rows.filter(r => r.description === descF);
   if (sensF === 'credit')   rows = rows.filter(r => parseFloat(r.credit) > 0);
@@ -428,7 +432,7 @@ function renderTable() {
   });
 
   // Filtres dynamiques (valeurs présentes dans la période)
-  const perRows = allRows.filter(r => r.periode === per);
+  const perRows = allRows.filter(r => periodeCorrespond(r.periode, per));
   const remplirSelect = (id, valeurs, placeholder) => {
     const el = document.getElementById(id);
     const cur = el.value;

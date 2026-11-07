@@ -211,7 +211,7 @@ async function demarrerApp(user) {
 (async function initSession() { try { const { data } = await supabaseClient.auth.getSession(); if (data.session) await demarrerApp(data.session.user); } catch (e) { afficherErreurChargement(e); } })();
 
 // Période par défaut : définie une seule fois dans Configuration
-async function chargerPeriodes() { await initPeriodes(supabaseClient, ['f-per','fl-per']); }
+async function chargerPeriodes() { await initPeriodes(supabaseClient, ['f-per','fl-per'], { toutes: true }); }
 async function chargerTypesEtDescriptions() {
   const { data: types } = await supabaseClient.from('types_mouvement').select('id, valeur, ordre').order('ordre');
   const { data: descs } = await supabaseClient.from('descriptions_mouvement').select('id, type_mouvement_id, valeur, ordre').order('ordre');
@@ -241,7 +241,7 @@ async function loadData() {
 
 function renderKPIs() {
   const per = document.getElementById('fl-per')?.value;
-  const rows = allRows.filter(r => periodeNormaliser(r.periode) === periodeNormaliser(per));
+  const rows = allRows.filter(r => periodeCorrespond(r.periode, per));
   const payees = rows.filter(r => r.statut === 'payee');
   const attente = rows.filter(r => r.statut !== 'payee');
   document.getElementById('kpi-row').innerHTML = `
@@ -261,7 +261,7 @@ function renderTable() {
   const dTo = document.getElementById('fl-date-to')?.value||'';
   const mMin = document.getElementById('fl-montant-min')?.value;
   const mMax = document.getElementById('fl-montant-max')?.value;
-  let rows = allRows.filter(r => periodeNormaliser(r.periode) === periodeNormaliser(per));
+  let rows = allRows.filter(r => periodeCorrespond(r.periode, per));
   if (catF) rows = rows.filter(r => r.categorie === catF);
   if (descF) rows = rows.filter(r => r.description === descF);
   if (fournF) rows = rows.filter(r => r.fournisseur === fournF);

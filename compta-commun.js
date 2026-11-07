@@ -35,6 +35,27 @@ function periodesParDefaut() {
  */
 function periodeNormaliser(p) { return String(p || '').trim().replace(/\s*[-–]\s*/, ' - '); }
 
+// Valeur spéciale du sélecteur de période : afficher toutes les périodes
+const PERIODE_TOUTES = '__toutes__';
+// Découpe un champ « nom du chat » qui peut en contenir plusieurs (« Flamme, Oreo », « A / B », « A | B »)
+function chatTokens(raw) {
+  return String(raw || '').split(/[\/,|]|\s+-\s+/).map(x => x.trim()).filter(Boolean);
+}
+// Vrai si la période d'une ligne correspond à la sélection (une période précise, ou toutes)
+function periodeCorrespond(periodeLigne, selection) {
+  if (selection === PERIODE_TOUTES) return true;
+  return periodeNormaliser(periodeLigne) === periodeNormaliser(selection);
+}
+// Liste des périodes (ordre de la configuration), remplie par initPeriodes()
+let periodesCompta = [];
+// Vrai seulement sur les pages qui savent afficher toutes les périodes (option d'initPeriodes)
+let _toutesAutorisee = false;
+// Première période de la liste qui a au moins une ligne (sert au solde initial en mode « toutes »)
+function premierePeriodeAvecLignes(lignes) {
+  const presentes = new Set(lignes.map(r => periodeNormaliser(r.periode)));
+  return periodesCompta.find(p => presentes.has(periodeNormaliser(p))) || null;
+}
+
 async function chargerContextePeriodes(client) {
   let periodes = null;
   try {
@@ -67,10 +88,11 @@ async function chargerContextePeriodes(client) {
 }
 
 /** Remplit un ou plusieurs <select> avec les périodes et sélectionne la période par défaut. */
-function remplirSelectsPeriodes(ids, periodes, courante) {
+function remplirSelectsPeriodes(ids, periodes, courante, selection) {
   (Array.isArray(ids) ? ids : [ids]).forEach(id => {
     const s = document.getElementById(id);
     if (!s) return;
+    const estFiltre = IDS_FILTRES_PERIODE.indexOf(id) !== -1;
     s.innerHTML = '';
     periodes.forEach(p => {
       const o = document.createElement('option');
@@ -78,20 +100,33 @@ function remplirSelectsPeriodes(ids, periodes, courante) {
       if (p === courante) o.selected = true;
       s.appendChild(o);
     });
-    s.value = courante;
+    // « Toutes les périodes » : uniquement sur les filtres de page, jamais sur un champ de formulaire
+    if (estFiltre && _toutesAutorisee) {
+      const o = document.createElement('option');
+      o.value = PERIODE_TOUTES; o.textContent = 'Toutes les périodes';
+      s.appendChild(o);
+    }
+    s.value = (estFiltre && _toutesAutorisee && selection) ? selection : courante;
   });
 }
 
 /** Raccourci : charge le contexte et remplit les selects. Renvoie {periodes, courante}. */
-async function initPeriodes(client, ids) {
+async function initPeriodes(client, ids, opts) {
+  _toutesAutorisee = !!(opts && opts.toutes);
   const ctx = await chargerContextePeriodes(client);
   // La période choisie dans le menu est mémorisée (navigateur) et reprise sur TOUTES les pages
   let memo = null;
   try { memo = localStorage.getItem(CLE_PERIODE_ACTIVE); } catch (e) {}
-  const trouvee = memo && ctx.periodes.find(p => periodeNormaliser(p) === periodeNormaliser(memo));
-  if (trouvee) ctx.courante = trouvee;
-  remplirSelectsPeriodes(ids, ctx.periodes, ctx.courante);
-  installerSelecteurPeriodeMenu(ctx.periodes, ctx.courante, ids);
+  periodesCompta = ctx.periodes;
+  let selection = ctx.courante;
+  if (memo === PERIODE_TOUTES && _toutesAutorisee) {
+    selection = PERIODE_TOUTES;            // ctx.courante reste une vraie période (formulaires, Analyse)
+  } else {
+    const trouvee = memo && ctx.periodes.find(p => periodeNormaliser(p) === periodeNormaliser(memo));
+    if (trouvee) { ctx.courante = trouvee; selection = trouvee; }
+  }
+  remplirSelectsPeriodes(ids, ctx.periodes, ctx.courante, selection);
+  installerSelecteurPeriodeMenu(ctx.periodes, ctx.courante, ids, selection);
   return ctx;
 }
 
@@ -100,7 +135,7 @@ const CLE_PERIODE_ACTIVE = 'compta_periode_active';
 const IDS_FILTRES_PERIODE = ['fl-per', 'fl-periode', 'periode-select'];   // filtres de page, remplacés par le menu
 const IDS_PERIODE_NON_SYNCHRO = ['f-per-ext'];                             // choix propres à un formulaire
 let _idsPeriodePage = [];
-function installerSelecteurPeriodeMenu(periodes, courante, ids) {
+function installerSelecteurPeriodeMenu(periodes, courante, ids, selection) {
   _idsPeriodePage = Array.from(new Set(_idsPeriodePage.concat(Array.isArray(ids) ? ids : [ids])));
   const logo = document.querySelector('.sidebar .sidebar-logo');
   if (logo) {
@@ -110,8 +145,9 @@ function installerSelecteurPeriodeMenu(periodes, courante, ids) {
       sel = document.getElementById('sb-periode');
       sel.addEventListener('change', function () { appliquerPeriodeActive(sel.value); });
     }
-    sel.innerHTML = periodes.map(function (p) { return '<option value="' + p + '">' + p + '</option>'; }).join('');
-    sel.value = courante;
+    sel.innerHTML = periodes.map(function (p) { return '<option value="' + p + '">' + p + '</option>'; }).join('')
+      + (_toutesAutorisee ? '<option value="' + PERIODE_TOUTES + '">Toutes les périodes</option>' : '');
+    sel.value = selection || courante;
     // Les filtres de période propres à la page sont masqués : un seul choix, dans le menu
     IDS_FILTRES_PERIODE.forEach(function (id) { const s = document.getElementById(id); if (s) s.style.display = 'none'; });
   }
@@ -122,6 +158,8 @@ function appliquerPeriodeActive(p) {
     if (IDS_PERIODE_NON_SYNCHRO.indexOf(id) !== -1) return;
     const s = document.getElementById(id);
     if (!s) return;
+    // « Toutes les périodes » ne s'applique qu'aux filtres : un champ de formulaire garde sa période
+    if (p === PERIODE_TOUTES && IDS_FILTRES_PERIODE.indexOf(id) === -1) return;
     s.value = p;
     if (IDS_FILTRES_PERIODE.indexOf(id) !== -1) s.dispatchEvent(new Event('change'));   // relance le calcul de la page
   });
