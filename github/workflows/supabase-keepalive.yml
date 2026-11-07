@@ -1,0 +1,39 @@
+# À placer dans le dépôt GitHub à : .github/workflows/supabase-keepalive.yml
+#
+# Empêche la mise en pause du projet Supabase (plan gratuit : pause après 7 jours
+# sans activité) en lui envoyant une requête tous les 5 jours.
+#
+# Secrets à créer dans le dépôt (Settings > Secrets and variables > Actions) :
+#   SUPABASE_URL       ex. https://xxxxxxxx.supabase.co
+#   SUPABASE_ANON_KEY  la clé « anon / public » (celle de supabase-config.js)
+
+name: Supabase keepalive
+
+on:
+  schedule:
+    # Jours 1, 6, 11, 16, 21, 26 et 31 de chaque mois à 07h00 UTC : jamais plus de 5 jours d'écart
+    - cron: '0 7 */5 * *'
+  workflow_dispatch:   # permet aussi de le lancer à la main (onglet Actions > Run workflow)
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Requête vers la base Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          # Appel d'une fonction lecture seule de la base (accessible avec la clé anon).
+          # Sans connexion elle répond « Accès refusé » (HTTP 4xx) : c'est normal, la requête
+          # a bien été exécutée par la base. Seule une absence de réponse ou une erreur 5xx est un échec.
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 --retry 3 --retry-delay 10 \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/noms_animaux_presents" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "Réponse HTTP : $code"
+          if [ "$code" -ge 500 ] || [ "$code" -eq 000 ]; then
+            echo "Échec : le projet ne répond pas (en pause ?)."; exit 1
+          fi
