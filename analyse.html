@@ -267,6 +267,7 @@
 <script src="compta-commun.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 const supabaseClient = creerClientSupabase();
 
@@ -814,6 +815,129 @@ function renderAG() {
 // Détail des opérations, Graphiques — mêmes feuilles que le fichier de l'AG,
 // calculées avec les catégories de l'onglet Paramètres (et les écritures diverses si cochées).
 // ============================================================
+// Injecte 2 camemberts Excel NATIFS (modifiables, déplaçables) dans la feuille « Graphiques » d'un .xlsx
+// généré par ExcelJS (qui ne sait pas créer de graphiques). Nécessite JSZip.
+//   buf   : ArrayBuffer/Uint8Array du classeur
+//   opts  : { per, rec:[{nom,montant}], dep:[{nom,montant}], feuilleDonnees, feuilleGraph }
+// Les graphiques lisent leurs données dans la feuille de récap (B/C = recettes, E/F = dépenses, dès la ligne 3) :
+// modifier un montant ou un libellé dans Excel met le graphique à jour.
+async function injecterGraphiquesAG(JSZipLib, buf, opts) {
+  const zip = await JSZipLib.loadAsync(buf);
+  const feuilleDonnees = opts.feuilleDonnees || 'Recap Recettes Depenses';
+  const feuilleGraph = opts.feuilleGraph || 'Graphiques';
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const PALETTE = ['2E86AB', 'F5A82A', 'F26419', '2F6690', '85B7D5', '55A630', '9B5DE5', 'C0392B', '7F8C8D', '1F3864', 'BF8F00', '00808A'];
+
+  // --- retrouver le fichier de la feuille « Graphiques » ---
+  const wbXml = await zip.file('xl/workbook.xml').async('string');
+  const relsXml = await zip.file('xl/_rels/workbook.xml.rels').async('string');
+  const mSheet = new RegExp('<sheet [^>]*name="' + feuilleGraph + '"[^>]*r:id="([^"]+)"').exec(wbXml)
+    || new RegExp('<sheet [^>]*r:id="([^"]+)"[^>]*name="' + feuilleGraph + '"').exec(wbXml);
+  if (!mSheet) throw new Error('Feuille ' + feuilleGraph + ' introuvable');
+  const rid = mSheet[1];
+  const mRel = new RegExp('<Relationship [^>]*Id="' + rid + '"[^>]*Target="([^"]+)"').exec(relsXml)
+    || new RegExp('<Relationship [^>]*Target="([^"]+)"[^>]*Id="' + rid + '"').exec(relsXml);
+  if (!mRel) throw new Error('Relation de feuille introuvable');
+  const sheetPath = 'xl/' + mRel[1].replace(/^\/?(xl\/)?/, '');
+  const sheetFile = sheetPath.split('/').pop();
+  const sheetRelsPath = 'xl/worksheets/_rels/' + sheetFile + '.rels';
+
+  // --- XML d'un camembert 3D ---
+  const refStr = (col, n) => "'" + feuilleDonnees + "'!$" + col + '$3:$' + col + '$' + (2 + n);
+  const chartXml = (titre, items, colNom, colMontant) => {
+    const n = items.length;
+    const dpts = items.map((_, i) => '<c:dPt><c:idx val="' + i + '"/><c:bubble3D val="0"/><c:spPr><a:solidFill><a:srgbClr val="' + PALETTE[i % PALETTE.length] + '"/></a:solidFill><a:ln w="9525"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:ln></c:spPr></c:dPt>').join('');
+    const catPts = items.map((it, i) => '<c:pt idx="' + i + '"><c:v>' + esc(it.nom.toUpperCase()) + '</c:v></c:pt>').join('');
+    const valPts = items.map((it, i) => '<c:pt idx="' + i + '"><c:v>' + (Math.round(it.montant * 100) / 100) + '</c:v></c:pt>').join('');
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<c:roundedCorners val="0"/>' +
+      '<c:chart>' +
+        '<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1600" b="1"/></a:pPr><a:r><a:rPr lang="fr-FR" sz="1600" b="1"><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:rPr><a:t>' + esc(titre) + '</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title>' +
+        '<c:autoTitleDeleted val="0"/>' +
+        '<c:view3D><c:rotX val="30"/><c:rotY val="0"/><c:rAngAx val="0"/><c:perspective val="30"/></c:view3D>' +
+        '<c:plotArea><c:layout/>' +
+          '<c:pie3DChart><c:varyColors val="1"/>' +
+            '<c:ser><c:idx val="0"/><c:order val="0"/>' +
+              '<c:tx><c:v>' + esc(titre) + '</c:v></c:tx>' +
+              dpts +
+              '<c:dLbls>' +
+                '<c:numFmt formatCode="#,##0.00&quot; €&quot;" sourceLinked="1"/>' +
+                '<c:spPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:ln><a:noFill/></a:ln></c:spPr>' +
+                '<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="900" b="0"><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:defRPr></a:pPr><a:endParaRPr lang="fr-FR"/></a:p></c:txPr>' +
+                '<c:dLblPos val="bestFit"/>' +
+                '<c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="1"/><c:showSerName val="0"/><c:showPercent val="1"/><c:showBubbleSize val="0"/>' +
+                '<c:separator>; </c:separator>' +
+                '<c:showLeaderLines val="1"/>' +
+                '<c:leaderLines><c:spPr><a:ln w="9525" cap="flat"><a:solidFill><a:srgbClr val="7F7F7F"/></a:solidFill><a:round/></a:ln></c:spPr></c:leaderLines>' +
+              '</c:dLbls>' +
+              '<c:cat><c:strRef><c:f>' + esc(refStr(colNom, n)) + '</c:f><c:strCache><c:ptCount val="' + n + '"/>' + catPts + '</c:strCache></c:strRef></c:cat>' +
+              '<c:val><c:numRef><c:f>' + esc(refStr(colMontant, n)) + '</c:f><c:numCache><c:formatCode>#,##0.00" €"</c:formatCode><c:ptCount val="' + n + '"/>' + valPts + '</c:numCache></c:numRef></c:val>' +
+            '</c:ser>' +
+          '</c:pie3DChart>' +
+          '<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>' +
+        '</c:plotArea>' +
+        '<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/>' +
+      '</c:chart>' +
+      '<c:spPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:ln><a:noFill/></a:ln></c:spPr>' +
+      '<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr/></a:pPr><a:endParaRPr lang="fr-FR"/></a:p></c:txPr>' +
+      '</c:chartSpace>';
+  };
+
+  const graphiques = [];
+  if (opts.rec && opts.rec.length) graphiques.push({ titre: 'Recettes ' + opts.per, items: opts.rec, nom: 'B', val: 'C', col: 1 });
+  if (opts.dep && opts.dep.length) graphiques.push({ titre: 'Dépenses ' + opts.per, items: opts.dep, nom: 'E', val: 'F', col: 14 });
+  if (!graphiques.length) return buf;
+
+  // numérotation libre (au cas où le classeur contiendrait déjà des graphiques / dessins)
+  const existe = p => !!zip.file(p);
+  let numChart = 1; while (existe('xl/charts/chart' + numChart + '.xml')) numChart++;
+  let numDraw = 1; while (existe('xl/drawings/drawing' + numDraw + '.xml')) numDraw++;
+
+  let ancres = '', drawRels = '', ct = '';
+  graphiques.forEach((g, i) => {
+    const cn = numChart + i;
+    zip.file('xl/charts/chart' + cn + '.xml', chartXml(g.titre, g.items, g.nom, g.val));
+    ct += '<Override PartName="/xl/charts/chart' + cn + '.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>';
+    drawRels += '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart' + cn + '.xml"/>';
+    ancres += '<xdr:twoCellAnchor editAs="oneCell">' +
+      '<xdr:from><xdr:col>' + g.col + '</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>1</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>' +
+      '<xdr:to><xdr:col>' + (g.col + 12) + '</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>36</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>' +
+      '<xdr:graphicFrame macro=""><xdr:nvGraphicFramePr><xdr:cNvPr id="' + (i + 2) + '" name="' + esc(g.titre) + '"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr>' +
+      '<xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm>' +
+      '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rId' + (i + 1) + '"/></a:graphicData></a:graphic>' +
+      '</xdr:graphicFrame><xdr:clientData/></xdr:twoCellAnchor>';
+  });
+  zip.file('xl/drawings/drawing' + numDraw + '.xml',
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">' + ancres + '</xdr:wsDr>');
+  zip.file('xl/drawings/_rels/drawing' + numDraw + '.xml.rels',
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + drawRels + '</Relationships>');
+  ct += '<Override PartName="/xl/drawings/drawing' + numDraw + '.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>';
+
+  // [Content_Types].xml
+  let ctXml = await zip.file('[Content_Types].xml').async('string');
+  ctXml = ctXml.replace('</Types>', ct + '</Types>');
+  zip.file('[Content_Types].xml', ctXml);
+
+  // relation feuille -> dessin
+  let sheetRels = existe(sheetRelsPath) ? await zip.file(sheetRelsPath).async('string')
+    : '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>';
+  let k = 1; while (new RegExp('Id="rId' + k + '"').test(sheetRels)) k++;
+  const ridDraw = 'rId' + k;
+  sheetRels = sheetRels.replace('</Relationships>', '<Relationship Id="' + ridDraw + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing' + numDraw + '.xml"/></Relationships>');
+  zip.file(sheetRelsPath, sheetRels);
+
+  // balise <drawing> dans la feuille (avant legacyDrawing / tableParts / extLst, sinon à la fin)
+  let sx = await zip.file(sheetPath).async('string');
+  if (!/xmlns:r=/.test(sx)) sx = sx.replace('<worksheet ', '<worksheet xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ');
+  const balise = '<drawing r:id="' + ridDraw + '"/>';
+  const m = /<(legacyDrawing|legacyDrawingHF|picture|oleObjects|controls|webPublishItems|tableParts|extLst)[ >\/]/.exec(sx);
+  sx = m ? sx.slice(0, m.index) + balise + sx.slice(m.index) : sx.replace('</worksheet>', balise + '</worksheet>');
+  zip.file(sheetPath, sx);
+
+  return await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
+}
+
 async function exporterAG() {
   if (typeof ExcelJS === 'undefined') { showToast('Bibliothèque Excel non chargée (connexion ?)'); return; }
   const per = activePer;
@@ -928,10 +1052,17 @@ async function exporterAG() {
       options: { animation: false, responsive: false, plugins: { title: { display: true, text: titre, font: { size: 16 } }, legend: { position: 'right' } } } });
     const img = cv.toDataURL('image/png'); ch.destroy(); return img;
   };
-  if (rec.length) { const id = wb.addImage({ base64: camembert('RECETTES ' + per, rec), extension: 'png' }); w4.addImage(id, { tl: { col: 1, row: 1 }, ext: { width: 720, height: 440 } }); }
-  if (dep.length) { const id = wb.addImage({ base64: camembert('DEPENSES ' + per, dep), extension: 'png' }); w4.addImage(id, { tl: { col: 1, row: 25 }, ext: { width: 720, height: 440 } }); }
+  // Camemberts Excel NATIFS (ajoutés après coup, voir injecterGraphiquesAG) ; images PNG seulement en secours.
+  if (typeof JSZip === 'undefined') {
+    if (rec.length) { const id = wb.addImage({ base64: camembert('RECETTES ' + per, rec), extension: 'png' }); w4.addImage(id, { tl: { col: 1, row: 1 }, ext: { width: 720, height: 440 } }); }
+    if (dep.length) { const id = wb.addImage({ base64: camembert('DEPENSES ' + per, dep), extension: 'png' }); w4.addImage(id, { tl: { col: 1, row: 25 }, ext: { width: 720, height: 440 } }); }
+  }
 
-  const buf = await wb.xlsx.writeBuffer();
+  let buf = await wb.xlsx.writeBuffer();
+  if (typeof JSZip !== 'undefined') {
+    try { buf = await injecterGraphiquesAG(JSZip, buf, { per, rec, dep }); }
+    catch (e) { console.error('Graphiques Excel', e); showToast('Fichier généré SANS graphiques (' + e.message + ')'); }
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
   a.download = 'Chiffres_AG_' + per.replace(/\s/g, '') + '.xlsx'; a.click();
@@ -1337,31 +1468,58 @@ function renderAdoptions() {
 let evenementsConfig = null, evenementActif = 'global';
 function _normCat(s) { return normFold(s); }
 function _evenementsData() {
+  // Même règles que la Synthèse (computeAgResults) pour que les totaux concordent :
+  //  - sources lues = celles cochées dans les catégories de la Synthèse qui portent le type « Événement »
+  //    (si aucune catégorie n'en porte : banque, caisses, remises) ;
+  //  - une ligne banque/caisse est classée avec le type et le descriptif de sa FACTURE ou de son CHÈQUE rapproché(e) ;
+  //  - ligne banque ignorée si : remise de chèques (comptée par le détail de la remise), facture enregistrée (comptée
+  //    une fois, à la période de la facture), chèque quand la source « Chèques » est cochée ;
+  //  - factures d'événement : toujours comptées, à leur période ; chèques : seulement si « Chèques » est coché ;
+  //  - écritures diverses : comptées si la case « Inclure les écritures diverses » est cochée.
   const map = {};
-  [...allCaisse.filter(r=>periodeNormaliser(r.periode)===periodeNormaliser(activePer)), ...allBanque.filter(r=>!banqueEstReglementDocument(r) && periodeNormaliser(r.periode)===periodeNormaliser(activePer))].forEach(r => {
-    if (!_normCat(r.type_mouvement).includes('evenement')) return;
-    const name = r.description || r.libelle || 'Événement';
+  const dePer = r => periodeNormaliser(r.periode) === periodeNormaliser(activePer);
+  const estEvt = t => _normCat(t).includes('evenement');
+  const srcs = new Set();
+  agConfig.forEach(c => { if ((c.types || []).some(estEvt)) (c.sources || ['banque','caisse']).forEach(x => srcs.add(x)); });
+  if (!srcs.size) ['banque','caisse','caisse2','remises'].forEach(x => srcs.add(x));
+
+  const facturesParNumero = {}; allFactures.forEach(f => { if (f.numero_facture) facturesParNumero[f.numero_facture] = f; });
+  const chequesParId = {}; allCheques.forEach(c => { chequesParId[c.id] = c; });
+  function resoudre(r) {
+    if (r.ref_cheque && chequesParId[r.ref_cheque]) { const c = chequesParId[r.ref_cheque]; return { type: c.type_mouvement, description: c.description }; }
+    const numFact = String(r.numero_facture || '').split(',')[0].trim();
+    if (numFact && facturesParNumero[numFact]) { const f = facturesParNumero[numFact]; return { type: f.categorie, description: f.description }; }
+    return { type: r.type_mouvement, description: r.description };
+  }
+  function banqueIgnoree(r) {
+    if (r.ref_remise) return true;
+    if (String(r.id).includes('_lien')) return false;
+    if (String(r.numero_facture || '').split(',').some(n => n.trim() && facturesParNumero[n.trim()])) return true;
+    return !!(r.ref_cheque && srcs.has('cheques'));
+  }
+  const ajouter = (name, ent, sor, mvt) => {
     if (!map[name]) map[name] = { entrees:0, sorties:0, mouvements:[] };
-    map[name].entrees += fmtN(r.credit); map[name].sorties += fmtN(r.debit); map[name].mouvements.push(r);
+    map[name].entrees += ent; map[name].sorties += sor; map[name].mouvements.push(mvt);
+  };
+  const ligne = r => { const x = resoudre(r); if (estEvt(x.type)) ajouter(x.description || r.libelle || 'Événement', fmtN(r.credit), fmtN(r.debit), r); };
+
+  allCaisse.filter(r => dePer(r) && !r.ref_remise && ((r.caisse === 'caisse2') ? srcs.has('caisse2') : srcs.has('caisse'))).forEach(ligne);
+  if (srcs.has('banque')) allBanque.filter(r => dePer(r) && !banqueIgnoree(r)).forEach(ligne);
+  if (srcs.has('cheques')) allCheques.filter(dePer).forEach(r => {
+    if (!estEvt(r.type_mouvement)) return;
+    ajouter(r.description || r.beneficiaire || 'Événement', 0, fmtN(r.montant), { date_mouvement:r.date_emission, libelle:r.beneficiaire || r.description, debit:fmtN(r.montant), credit:0 });
   });
-  // Factures et chèques d'événement : comptés ici (à leur période), leur ligne banque est ignorée
-  allFactures.filter(r=>periodeNormaliser(r.periode)===periodeNormaliser(activePer)).forEach(r => {
-    if (!_normCat(r.categorie).includes('evenement')) return;
-    const name = r.description || r.fournisseur || 'Événement';
-    if (!map[name]) map[name] = { entrees:0, sorties:0, mouvements:[] };
-    map[name].sorties += fmtN(r.montant_ttc); map[name].mouvements.push({ date_mouvement:r.date_facture, libelle:r.fournisseur||r.description, debit:fmtN(r.montant_ttc), credit:0 });
+  if (srcs.has('remises')) allRemiseDetails.filter(dePer).forEach(r => {
+    if (!estEvt(r.type_mouvement)) return;
+    ajouter(r.description || r.type_mouvement || 'Événement', fmtN(r.montant), 0, { ...r, _remise:true });
   });
-  allCheques.filter(r=>periodeNormaliser(r.periode)===periodeNormaliser(activePer)).forEach(r => {
-    if (!_normCat(r.type_mouvement).includes('evenement')) return;
-    const name = r.description || r.beneficiaire || 'Événement';
-    if (!map[name]) map[name] = { entrees:0, sorties:0, mouvements:[] };
-    map[name].sorties += fmtN(r.montant); map[name].mouvements.push({ date_mouvement:r.date_emission, libelle:r.beneficiaire||r.description, debit:fmtN(r.montant), credit:0 });
+  allFactures.filter(dePer).forEach(r => {
+    if (!estEvt(r.categorie)) return;
+    ajouter(r.description || r.fournisseur || 'Événement', 0, fmtN(r.montant_ttc), { date_mouvement:r.date_facture, libelle:r.fournisseur || r.description, debit:fmtN(r.montant_ttc), credit:0 });
   });
-  allRemiseDetails.filter(r=>periodeNormaliser(r.periode)===periodeNormaliser(activePer)).forEach(r => {
-    if (!_normCat(r.type_mouvement).includes('evenement')) return;
-    const name = r.description || r.type_mouvement || 'Événement';
-    if (!map[name]) map[name] = { entrees:0, sorties:0, mouvements:[] };
-    map[name].entrees += fmtN(r.montant); map[name].mouvements.push({...r, _remise:true});
+  if (inclureOD) allOD.filter(dePer).forEach(r => {
+    if (!estEvt(r.type_mouvement)) return;
+    ajouter(r.description || r.libelle || 'Événement', fmtN(r.credit), fmtN(r.debit), { date_mouvement:r.date_ecriture, libelle:'OD — ' + r.libelle + (r.motif ? ' (' + r.motif + ')' : ''), credit:fmtN(r.credit), debit:fmtN(r.debit) });
   });
   return map;
 }
@@ -1371,6 +1529,7 @@ function _tousLesEvenementsConnus() {
   allFactures.forEach(r => { if (_normCat(r.categorie).includes('evenement')) set.add(r.description || r.fournisseur || 'Événement'); });
   allCheques.forEach(r => { if (_normCat(r.type_mouvement).includes('evenement')) set.add(r.description || r.beneficiaire || 'Événement'); });
   allRemiseDetails.forEach(r => { if (_normCat(r.type_mouvement).includes('evenement')) set.add(r.description || r.type_mouvement || 'Événement'); });
+  allOD.forEach(r => { if (_normCat(r.type_mouvement).includes('evenement')) set.add(r.description || r.libelle || 'Événement'); });
   return [...set];
 }
 async function loadEvenementsConfig() {
@@ -1409,7 +1568,14 @@ async function renderEvenements() {
       ${rows.map(r=>`<tr><td style="font-size:10px;color:var(--text-3);">${(r._remise?r.date_remise:r.date_mouvement)||'—'}</td><td>${escH(r._remise?(r.donateur||''):(r.libelle||''))}</td><td class="r amount-c">${fmtN(r._remise?r.montant:r.credit)?fmt(fmtN(r._remise?r.montant:r.credit)):'—'}</td><td class="r amount-d">${fmtN(r.debit)?fmt(fmtN(r.debit)):'—'}</td></tr>`).join('')}
       </tbody></table></div>`;
   }
-  wrap.innerHTML = tabs+body;
+  // Écart possible avec la Synthèse : factures / OD d'événement qu'aucune catégorie de la Synthèse ne reprend
+  const pris = new Set(); computeAgResults().forEach(c => c.ops.forEach(o => { if (o.id) pris.add(o.id); }));
+  const dePerE = r => periodeNormaliser(r.periode) === periodeNormaliser(activePer);
+  const facSans = allFactures.filter(r => dePerE(r) && _normCat(r.categorie).includes('evenement') && !pris.has(r.id));
+  const odSans = inclureOD ? allOD.filter(r => dePerE(r) && _normCat(r.type_mouvement).includes('evenement') && !pris.has(r.id)) : [];
+  const alerte = (facSans.length || odSans.length)
+    ? `<div class="warn-box" style="margin:10px 0;"><i class="ti ti-alert-triangle"></i> Ces totaux contiennent ${[facSans.length ? '<b>' + facSans.length + ' facture(s)</b> (' + fmt(facSans.reduce((a,r)=>a+fmtN(r.montant_ttc),0)) + ')' : '', odSans.length ? '<b>' + odSans.length + ' écriture(s) diverse(s)</b> (net ' + fmt(odSans.reduce((a,r)=>a+fmtN(r.credit)-fmtN(r.debit),0)) + ')' : ''].filter(Boolean).join(' et ')} qu'aucune catégorie de la Synthèse ne reprend : le total de la Synthèse sera donc différent. Descriptifs concernés : ${[...new Set([...facSans, ...odSans].map(r => escH(r.description || '(vide)')))].join(', ')}.</div>` : '';
+  wrap.innerHTML = tabs + alerte + body;
 }
 
 // Panneau de config Événements, déplacé dans Paramètres > Événements
