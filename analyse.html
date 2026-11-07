@@ -959,6 +959,9 @@ async function exporterAG() {
   const EUR = '#,##0.00" €"', EUR_R = '#,##0.00" €";[Red]-#,##0.00" €"';
   const BLEU = 'FF2F75B5', ORANGE = 'FFC65911', MARINE = 'FF1F3864', CLAIR = 'FFD9E2F3';
   const wb = new ExcelJS.Workbook();
+  wb.calcProperties = { fullCalcOnLoad: true };      // Excel recalcule toutes les formules à l'ouverture
+  // Source unique des chiffres : l'onglet « Détail des opérations ». Les autres onglets et les graphiques le lisent par formules.
+  const SD = "'Détail des opérations'", SR = "'Recap Recettes Depenses'";
   const fill = c => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: c } });
   const entete = cell => { cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }; cell.fill = fill(MARINE); };
 
@@ -971,8 +974,10 @@ async function exporterAG() {
   const n = Math.max(rec.length, dep.length, 1);
   for (let i = 0; i < n; i++) {
     const r = 3 + i;
-    if (rec[i]) { w1.getCell('B' + r).value = rec[i].nom.toUpperCase(); w1.getCell('C' + r).value = rec[i].montant; w1.getCell('C' + r).numFmt = EUR; }
-    if (dep[i]) { w1.getCell('E' + r).value = dep[i].nom.toUpperCase(); w1.getCell('F' + r).value = dep[i].montant; w1.getCell('F' + r).numFmt = EUR; }
+    if (rec[i]) { w1.getCell('B' + r).value = rec[i].nom.toUpperCase(); rec[i].ref = SR + '!C' + r;
+      w1.getCell('C' + r).value = { formula: `MAX(0,SUMIFS(${SD}!$G:$G,${SD}!$A:$A,B${r}))`, result: rec[i].montant }; w1.getCell('C' + r).numFmt = EUR; }
+    if (dep[i]) { w1.getCell('E' + r).value = dep[i].nom.toUpperCase(); dep[i].ref = SR + '!F' + r;
+      w1.getCell('F' + r).value = { formula: `ABS(MIN(0,SUMIFS(${SD}!$G:$G,${SD}!$A:$A,E${r})))`, result: dep[i].montant }; w1.getCell('F' + r).numFmt = EUR; }
   }
   const rt = 3 + n;
   w1.getCell('B' + rt).value = 'RECETTES'; w1.getCell('C' + rt).value = { formula: `SUM(C3:C${rt - 1})`, result: totRec };
@@ -989,6 +994,17 @@ async function exporterAG() {
   w1.getCell('E' + rtr).value = '(Solde Banque + Caisse 1 + Caisse 2)';
   w1.getCell('E' + (rtr + 1)).value = 'Banque ' + sBanque.toFixed(2) + ' € · Caisse 1 ' + sC1.toFixed(2) + ' € · Caisse 2 ' + sC2.toFixed(2) + ' €';
   w1.getCell('E' + (rtr + 1)).font = { size: 9, color: { argb: 'FF6B5B4D' } };
+  // Contrôle : tout montant du Détail doit appartenir à une catégorie listée ci-dessus (sinon il n'est compté nulle part)
+  const termes = [];
+  if (rec.length) termes.push(`SUMPRODUCT(SUMIF(${SD}!$A:$A,$B$3:$B$${2 + rec.length},${SD}!$G:$G))`);
+  if (dep.length) termes.push(`SUMPRODUCT(SUMIF(${SD}!$A:$A,$E$3:$E$${2 + dep.length},${SD}!$G:$G))`);
+  const rch = rtr + 4;
+  w1.getCell('B' + rch).value = 'CONTRÔLE : montants du Détail hors catégorie';
+  w1.getCell('C' + rch).value = { formula: `ROUND(SUM(${SD}!$G:$G)${termes.map(t => '-' + t).join('')},2)`, result: 0 }; w1.getCell('C' + rch).numFmt = EUR_R;
+  w1.getCell('D' + rch).value = { formula: `IF(ABS(C${rch})<0.005,"OK","⚠ vérifier la colonne Catégorie du Détail")`, result: 'OK' };
+  w1.getCell('B' + rch).font = { size: 9, color: { argb: 'FF6B5B4D' } }; w1.getCell('D' + rch).font = { size: 9, bold: true };
+  w1.getCell('B' + (rch + 1)).value = 'Les montants ci-dessus sont calculés depuis l\'onglet « Détail des opérations » : corrigez-les là-bas.';
+  w1.getCell('B' + (rch + 1)).font = { italic: true, size: 9, color: { argb: 'FF6B5B4D' } };
 
   // ---- Feuille 2 : Synthèse détaillée ----
   const w2 = wb.addWorksheet('Synthèse détaillée');
@@ -1003,7 +1019,7 @@ async function exporterAG() {
     const debut = r2;
     lignes.forEach(l => {
       w2.getCell('B' + r2).value = l.nom;
-      w2.getCell('C' + r2).value = l.montant; w2.getCell('C' + r2).numFmt = EUR_R;
+      w2.getCell('C' + r2).value = l.ref ? { formula: l.ref, result: l.montant } : l.montant; w2.getCell('C' + r2).numFmt = EUR_R;
       w2.getCell('D' + r2).value = { formula: `IF(C${debut + lignes.length}=0,0,C${r2}/C${debut + lignes.length})`, result: total ? l.montant / total : 0 }; w2.getCell('D' + r2).numFmt = '0.0%';
       r2++;
     });
@@ -1015,8 +1031,8 @@ async function exporterAG() {
   };
   w2.getCell('B4').value = 'Bilan global'; w2.getCell('B4').font = { bold: true };
   ['Bilan global', 'Montant'].forEach((h, i) => { const c = w2.getCell(5, 2 + i); c.value = h; entete(c); });
-  w2.getCell('B6').value = 'Total recettes'; w2.getCell('C6').value = totRec;
-  w2.getCell('B7').value = 'Total dépenses'; w2.getCell('C7').value = totDep;
+  w2.getCell('B6').value = 'Total recettes'; w2.getCell('C6').value = { formula: SR + '!C' + rt, result: totRec };
+  w2.getCell('B7').value = 'Total dépenses'; w2.getCell('C7').value = { formula: SR + '!F' + rt, result: totDep };
   w2.getCell('B8').value = 'Solde (recettes − dépenses)'; w2.getCell('C8').value = { formula: 'C6-C7', result: totRec - totDep };
   ['C6', 'C7', 'C8'].forEach(a => { w2.getCell(a).numFmt = EUR_R; w2.getCell(a).font = { bold: true }; });
   ['B8', 'C8'].forEach(a => { w2.getCell(a).fill = fill(CLAIR); w2.getCell(a).font = { bold: true }; });
@@ -1028,6 +1044,7 @@ async function exporterAG() {
   w2.getCell('B' + (r2 + 1)).value = '• Généré le ' + new Date().toLocaleDateString('fr-FR') + ' depuis la page Analyse (onglet Synthèse), période ' + per + '.';
   w2.getCell('B' + (r2 + 2)).value = '• ' + (inclureOD ? 'Les écritures diverses (OD) sont incluses.' : 'Les écritures diverses (OD) ne sont PAS incluses.');
   w2.getCell('B' + (r2 + 3)).value = '• La trésorerie (feuille « Recap ») = soldes initiaux de la Configuration + mouvements de la période.';
+  w2.getCell('B' + (r2 + 4)).value = '• Tous les montants et les graphiques sont liés à l\'onglet « Détail des opérations » : corrigez une valeur (montant, catégorie) dans cet onglet, le reste se met à jour.';
 
   // ---- Feuille 3 : Détail des opérations ----
   const w3 = wb.addWorksheet('Détail des opérations');
@@ -1042,6 +1059,14 @@ async function exporterAG() {
     });
   });
   w3.views = [{ state: 'frozen', ySplit: 1 }]; w3.autoFilter = 'A1:G' + Math.max(2, r3 - 1);
+  // Liste des catégories (menu déroulant de la colonne A) : évite une faute de frappe qui sortirait la ligne des totaux
+  const cats = [...new Set(results.filter(c => c.ops.length || c.total !== 0).map(c => c.cat))];
+  w3.getColumn('I').width = 30;
+  w3.getCell('I1').value = 'Liste des catégories (ne pas modifier)'; entete(w3.getCell('I1'));
+  cats.forEach((c, i) => { w3.getCell('I' + (2 + i)).value = c; });
+  for (let rr = 2; rr <= r3 + 200; rr++) w3.getCell('A' + rr).dataValidation = { type: 'list', allowBlank: true, formulae: ['$I$2:$I$' + (1 + cats.length)], showErrorMessage: true, errorTitle: 'Catégorie inconnue', error: 'Choisissez une catégorie de la liste (colonne I).' };
+  w3.getCell('K1').value = 'Les autres onglets lisent cet onglet : modifier un montant ou une catégorie met à jour Recap, Synthèse et Graphiques.';
+  w3.getCell('K1').font = { italic: true, size: 9, color: { argb: 'FF6B5B4D' } };
 
   // ---- Feuille 4 : Graphiques (images générées avec Chart.js) ----
   const w4 = wb.addWorksheet('Graphiques');
