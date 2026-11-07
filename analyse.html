@@ -532,8 +532,21 @@ let agConfig = null, agOpenCats = new Set();
 async function loadAgConfig() {
   const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'ag_categories').maybeSingle();
   agConfig = (data && Array.isArray(data.valeur) && data.valeur.length) ? data.valeur : AG_CONFIG_DEFAUT;
+  ordonnerAgConfig();
+}
+// Toutes les recettes ensemble, puis toutes les dépenses ensemble (l'ordre choisi à l'intérieur de chaque groupe est conservé)
+function ordonnerAgConfig() {
+  agConfig = agConfig.filter(c => c.sens === 'recette').concat(agConfig.filter(c => c.sens !== 'recette'));
+}
+// Monte (-1) ou descend (+1) une catégorie, uniquement au sein de son groupe (recettes ou dépenses)
+function deplacerAgCategorie(i, d) {
+  const j = i + d;
+  if (j < 0 || j >= agConfig.length || agConfig[j].sens !== agConfig[i].sens) return;
+  [agConfig[i], agConfig[j]] = [agConfig[j], agConfig[i]];
+  renderAgConfigPanel();
 }
 async function saveAgConfig() {
+  ordonnerAgConfig();
   await saveConfigKey('ag_categories', agConfig);
   showToast('Catégories enregistrées !');
   renderAG();
@@ -567,7 +580,7 @@ function renderAgConfigPanel() {
       la même somme (une fois à l'émission du chèque/de la remise, une fois à son encaissement en banque). Ne les cumulez que si
       vous êtes sûr que les types/descriptions utilisés ne se recoupent jamais entre les deux.
     </div>
-    ${agConfig.map((cat, i) => renderAgCategoryRow(cat, i, types, descriptions)).join('')}
+    ${agConfig.map((cat, i) => ((i === 0 || agConfig[i-1].sens !== cat.sens) ? `<div style="font-size:12px;font-weight:700;margin:${i===0?'0':'14px'} 0 6px;color:${cat.sens==='recette'?'var(--green)':'var(--red)'};text-transform:uppercase;letter-spacing:.4px;">${cat.sens==='recette'?'Recettes':'Dépenses'}</div>` : '') + renderAgCategoryRow(cat, i, types, descriptions)).join('')}
     <button class="btn btn-secondary btn-sm" onclick="ajouterAgCategorie()"><i class="ti ti-plus"></i> Ajouter une catégorie</button>
     <button class="btn btn-primary btn-sm" onclick="saveAgConfig()" style="margin-left:8px;"><i class="ti ti-device-floppy"></i> Enregistrer</button>
   `;
@@ -586,10 +599,12 @@ function renderAgCategoryRow(cat, i, types, descriptions) {
   return `<div style="border:0.5px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;">
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
       <input type="text" value="${escH(cat.cat)}" onchange="agConfig[${i}].cat=this.value" style="flex:3;min-width:0;font-size:12px;font-weight:600;padding:5px 8px;border:0.5px solid var(--border-mid);border-radius:6px;">
-      <select onchange="agConfig[${i}].sens=this.value" style="flex:0 0 100px;font-size:11px;padding:5px 6px;border:0.5px solid var(--border-mid);border-radius:6px;">
+      <select onchange="agConfig[${i}].sens=this.value;ordonnerAgConfig();renderAgConfigPanel();" style="flex:0 0 100px;font-size:11px;padding:5px 6px;border:0.5px solid var(--border-mid);border-radius:6px;">
         <option value="recette" ${cat.sens==='recette'?'selected':''}>Recette</option>
         <option value="depense" ${cat.sens==='depense'?'selected':''}>Dépense</option>
       </select>
+      <button onclick="deplacerAgCategorie(${i},-1)" title="Monter" ${(i===0||agConfig[i-1].sens!==cat.sens)?'disabled':''} style="flex:0 0 auto;background:none;border:0.5px solid var(--border-mid);border-radius:6px;cursor:pointer;padding:3px 7px;opacity:${(i===0||agConfig[i-1].sens!==cat.sens)?'.3':'1'};">▲</button>
+      <button onclick="deplacerAgCategorie(${i},1)" title="Descendre" ${(i===agConfig.length-1||agConfig[i+1].sens!==cat.sens)?'disabled':''} style="flex:0 0 auto;background:none;border:0.5px solid var(--border-mid);border-radius:6px;cursor:pointer;padding:3px 7px;opacity:${(i===agConfig.length-1||agConfig[i+1].sens!==cat.sens)?'.3':'1'};">▼</button>
       <button onclick="agConfig.splice(${i},1);renderAgConfigPanel();" style="flex:0 0 auto;color:var(--red);background:none;border:none;cursor:pointer;"><i class="ti ti-trash"></i></button>
     </div>
     ${doubleCountRisk ? '<div class="warn-box"><i class="ti ti-alert-triangle"></i> Banque + Chèques/Remises cochés ensemble — risque de double comptage, voir note ci-dessus.</div>' : ''}
@@ -619,6 +634,7 @@ function toggleAgDescription(i, description, checked) {
 }
 function ajouterAgCategorie() {
   agConfig.push({ cat: 'Nouvelle catégorie', sens: 'depense', sources: ['banque','caisse'], types: [], descriptions: [] });
+  ordonnerAgConfig();            // rejoint la fin du groupe « Dépenses » ; si vous la passez en « Recette », elle rejoint les recettes
   renderAgConfigPanel();
 }
 
