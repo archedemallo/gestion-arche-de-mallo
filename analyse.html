@@ -486,6 +486,9 @@ async function switchParamTab(tab) {
 const fmt = v => (parseFloat(v)||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
 const fmtS = v => { if (v===null||v===undefined||v==='') return '—'; const n=parseFloat(v); return isNaN(n) ? '—' : fmt(n); };
 const fmtN = v => parseFloat(v) || 0;
+// Texte placé entre apostrophes dans un onclick/onchange : l'apostrophe est protégée AVANT l'échappement HTML
+// (sinon « Produits d'entretien » casse le JavaScript de la ligne et rien ne s'ouvre)
+function jsArg(s) { return escH(String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'")); }
 function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
 function showToast(m) { const t=document.createElement('div'); t.style.cssText='position:fixed;bottom:20px;right:20px;background:var(--green);color:white;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:500;z-index:999;'; t.textContent=m; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
 async function saveConfigKey(cle, valeur) {
@@ -613,7 +616,7 @@ function renderAgFilterDetails(label, i, items, selected, toggleFn) {
   const nbSel = selected.length;
   return `<details class="ag-filter-details" ${nbSel ? 'open' : ''}>
     <summary><i class="ti ti-plus"></i><i class="ti ti-minus"></i> ${label} <span class="ag-filter-count">${nbSel ? nbSel+'/'+items.length : 'tous'}</span></summary>
-    <div class="cb-grid">${items.map(t => `<label class="cb-item"><input type="checkbox" ${selected.includes(t)?'checked':''} onchange="${toggleFn}(${i},'${escH(t).replace(/'/g,"\\'")}',this.checked)"> ${escH(t)}</label>`).join('') || `<span style="color:var(--text-3);">Aucun élément trouvé</span>`}</div>
+    <div class="cb-grid">${items.map(t => `<label class="cb-item"><input type="checkbox" ${selected.includes(t)?'checked':''} onchange="${toggleFn}(${i},'${jsArg(t)}',this.checked)"> ${escH(t)}</label>`).join('') || `<span style="color:var(--text-3);">Aucun élément trouvé</span>`}</div>
   </details>`;
 }
 function renderAgCategoryRow(cat, i, types, descriptions) {
@@ -695,6 +698,26 @@ function computeAgResults() {
   // sous les catégories qui lisent la source « banque » (la ligne banque elle-même est ignorée).
   const { factures: facturesRapprochees, cheques: chequesRapproches } = documentsReglesParBanque();
 
+  // Une ligne banque n'est ignorée que si le MÊME argent est déjà compté ailleurs :
+  //  - remise de chèques : comptée par le détail de la remise ;
+  //  - facture enregistrée (son numéro existe dans les Factures) : comptée UNE fois, à la période de la facture ;
+  //  - chèque : ignorée seulement si la catégorie lit les Chèques (case cochée). Sinon la ligne banque est comptée normalement.
+  function ligneBanqueIgnoree(r, srcs) {
+    if (r.ref_remise) return true;
+    if (String(r.id).includes('_lien')) return false;
+    if (String(r.numero_facture || '').split(',').some(n => n.trim() && facturesParNumero[n.trim()])) return true;
+    return !!(r.ref_cheque && srcs.includes('cheques'));
+  }
+  // Catégories « précises » (avec type et/ou descriptif) : une facture qu'elles classent n'est jamais reprise par une catégorie fourre-tout
+  const catsPrecises = agConfig.filter(c => (c.types||[]).length || (c.descriptions||[]).length);
+  function factureClassee(f) {
+    const t = (f.categorie||'').toLowerCase().trim(), d = (f.description||'').toLowerCase().trim();
+    return catsPrecises.some(c => {
+      const ts = (c.types||[]).map(x=>x.toLowerCase().trim()), ds = (c.descriptions||[]).map(x=>x.toLowerCase().trim());
+      return (!ts.length || ts.includes(t)) && (!ds.length || ds.includes(d));
+    });
+  }
+
   return agConfig.map(cat => {
     const srcs = cat.sources || ['banque','caisse'];
     const types = (cat.types||[]).map(t=>t.toLowerCase().trim());
@@ -706,34 +729,29 @@ function computeAgResults() {
     const ops = [];
     if (srcs.includes('caisse')) caisse1.forEach(r => { if (r.ref_remise) return; const {type,description} = resoudre(r); if (matchType(type) && matchDescription(description)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Caisse 1',date:r.date_mouvement,libelle:r.libelle,type,montant:v});} } });
     if (srcs.includes('caisse2')) caisse2.forEach(r => { if (r.ref_remise) return; const {type,description} = resoudre(r); if (matchType(type) && matchDescription(description)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Caisse 2',date:r.date_mouvement,libelle:r.libelle,type,montant:v});} } });
-    if (srcs.includes('banque')) banque.forEach(r => { if (banqueEstReglementDocument(r)) return; const {type,description} = resoudre(r); if (matchType(type) && matchDescription(description)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Banque',date:r.date_mouvement,libelle:r.libelle_complementaire||r.description||r.libelle,type,montant:v});} } });
-    // Chèques : « Chèques » coché = tous les chèques de la période (réglés ou non). Seul « Banque » coché =
-    // uniquement ceux déjà encaissés en banque (la ligne banque elle-même est ignorée). Jamais comptés deux fois.
-    // Catégorie fourre-tout (aucun type ni descriptif choisi) : les chèques déjà encaissés restent exclus, comme avant.
+    if (srcs.includes('banque')) banque.forEach(r => { if (ligneBanqueIgnoree(r, srcs)) return; const {type,description} = resoudre(r); if (matchType(type) && matchDescription(description)) { const v=fmtN(r.credit)-fmtN(r.debit); if(v){total+=v;ops.push({src:'Banque',date:r.date_mouvement,libelle:r.libelle_complementaire||r.description||r.libelle,type,montant:v});} } });
+    // Chèques : comptés UNIQUEMENT si « Chèques » est coché pour cette catégorie (à la période du chèque).
+    // Catégorie fourre-tout (ni type ni descriptif) : les chèques déjà encaissés restent exclus, comme avant.
     const fourreTout = !types.length && !descs.length;
-    cheques.forEach(r => {
-      const reglee = chequesRapproches.has(r.id);
-      const compte = srcs.includes('cheques') ? !(reglee && fourreTout) : (srcs.includes('banque') && reglee);
-      if (!compte) return;
+    if (srcs.includes('cheques')) cheques.forEach(r => {
+      if (fourreTout && chequesRapproches.has(r.id)) return;
       if (matchType(r.type_mouvement) && matchDescription(r.description)) { const v=-fmtN(r.montant); if(v){total+=v;ops.push({src:'Chèque',date:r.date_emission,libelle:r.beneficiaire,type:r.type_mouvement,montant:v});} }
     });
     if (srcs.includes('remises')) remises.forEach(r => { if (matchType(r.type_mouvement) && matchDescription(r.description)) { const v=fmtN(r.montant); if(v){total+=v;ops.push({src:'Remise',date:r.date_remise,libelle:r.donateur||r.description,type:r.type_mouvement,montant:v});} } });
-    // Écritures diverses : comptées dans toute catégorie qui lit déjà banque/caisse/chèques/remises
-    // (même filtrage par type et description). Une catégorie qui ne lit que les factures les ignore.
-    if (srcs.some(s => ['banque','caisse','caisse2','cheques','remises'].includes(s))) ods.forEach(r => {
+    // Écritures diverses : comptées dans toute catégorie dont le type et le descriptif correspondent
+    // (une catégorie fourre-tout, sans type ni descriptif, ne les reprend que si elle lit banque/caisse/chèques/remises).
+    if (!fourreTout || srcs.some(s => ['banque','caisse','caisse2','cheques','remises'].includes(s))) ods.forEach(r => {
       if (matchType(r.type_mouvement) && matchDescription(r.description)) {
         const v = fmtN(r.credit) - fmtN(r.debit);
-        if (v) { total += v; ops.push({ src:'OD', date:r.date_ecriture, libelle:r.libelle + (r.motif ? ' — ' + r.motif : ''), type:r.type_mouvement, montant:v }); }
+        if (v) { total += v; ops.push({ src:'OD', id:r.id, date:r.date_ecriture, libelle:r.libelle + (r.motif ? ' — ' + r.motif : ''), type:r.type_mouvement, montant:v }); }
       }
     });
-    // Factures : « Factures » coché = toutes les factures de la période (payées par la banque ou non), à la période
-    // de la facture. Seul « Banque » coché = uniquement celles déjà réglées par une ligne banque. Jamais comptées deux fois.
-    // Catégorie fourre-tout (aucun type ni descriptif choisi) : les factures déjà réglées par la banque restent exclues.
+    // Factures : TOUTES les factures de la période sont des dépenses de LEUR période (payées ou non), dans la
+    // catégorie qui correspond à leur type/descriptif. La ligne banque qui les règle est ignorée (jamais comptées deux fois).
+    // Catégorie fourre-tout : ne reprend que les factures qu'aucune catégorie précise ne classe, et seulement si « Factures » est coché.
     factures.forEach(r => {
-      const reglee = !!(r.numero_facture && facturesRapprochees.has(r.numero_facture));
-      const compte = srcs.includes('factures') ? !(reglee && fourreTout) : (srcs.includes('banque') && reglee);
-      if (!compte) return;
-      if (matchType(r.categorie) && matchDescription(r.description)) { const v=-fmtN(r.montant_ttc); if(v){total+=v;ops.push({src:'Facture',date:r.date_facture,libelle:r.description||r.fournisseur,type:r.categorie,montant:v});} }
+      if (fourreTout && (!srcs.includes('factures') || factureClassee(r))) return;
+      if (matchType(r.categorie) && matchDescription(r.description)) { const v=-fmtN(r.montant_ttc); if(v){total+=v;ops.push({src:'Facture',id:r.id,date:r.date_facture,libelle:r.description||r.fournisseur,type:r.categorie,montant:v});} }
     });
 
     return { ...cat, total, ops };
@@ -760,13 +778,27 @@ function renderAG() {
                  : 'sans écritures diverses (' + odPer.length + ' écriture(s) ignorée(s), effet net ' + fmt(odNet) + ')')
     : '';
 
+  // Factures / écritures diverses de la période qui ne tombent dans AUCUNE catégorie : elles ne seraient comptées nulle part
+  const pris = new Set(); results.forEach(c => c.ops.forEach(o => { if (o.id) pris.add(o.id); }));
+  const facOrph = allFactures.filter(r => periodeNormaliser(r.periode)===periodeNormaliser(activePer) && !pris.has(r.id));
+  const odOrph = inclureOD ? odPer.filter(r => !pris.has(r.id)) : [];
+  let alerteEl = document.getElementById('ag-alertes');
+  if (!alerteEl) {
+    alerteEl = document.createElement('div'); alerteEl.id = 'ag-alertes';
+    const grille = resEl.parentNode.parentNode; grille.parentNode.insertBefore(alerteEl, grille.nextSibling);
+  }
+  const typesDe = (a, k) => [...new Set(a.map(r => r[k] || '(vide)'))].map(escH).join(', ');
+  alerteEl.innerHTML =
+    (facOrph.length ? `<div class="warn-box" style="margin:10px 0;"><i class="ti ti-alert-triangle"></i> <b>${facOrph.length} facture(s)</b> de la période (${fmt(facOrph.reduce((s,r)=>s+fmtN(r.montant_ttc),0))}) ne correspondent à aucune catégorie : elles ne sont comptées nulle part. Types : ${typesDe(facOrph,'categorie')}. Ajoutez ce type à une catégorie (Paramètres).</div>` : '') +
+    (odOrph.length ? `<div class="warn-box" style="margin:10px 0;"><i class="ti ti-alert-triangle"></i> <b>${odOrph.length} écriture(s) diverse(s)</b> (${fmt(odOrph.reduce((s,r)=>s+Math.abs(fmtN(r.credit)-fmtN(r.debit)),0))}) ne correspondent à aucune catégorie : elles ne sont pas prises en compte. Types : ${typesDe(odOrph,'type_mouvement')}. Ajoutez ce type à une catégorie (Paramètres).</div>` : '');
+
   const rows = results.map((r,i) => {
     const isOpen = agOpenCats.has(r.cat);
     const detailRows = r.ops.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(o => `<tr>
       <td style="font-size:10px;color:var(--text-3);">${o.date||'—'}</td><td style="font-size:10px;">${escH(o.src)}</td>
       <td style="font-size:11px;">${escH(o.libelle||'')}</td><td>${puceType(o.type)}</td>
       <td class="r ${o.montant>=0?'amount-c':'amount-d'}">${fmt(o.montant)}</td></tr>`).join('');
-    return `<tr class="accordion-row" onclick="toggleAgCat('${escH(r.cat).replace(/'/g,"\\'")}')">
+    return `<tr class="accordion-row" onclick="toggleAgCat('${jsArg(r.cat)}')">
         <td>${escH(r.cat)}</td><td><span class="badge ${r.sens==='recette'?'badge-green':'badge-red'}">${r.sens==='recette'?'Recette':'Dépense'}</span></td>
         <td class="r" style="font-weight:600;color:${r.total>=0?'var(--green)':'var(--red)'};">${fmt(r.total)}</td>
         <td class="r" style="color:var(--text-3);">${r.ops.length}</td></tr>
@@ -1356,7 +1388,7 @@ async function renderEvenements() {
   const names = allNames.filter(n => evenementsConfig.has(n));
   if (evenementActif !== 'global' && !names.includes(evenementActif)) evenementActif = 'global';
   const tabs = `<div class="evt-tabs"><button class="evt-tab ${evenementActif==='global'?'active':''}" onclick="selectEvenementTab('global')">Globalité <span class="badge">${names.length}</span></button>
-    ${names.map(n=>`<button class="evt-tab ${evenementActif===n?'active':''}" onclick="selectEvenementTab('${escH(n).replace(/'/g,"\\'")}')">${escH(n)} <span class="badge">${data[n].mouvements.length}</span></button>`).join('')}</div>`;
+    ${names.map(n=>`<button class="evt-tab ${evenementActif===n?'active':''}" onclick="selectEvenementTab('${jsArg(n)}')">${escH(n)} <span class="badge">${data[n].mouvements.length}</span></button>`).join('')}</div>`;
 
   const wrap = document.getElementById('evenements-inner');
   if (!allNames.length) { wrap.innerHTML = tabs+`<div class="card"><div class="card-body empty-state">Aucun mouvement de type "Événement" pour ${activePer}.</div></div>`; return; }
@@ -1367,7 +1399,7 @@ async function renderEvenements() {
     const totEnt = names.reduce((s,n)=>s+data[n].entrees,0), totSor = names.reduce((s,n)=>s+data[n].sorties,0);
     body = `<div class="kpi-top"><div class="kpi"><div class="kpi-label">Entrées</div><div class="kpi-value v-green">${fmtS(totEnt)}</div></div><div class="kpi"><div class="kpi-label">Sorties</div><div class="kpi-value v-red">${fmtS(totSor)}</div></div><div class="kpi"><div class="kpi-label">Net</div><div class="kpi-value ${totEnt-totSor>=0?'v-green':'v-red'}">${fmtS(totEnt-totSor)}</div></div></div>
       <div class="card"><div class="card-head"><div class="card-title">Événements — ${activePer}</div></div><table><thead><tr><th>Événement</th><th class="r">Entrées</th><th class="r">Sorties</th><th class="r">Net</th><th class="r">Mvts</th></tr></thead><tbody>
-      ${names.map(n=>{const d=data[n],net=d.entrees-d.sorties;return `<tr><td style="font-weight:500;cursor:pointer;" onclick="selectEvenementTab('${escH(n).replace(/'/g,"\\'")}')">${escH(n)}</td><td class="r amount-c">${fmtS(d.entrees)}</td><td class="r amount-d">${fmtS(d.sorties)}</td><td class="r" style="font-weight:600;">${fmtS(net)}</td><td class="r">${d.mouvements.length}</td></tr>`;}).join('')}
+      ${names.map(n=>{const d=data[n],net=d.entrees-d.sorties;return `<tr><td style="font-weight:500;cursor:pointer;" onclick="selectEvenementTab('${jsArg(n)}')">${escH(n)}</td><td class="r amount-c">${fmtS(d.entrees)}</td><td class="r amount-d">${fmtS(d.sorties)}</td><td class="r" style="font-weight:600;">${fmtS(net)}</td><td class="r">${d.mouvements.length}</td></tr>`;}).join('')}
       </tbody></table></div>`;
   } else {
     const d = data[evenementActif], net = d.entrees-d.sorties;
@@ -1388,7 +1420,7 @@ function renderEvenementsConfigPanel() {
     <div class="card"><div class="card-head"><div class="card-title">Événements affichés</div><button class="btn btn-primary btn-sm" onclick="saveEvenementsConfig()">Enregistrer</button></div>
     <div class="card-body">
       <div style="margin-bottom:8px;"><a href="#" onclick="evenementsConfigSelectAll(true);return false;" style="font-size:10px;">Tout cocher</a> · <a href="#" onclick="evenementsConfigSelectAll(false);return false;" style="font-size:10px;">Tout décocher</a></div>
-      <div class="cb-grid">${allNames.map(n=>`<label class="cb-item"><input type="checkbox" ${evenementsConfig.has(n)?'checked':''} onchange="toggleEvenementConfigCb('${escH(n).replace(/'/g,"\\'")}',this.checked)"> ${escH(n)}</label>`).join('') || '<span style="color:var(--text-3);">Aucun événement connu.</span>'}</div>
+      <div class="cb-grid">${allNames.map(n=>`<label class="cb-item"><input type="checkbox" ${evenementsConfig.has(n)?'checked':''} onchange="toggleEvenementConfigCb('${jsArg(n)}',this.checked)"> ${escH(n)}</label>`).join('') || '<span style="color:var(--text-3);">Aucun événement connu.</span>'}</div>
     </div></div>`;
 }
 </script>
