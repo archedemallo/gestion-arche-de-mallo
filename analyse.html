@@ -441,6 +441,7 @@ async function loadData() {
   } catch(e) { console.error('loadData', e); }
 
   await loadAgConfig();
+  await loadControleCfg();
   document.getElementById('global-loading').style.display = 'none';
   document.getElementById('tabs-bar').style.display = 'flex';
   renderAll();
@@ -761,7 +762,13 @@ function computeAgResults() {
       if (matchType(r.categorie) && matchDescription(r.description)) { const v=-fmtN(r.montant_ttc); if(v){total+=v;ops.push({src:'Facture',k:'facture',id:r.id,date:r.date_facture,libelle:r.description||r.fournisseur,type:r.categorie,montant:v});} }
     });
 
-    return { ...cat, total, ops };
+    // Affectation imposée (Contrôle d'exhaustivité) : une ligne comptée dans plusieurs catégories ne l'est que dans celle choisie
+    const opsF = ops.filter(o => {
+      if (!o.k || o.id == null) return true;
+      const f = controleCfg.forces[o.k + '|' + o.id];
+      return !f || f.cat === cat.cat || !agConfig.some(c => c.cat === f.cat);
+    });
+    return { ...cat, total: opsF.reduce((a, o) => a + o.montant, 0), ops: opsF };
   });
 }
 
@@ -787,8 +794,8 @@ function renderAG() {
 
   // Factures / écritures diverses de la période qui ne tombent dans AUCUNE catégorie : elles ne seraient comptées nulle part
   const pris = new Set(); results.forEach(c => c.ops.forEach(o => { if (o.id) pris.add(o.id); }));
-  const facOrph = allFactures.filter(r => periodeNormaliser(r.periode)===periodeNormaliser(activePer) && !pris.has(r.id));
-  const odOrph = inclureOD ? odPer.filter(r => !pris.has(r.id)) : [];
+  const facOrph = allFactures.filter(r => periodeNormaliser(r.periode)===periodeNormaliser(activePer) && !pris.has(r.id) && !controleCfg.ignorees['facture|' + r.id]);
+  const odOrph = inclureOD ? odPer.filter(r => !pris.has(r.id) && !controleCfg.ignorees['od|' + r.id]) : [];
   let alerteEl = document.getElementById('ag-alertes');
   if (!alerteEl) {
     alerteEl = document.createElement('div'); alerteEl.id = 'ag-alertes';
@@ -796,8 +803,8 @@ function renderAG() {
   }
   const typesDe = (a, k) => [...new Set(a.map(r => r[k] || '(vide)'))].map(escH).join(', ');
   alerteEl.innerHTML =
-    (facOrph.length ? `<div class="warn-box" style="margin:10px 0;"><i class="ti ti-alert-triangle"></i> <b>${facOrph.length} facture(s)</b> de la période (${fmt(facOrph.reduce((s,r)=>s+fmtN(r.montant_ttc),0))}) ne correspondent à aucune catégorie : elles ne sont comptées nulle part. Types : ${typesDe(facOrph,'categorie')}. Ajoutez ce type à une catégorie (Paramètres).</div>` : '') +
-    (odOrph.length ? `<div class="warn-box" style="margin:10px 0;"><i class="ti ti-alert-triangle"></i> <b>${odOrph.length} écriture(s) diverse(s)</b> (${fmt(odOrph.reduce((s,r)=>s+Math.abs(fmtN(r.credit)-fmtN(r.debit)),0))}) ne correspondent à aucune catégorie : elles ne sont pas prises en compte. Types : ${typesDe(odOrph,'type_mouvement')}. Ajoutez ce type à une catégorie (Paramètres).</div>` : '');
+    (facOrph.length ? `<div class="warn-box" style="margin:10px 0;cursor:pointer;" onclick="allerAuControle('ctrl-aclasser')" title="Cliquer pour voir le détail"><i class="ti ti-alert-triangle"></i> <b>${facOrph.length} facture(s)</b> de la période (${fmt(facOrph.reduce((s,r)=>s+fmtN(r.montant_ttc),0))}) ne correspondent à aucune catégorie : elles ne sont comptées nulle part. Types : ${typesDe(facOrph,'categorie')}. Ajoutez ce type à une catégorie (Paramètres).</div>` : '') +
+    (odOrph.length ? `<div class="warn-box" style="margin:10px 0;cursor:pointer;" onclick="allerAuControle('ctrl-aclasser')" title="Cliquer pour voir le détail"><i class="ti ti-alert-triangle"></i> <b>${odOrph.length} écriture(s) diverse(s)</b> (${fmt(odOrph.reduce((s,r)=>s+Math.abs(fmtN(r.credit)-fmtN(r.debit)),0))}) ne correspondent à aucune catégorie : elles ne sont pas prises en compte. Types : ${typesDe(odOrph,'type_mouvement')}. Ajoutez ce type à une catégorie (Paramètres).</div>` : '');
 
   const rows = results.map((r,i) => {
     const isOpen = agOpenCats.has(r.cat);
@@ -824,8 +831,9 @@ function renderAG() {
     carte.parentNode.insertBefore(ctrlEl, carte.nextSibling);
   }
   ctrlEl.innerHTML = controleHtml(ctrl);
-  if (ctrl.totalAClasser) alerteEl.innerHTML += `<div class="warn-box" style="margin:10px 0;"><i class="ti ti-alert-triangle"></i> <b>${ctrl.totalAClasser} ligne(s)</b> de la période (${fmt(ctrl.montantAClasser)}) ne sont reprises par aucune catégorie. Voir « Contrôle d'exhaustivité » en bas de page.</div>`;
-  if (ctrl.doublons.length) alerteEl.innerHTML += `<div class="warn-box" style="margin:10px 0;"><i class="ti ti-alert-triangle"></i> <b>${ctrl.doublons.length} ligne(s)</b> sont comptées dans plusieurs catégories (risque de double comptage). Voir « Contrôle d'exhaustivité ».</div>`;
+  _ctrlCourant = ctrl;
+  if (ctrl.totalAClasser) alerteEl.innerHTML += `<div class="warn-box" style="margin:10px 0;cursor:pointer;" onclick="allerAuControle('ctrl-aclasser')" title="Cliquer pour voir le détail"><i class="ti ti-alert-triangle"></i> <b>${ctrl.totalAClasser} ligne(s)</b> de la période (${fmt(ctrl.montantAClasser)}) ne sont reprises par aucune catégorie. Cliquer ici pour les voir (et les classer ou les ignorer).</div>`;
+  if (ctrl.doublons.length) alerteEl.innerHTML += `<div class="warn-box" style="margin:10px 0;cursor:pointer;" onclick="allerAuControle('ctrl-doublons')" title="Cliquer pour voir le détail"><i class="ti ti-alert-triangle"></i> <b>${ctrl.doublons.length} ligne(s)</b> sont comptées dans plusieurs catégories (risque de double comptage). Cliquer ici pour choisir la catégorie de chacune.</div>`;
 }
 
 // ============================================================
@@ -1079,12 +1087,14 @@ function controleExhaustivite() {
   const src = k => S.find(x => x.cle === k);
   const ajouter = (cleSource, kOp, r, o) => {
     const cats = par[kOp + '|' + r.id] || [];
+    const cle = kOp + '|' + r.id;
     let statut = 'aclasser', raison = '';
     if (cats.length) statut = 'compte';
     else if (o.neutre) { statut = 'neutre'; raison = o.neutre; }
     else if (o.info) { statut = 'info'; raison = o.info; }
+    else if (controleCfg.ignorees[cle]) { statut = 'ignoree'; raison = controleCfg.ignorees[cle].motif || 'Ignorée volontairement'; }
     else raison = raisonNonReprise(o.type, o.description, o.srcName, o.nomSource);
-    src(cleSource).items.push({ id: r.id, date: o.date || '', libelle: o.libelle || '', type: o.type || '', description: o.description || '', montant: o.montant, statut, raison, cats, source: src(cleSource).nom });
+    src(cleSource).items.push({ cle, id: r.id, date: o.date || '', libelle: o.libelle || '', type: o.type || '', description: o.description || '', montant: o.montant, statut, raison, cats, source: src(cleSource).nom });
   };
   allCaisse.filter(dePer).forEach(r => {
     const montant = fmtN(r.credit) - fmtN(r.debit); if (!montant) return;
@@ -1122,29 +1132,98 @@ function controleExhaustivite() {
   const sources = S.map(x => ({
     nom: x.nom, n: x.items.length,
     compte: x.items.filter(i => i.statut === 'compte').length, neutre: x.items.filter(i => i.statut === 'neutre').length,
-    info: x.items.filter(i => i.statut === 'info').length, aclasser: x.items.filter(i => i.statut === 'aclasser'),
+    info: x.items.filter(i => i.statut === 'info').length, ignoree: x.items.filter(i => i.statut === 'ignoree').length, aclasser: x.items.filter(i => i.statut === 'aclasser'),
     infos: x.items.filter(i => i.statut === 'info'), neutres: x.items.filter(i => i.statut === 'neutre')
   }));
   const tous = S.flatMap(x => x.items);
   const aclasser = tous.filter(i => i.statut === 'aclasser');
-  return { sources, aclasser, doublons: tous.filter(i => i.cats.length > 1),
+  const nbIgnorees = tous.filter(i => i.statut === 'ignoree').length;
+  return { sources, aclasser, nbIgnorees, doublons: tous.filter(i => i.cats.length > 1),
     totalAClasser: aclasser.length, montantAClasser: aclasser.reduce((a, i) => a + Math.abs(i.montant), 0) };
 }
+// --- Réglages du contrôle : lignes ignorées volontairement + affectations imposées (enregistrés dans config_compta) ---
+let controleCfg = { ignorees: {}, forces: {} }, _ctrlCourant = null;
+async function loadControleCfg() {
+  try {
+    const { data } = await supabaseClient.from('config_compta').select('valeur').eq('cle', 'analyse_controle').maybeSingle();
+    const v = (data && data.valeur) || {};
+    controleCfg = { ignorees: v.ignorees || {}, forces: v.forces || {} };
+  } catch (e) { controleCfg = { ignorees: {}, forces: {} }; }
+}
+async function _enregistrerControleCfg(msg) {
+  try { await saveConfigKey('analyse_controle', controleCfg); if (msg) showToast(msg); }
+  catch (e) { console.error(e); showToast('Enregistrement impossible : ' + (e.message || e)); await loadControleCfg(); }
+  renderAG();
+}
+function allerAuControle(id) {
+  const el = document.getElementById(id) || document.getElementById('ag-controle');
+  if (!el) return;
+  if (el.tagName === 'DETAILS') el.open = true;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function _itemControle(cle) {
+  if (!_ctrlCourant) return null;
+  return _ctrlCourant.aclasser.concat(_ctrlCourant.doublons).find(i => i.cle === cle) || null;
+}
+async function ignorerLigne(cle) {
+  const it = _itemControle(cle); if (!it) return;
+  const motif = prompt('Pourquoi ignorer cette ligne ? (facultatif)\n' + (it.libelle || '') + ' — ' + fmt(it.montant), '');
+  if (motif === null) return;
+  controleCfg.ignorees[cle] = { date: it.date, source: it.source, libelle: it.libelle, montant: it.montant, motif: motif.trim() };
+  await _enregistrerControleCfg('Ligne ignorée.');
+}
+async function ignorerToutes() {
+  if (!_ctrlCourant || !_ctrlCourant.aclasser.length) return;
+  const n = _ctrlCourant.aclasser.length;
+  const motif = prompt('Ignorer volontairement les ' + n + ' lignes à classer ?\nMotif commun (facultatif) :', '');
+  if (motif === null) return;
+  _ctrlCourant.aclasser.forEach(it => { controleCfg.ignorees[it.cle] = { date: it.date, source: it.source, libelle: it.libelle, montant: it.montant, motif: motif.trim() }; });
+  await _enregistrerControleCfg(n + ' lignes ignorées.');
+}
+async function retablirIgnoree(cle) { delete controleCfg.ignorees[cle]; await _enregistrerControleCfg('Ligne rétablie.'); }
+async function forcerCategorie(cle, cat) {
+  if (!cat) return;
+  const it = _itemControle(cle); if (!it) return;
+  controleCfg.forces[cle] = { cat, date: it.date, source: it.source, libelle: it.libelle, montant: it.montant };
+  await _enregistrerControleCfg('Ligne comptée uniquement dans « ' + cat + ' ».');
+}
+async function annulerForce(cle) { delete controleCfg.forces[cle]; await _enregistrerControleCfg('Affectation annulée.'); }
+
 function controleHtml(c) {
-  const ligne = i => `<tr><td style="font-size:10px;color:var(--text-3);">${escH(i.date || '—')}</td><td style="font-size:10px;">${escH(i.source)}</td><td style="font-size:11px;">${escH(i.libelle)}</td><td>${puceType(i.type)}</td><td class="r ${i.montant >= 0 ? 'amount-c' : 'amount-d'}">${fmt(i.montant)}</td><td style="font-size:11px;color:var(--text-2);">${escH(i.raison || (i.cats || []).join(' + '))}</td></tr>`;
-  const table = items => `<table><thead><tr><th>Date</th><th>Source</th><th>Libellé</th><th>Type</th><th class="r">Montant</th><th>Raison</th></tr></thead><tbody>${items.map(ligne).join('')}</tbody></table>`;
-  const detail = (titre, items, ouvert) => items.length ? `<details ${ouvert ? 'open' : ''} style="margin:8px 0;"><summary style="cursor:pointer;font-size:12px;font-weight:600;">${titre} (${items.length})</summary><div style="max-height:320px;overflow:auto;margin-top:6px;">${table(items)}</div></details>` : '';
+  const montantTd = i => `<td class="r ${i.montant >= 0 ? 'amount-c' : 'amount-d'}">${fmt(i.montant)}</td>`;
+  const base = i => `<td style="font-size:10px;color:var(--text-3);">${escH(i.date || '—')}</td><td style="font-size:10px;">${escH(i.source)}</td><td style="font-size:11px;">${escH(i.libelle)}</td><td>${puceType(i.type)}</td>${montantTd(i)}`;
+  const btn = (txt, fn) => `<button class="btn btn-sm" style="padding:2px 8px;font-size:11px;" onclick="${fn}">${txt}</button>`;
+  const detail = (id, titre, contenu, n, ouvert) => n ? `<details id="${id}" ${ouvert ? 'open' : ''} style="margin:10px 0;"><summary style="cursor:pointer;font-size:12px;font-weight:600;">${titre} (${n})</summary><div style="max-height:360px;overflow:auto;margin-top:6px;">${contenu}</div></details>` : '';
+  const tableSimple = items => `<table><thead><tr><th>Date</th><th>Source</th><th>Libellé</th><th>Type</th><th class="r">Montant</th><th>Raison</th></tr></thead><tbody>${items.map(i => `<tr>${base(i)}<td style="font-size:11px;color:var(--text-2);">${escH(i.raison)}</td></tr>`).join('')}</tbody></table>`;
+
+  // À classer : on peut ignorer volontairement chaque ligne (ou toutes)
+  const aClasser = c.aclasser.length
+    ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:11px;color:var(--text-3);">Pour chaque ligne : ajoutez son type/descriptif à une catégorie (Paramètres), ou ignorez-la si c'est voulu.</span>${btn('Tout ignorer (' + c.aclasser.length + ')', 'ignorerToutes()')}</div>
+       <table><thead><tr><th>Date</th><th>Source</th><th>Libellé</th><th>Type</th><th class="r">Montant</th><th>Raison</th><th></th></tr></thead><tbody>${c.aclasser.map(i => `<tr>${base(i)}<td style="font-size:11px;color:var(--text-2);">${escH(i.raison)}</td><td>${btn('Ignorer', `ignorerLigne('${jsArg(i.cle)}')`)}</td></tr>`).join('')}</tbody></table>` : '';
+  // Doublons : choisir la seule catégorie qui doit compter la ligne
+  const doublons = c.doublons.length
+    ? `<div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">Choisissez la catégorie qui doit compter la ligne : elle ne sera plus comptée dans les autres.</div>
+       <table><thead><tr><th>Date</th><th>Source</th><th>Libellé</th><th>Type</th><th class="r">Montant</th><th>Comptée dans</th><th>Compter uniquement dans</th></tr></thead><tbody>${c.doublons.map(i => `<tr>${base(i)}<td style="font-size:11px;">${escH(i.cats.join(' + '))}</td><td><select onchange="forcerCategorie('${jsArg(i.cle)}', this.value)" style="font-size:11px;padding:2px;"><option value="">— choisir —</option>${i.cats.map(k => `<option value="${escH(k)}">${escH(k)}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table>` : '';
+  const ig = Object.entries(controleCfg.ignorees);
+  const ignorees = ig.length
+    ? `<table><thead><tr><th>Date</th><th>Source</th><th>Libellé</th><th class="r">Montant</th><th>Motif</th><th></th></tr></thead><tbody>${ig.sort((a, b) => String(b[1].date || '').localeCompare(String(a[1].date || ''))).map(([k, v]) => `<tr><td style="font-size:10px;color:var(--text-3);">${escH(v.date || '—')}</td><td style="font-size:10px;">${escH(v.source || '')}</td><td style="font-size:11px;">${escH(v.libelle || '')}</td><td class="r">${fmt(v.montant)}</td><td style="font-size:11px;color:var(--text-2);">${escH(v.motif || '')}</td><td>${btn('Rétablir', `retablirIgnoree('${jsArg(k)}')`)}</td></tr>`).join('')}</tbody></table>` : '';
+  const fo = Object.entries(controleCfg.forces);
+  const forces = fo.length
+    ? `<table><thead><tr><th>Date</th><th>Source</th><th>Libellé</th><th class="r">Montant</th><th>Comptée uniquement dans</th><th></th></tr></thead><tbody>${fo.map(([k, v]) => `<tr><td style="font-size:10px;color:var(--text-3);">${escH(v.date || '—')}</td><td style="font-size:10px;">${escH(v.source || '')}</td><td style="font-size:11px;">${escH(v.libelle || '')}</td><td class="r">${fmt(v.montant)}</td><td style="font-size:11px;">${escH(v.cat)}</td><td>${btn('Annuler', `annulerForce('${jsArg(k)}')`)}</td></tr>`).join('')}</tbody></table>` : '';
+
   const verdict = (c.totalAClasser || c.doublons.length)
-    ? `<div class="warn-box"><i class="ti ti-alert-triangle"></i> ${c.totalAClasser ? '<b>' + c.totalAClasser + ' ligne(s)</b> (' + fmt(c.montantAClasser) + ') ne sont reprises par aucune catégorie. ' : ''}${c.doublons.length ? '<b>' + c.doublons.length + ' ligne(s)</b> sont comptées plusieurs fois. ' : ''}Corrigez dans Paramètres (type, descriptif ou source à cocher) : le détail est ci-dessous.</div>`
-    : `<div style="background:#EAF3DE;border:0.5px solid #C0DD97;color:#27500A;font-size:11px;padding:8px 12px;border-radius:8px;"><i class="ti ti-circle-check"></i> Toutes les lignes de la période sont prises en compte ou écartées pour une raison connue : aucune ne manque, aucune n'est comptée deux fois.</div>`;
-  const tab = `<table><thead><tr><th>Source</th><th class="r">Lignes</th><th class="r">Comptées</th><th class="r">Écartées à raison</th><th class="r">Non comptées (réglage)</th><th class="r">À classer</th></tr></thead><tbody>
-    ${c.sources.filter(x => x.n).map(x => `<tr><td>${escH(x.nom)}</td><td class="r">${x.n}</td><td class="r amount-c">${x.compte}</td><td class="r">${x.neutre}</td><td class="r">${x.info}</td><td class="r ${x.aclasser.length ? 'amount-d' : ''}" style="font-weight:${x.aclasser.length ? 700 : 400};">${x.aclasser.length}</td></tr>`).join('')}</tbody></table>`;
+    ? `<div class="warn-box"><i class="ti ti-alert-triangle"></i> ${c.totalAClasser ? '<b>' + c.totalAClasser + ' ligne(s)</b> (' + fmt(c.montantAClasser) + ') ne sont reprises par aucune catégorie. ' : ''}${c.doublons.length ? '<b>' + c.doublons.length + ' ligne(s)</b> sont comptées plusieurs fois. ' : ''}Le détail est ci-dessous.</div>`
+    : `<div style="background:#EAF3DE;border:0.5px solid #C0DD97;color:#27500A;font-size:11px;padding:8px 12px;border-radius:8px;"><i class="ti ti-circle-check"></i> Toutes les lignes de la période sont prises en compte ou écartées pour une raison connue : aucune ne manque, aucune n'est comptée deux fois.${c.nbIgnorees ? ' (' + c.nbIgnorees + ' ignorée(s) volontairement.)' : ''}</div>`;
+  const tab = `<table><thead><tr><th>Source</th><th class="r">Lignes</th><th class="r">Comptées</th><th class="r">Écartées à raison</th><th class="r">Non comptées (réglage)</th><th class="r">Ignorées volontairement</th><th class="r">À classer</th></tr></thead><tbody>
+    ${c.sources.filter(x => x.n).map(x => `<tr><td>${escH(x.nom)}</td><td class="r">${x.n}</td><td class="r amount-c">${x.compte}</td><td class="r">${x.neutre}</td><td class="r">${x.info}</td><td class="r">${x.ignoree}</td><td class="r ${x.aclasser.length ? 'amount-d' : ''}" style="font-weight:${x.aclasser.length ? 700 : 400};">${x.aclasser.length}</td></tr>`).join('')}</tbody></table>`;
   return `<div class="card" style="margin-top:14px;"><div class="card-head"><div class="card-title"><i class="ti ti-shield-check"></i> Contrôle d'exhaustivité — ${escH(activePer)}</div></div><div class="card-body">
     ${verdict}<div style="margin-top:10px;">${tab}</div>
-    ${detail('Lignes à classer : reprises par aucune catégorie', c.aclasser, true)}
-    ${detail('Lignes comptées dans plusieurs catégories', c.doublons, true)}
-    ${detail('Lignes non comptées à cause d\'un réglage', c.sources.flatMap(x => x.infos), false)}
-    ${detail('Lignes écartées à raison (déjà comptées ailleurs ou virements internes)', c.sources.flatMap(x => x.neutres), false)}
+    ${detail('ctrl-aclasser', 'Lignes à classer : reprises par aucune catégorie', aClasser, c.aclasser.length, true)}
+    ${detail('ctrl-doublons', 'Lignes comptées dans plusieurs catégories', doublons, c.doublons.length, true)}
+    ${detail('ctrl-ignorees', 'Lignes ignorées volontairement', ignorees, ig.length, false)}
+    ${detail('ctrl-forces', 'Lignes affectées à une seule catégorie', forces, fo.length, false)}
+    ${detail('ctrl-reglage', 'Lignes non comptées à cause d\'un réglage', tableSimple(c.sources.flatMap(x => x.infos)), c.sources.flatMap(x => x.infos).length, false)}
+    ${detail('ctrl-neutres', 'Lignes écartées à raison (déjà comptées ailleurs ou virements internes)', tableSimple(c.sources.flatMap(x => x.neutres)), c.sources.flatMap(x => x.neutres).length, false)}
   </div></div>`;
 }
 
@@ -1172,17 +1251,6 @@ async function construireExtraction(o) {
     m.push({ t: 'h1', text: 'Bilan global' });
     m.push({ t: 'kpis', items: [{ label: 'Recettes', value: extEUR(totRec), color: '#3B6D11' }, { label: 'Dépenses', value: extEUR(totDep), color: '#A32D2D' }, { label: 'Résultat', value: extEUR(resultat), color: resultat >= 0 ? '#3B6D11' : '#A32D2D' }] });
     if (odPer.length) m.push({ t: 'p', italic: true, text: inclureOD ? 'Dont écritures diverses : ' + extEUR(odNet) + ' — résultat réel : ' + extEUR(resultat - odNet) + '.' : 'Sans les écritures diverses (' + odPer.length + ' écriture(s), effet net ' + extEUR(odNet) + ').' });
-  }
-  if (o.controle) {
-    const c = controleExhaustivite();
-    m.push({ t: 'h1', text: "Contrôle d'exhaustivité" });
-    m.push(c.totalAClasser || c.doublons.length
-      ? { t: 'warn', text: (c.totalAClasser ? c.totalAClasser + ' ligne(s) (' + extEUR(c.montantAClasser) + ') ne sont reprises par aucune catégorie. ' : '') + (c.doublons.length ? c.doublons.length + ' ligne(s) sont comptées plusieurs fois.' : '') }
-      : { t: 'ok', text: "Toutes les lignes de la période sont prises en compte ou écartées pour une raison connue : aucune ne manque, aucune n'est comptée deux fois." });
-    m.push({ t: 'table', head: ['Source', 'Lignes', 'Comptées', 'Écartées à raison', 'Non comptées (réglage)', 'À classer'], align: ['l', 'r', 'r', 'r', 'r', 'r'], widths: [32, 10, 13, 17, 16, 12],
-      rows: c.sources.filter(x => x.n).map(x => [x.nom, String(x.n), String(x.compte), String(x.neutre), String(x.info), String(x.aclasser.length)]) });
-    if (c.aclasser.length) m.push({ t: 'table', head: ['Date', 'Source', 'Libellé', 'Montant', 'Raison'], align: ['l', 'l', 'l', 'r', 'l'], widths: [11, 12, 25, 14, 38],
-      rows: c.aclasser.slice(0, 40).map(i => [i.date, i.source, i.libelle, extEUR(i.montant), i.raison]) });
   }
   if (o.categories) {
     if (rec.length) {
@@ -1239,7 +1307,6 @@ function ouvrirExtraction() {
     ['subventions', 'Subventions : liste des communes / organismes et montants', true],
     ['evenements', 'Événements : graphique et récapitulatif par événement', true],
     ['totaux', 'Dons, subventions, adhésions, adoptions : totaux et évolution (sans détail)', true],
-    ['controle', "Contrôle d'exhaustivité (tout est-il pris en compte ?)", true],
     ['donsListe', 'Dons : liste nominative des donateurs', false],
     ['adhesionsListe', 'Adhésions : liste des adhérents', false]
   ];
@@ -2053,8 +2120,8 @@ async function renderEvenements() {
   // Écart possible avec la Synthèse : factures / OD d'événement qu'aucune catégorie de la Synthèse ne reprend
   const pris = new Set(); computeAgResults().forEach(c => c.ops.forEach(o => { if (o.id) pris.add(o.id); }));
   const dePerE = r => periodeNormaliser(r.periode) === periodeNormaliser(activePer);
-  const facSans = allFactures.filter(r => dePerE(r) && _normCat(r.categorie).includes('evenement') && !pris.has(r.id));
-  const odSans = inclureOD ? allOD.filter(r => dePerE(r) && _normCat(r.type_mouvement).includes('evenement') && !pris.has(r.id)) : [];
+  const facSans = allFactures.filter(r => dePerE(r) && _normCat(r.categorie).includes('evenement') && !pris.has(r.id) && !controleCfg.ignorees['facture|' + r.id]);
+  const odSans = inclureOD ? allOD.filter(r => dePerE(r) && _normCat(r.type_mouvement).includes('evenement') && !pris.has(r.id) && !controleCfg.ignorees['od|' + r.id]) : [];
   const alerte = (facSans.length || odSans.length)
     ? `<div class="warn-box" style="margin:10px 0;"><i class="ti ti-alert-triangle"></i> Ces totaux contiennent ${[facSans.length ? '<b>' + facSans.length + ' facture(s)</b> (' + fmt(facSans.reduce((a,r)=>a+fmtN(r.montant_ttc),0)) + ')' : '', odSans.length ? '<b>' + odSans.length + ' écriture(s) diverse(s)</b> (net ' + fmt(odSans.reduce((a,r)=>a+fmtN(r.credit)-fmtN(r.debit),0)) + ')' : ''].filter(Boolean).join(' et ')} qu'aucune catégorie de la Synthèse ne reprend : le total de la Synthèse sera donc différent. Descriptifs concernés : ${[...new Set([...facSans, ...odSans].map(r => escH(r.description || '(vide)')))].join(', ')}.</div>` : '';
   wrap.innerHTML = tabs + alerte + body;
