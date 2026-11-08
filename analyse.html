@@ -803,8 +803,8 @@ function renderAG() {
   }
   const typesDe = (a, k) => [...new Set(a.map(r => r[k] || '(vide)'))].map(escH).join(', ');
   alerteEl.innerHTML =
-    (facOrph.length ? `<div class="warn-box" style="margin:10px 0;cursor:pointer;" onclick="allerAuControle('ctrl-aclasser')" title="Cliquer pour voir le détail"><i class="ti ti-alert-triangle"></i> <b>${facOrph.length} facture(s)</b> de la période (${fmt(facOrph.reduce((s,r)=>s+fmtN(r.montant_ttc),0))}) ne correspondent à aucune catégorie : elles ne sont comptées nulle part. Types : ${typesDe(facOrph,'categorie')}. Ajoutez ce type à une catégorie (Paramètres).</div>` : '') +
-    (odOrph.length ? `<div class="warn-box" style="margin:10px 0;cursor:pointer;" onclick="allerAuControle('ctrl-aclasser')" title="Cliquer pour voir le détail"><i class="ti ti-alert-triangle"></i> <b>${odOrph.length} écriture(s) diverse(s)</b> (${fmt(odOrph.reduce((s,r)=>s+Math.abs(fmtN(r.credit)-fmtN(r.debit)),0))}) ne correspondent à aucune catégorie : elles ne sont pas prises en compte. Types : ${typesDe(odOrph,'type_mouvement')}. Ajoutez ce type à une catégorie (Paramètres).</div>` : '');
+    (facOrph.length ? `<div class="warn-box" style="margin:10px 0;cursor:pointer;" onclick="allerAuControle('ctrl-aclasser-factures')" title="Cliquer pour voir ces factures"><i class="ti ti-alert-triangle"></i> <b>${facOrph.length} facture(s)</b> de la période (${fmt(facOrph.reduce((s,r)=>s+fmtN(r.montant_ttc),0))}) ne correspondent à aucune catégorie : elles ne sont comptées nulle part. Types : ${typesDe(facOrph,'categorie')}. Ajoutez ce type à une catégorie (Paramètres).</div>` : '') +
+    (odOrph.length ? `<div class="warn-box" style="margin:10px 0;cursor:pointer;" onclick="allerAuControle('ctrl-aclasser-od')" title="Cliquer pour voir ces écritures"><i class="ti ti-alert-triangle"></i> <b>${odOrph.length} écriture(s) diverse(s)</b> (${fmt(odOrph.reduce((s,r)=>s+Math.abs(fmtN(r.credit)-fmtN(r.debit)),0))}) ne correspondent à aucune catégorie : elles ne sont pas prises en compte. Types : ${typesDe(odOrph,'type_mouvement')}. Ajoutez ce type à une catégorie (Paramètres).</div>` : '');
 
   const rows = results.map((r,i) => {
     const isOpen = agOpenCats.has(r.cat);
@@ -1093,8 +1093,12 @@ function controleExhaustivite() {
     else if (o.neutre) { statut = 'neutre'; raison = o.neutre; }
     else if (o.info) { statut = 'info'; raison = o.info; }
     else if (controleCfg.ignorees[cle]) { statut = 'ignoree'; raison = controleCfg.ignorees[cle].motif || 'Ignorée volontairement'; }
-    else raison = raisonNonReprise(o.type, o.description, o.srcName, o.nomSource);
-    src(cleSource).items.push({ cle, id: r.id, date: o.date || '', libelle: o.libelle || '', type: o.type || '', description: o.description || '', montant: o.montant, statut, raison, cats, source: src(cleSource).nom });
+    else {
+      raison = raisonNonReprise(o.type, o.description, o.srcName, o.nomSource);
+      // chèque non encaissé dont la catégorie ne coche pas « Chèques » : choix de réglage, pas une erreur
+      if (o.infoSiSourceNonCochee && raison.startsWith('Les catégories qui reprennent')) { statut = 'info'; raison = 'Chèque non encaissé : ' + raison.charAt(0).toLowerCase() + raison.slice(1) + ' (cochez-la pour le compter)'; }
+    }
+    src(cleSource).items.push({ cle, srcCle: cleSource, id: r.id, date: o.date || '', libelle: o.libelle || '', type: o.type || '', description: o.description || '', montant: o.montant, statut, raison, cats, source: src(cleSource).nom });
   };
   allCaisse.filter(dePer).forEach(r => {
     const montant = fmtN(r.credit) - fmtN(r.debit); if (!montant) return;
@@ -1114,8 +1118,8 @@ function controleExhaustivite() {
   allCheques.filter(dePer).forEach(r => {
     const montant = -fmtN(r.montant); if (!montant) return;
     ajouter('cheques', 'cheque', r, { date: r.date_emission, libelle: r.beneficiaire, type: r.type_mouvement, description: r.description, montant, srcName: 'cheques', nomSource: 'Chèques',
-      neutre: (chqRegles.has(r.id) && !catsChq) ? 'Chèque encaissé : compté par sa ligne banque' : null,
-      info: !catsChq ? 'Chèque non encaissé : non compté (aucune catégorie ne lit « Chèques »)' : null });
+      neutre: chqRegles.has(r.id) ? 'Chèque encaissé : la dépense est comptée par sa ligne banque ou par la facture réglée' : null,
+      info: !catsChq ? 'Chèque non encaissé : non compté (aucune catégorie ne lit « Chèques »)' : null, infoSiSourceNonCochee: true });
   });
   allRemiseDetails.filter(dePer).forEach(r => {
     const montant = fmtN(r.montant); if (!montant) return;
@@ -1156,10 +1160,11 @@ async function _enregistrerControleCfg(msg) {
   renderAG();
 }
 function allerAuControle(id) {
-  const el = document.getElementById(id) || document.getElementById('ag-controle');
+  const el = document.getElementById(id) || document.getElementById('ctrl-aclasser') || document.getElementById('ag-controle');
   if (!el) return;
   if (el.tagName === 'DETAILS') el.open = true;
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  el.style.transition = 'background 0.4s'; el.style.background = '#FFF4E5'; setTimeout(() => { el.style.background = ''; }, 1800);
 }
 function _itemControle(cle) {
   if (!_ctrlCourant) return null;
@@ -1196,10 +1201,14 @@ function controleHtml(c) {
   const detail = (id, titre, contenu, n, ouvert) => n ? `<details id="${id}" ${ouvert ? 'open' : ''} style="margin:10px 0;"><summary style="cursor:pointer;font-size:12px;font-weight:600;">${titre} (${n})</summary><div style="max-height:360px;overflow:auto;margin-top:6px;">${contenu}</div></details>` : '';
   const tableSimple = items => `<table><thead><tr><th>Date</th><th>Source</th><th>Libellé</th><th>Type</th><th class="r">Montant</th><th>Raison</th></tr></thead><tbody>${items.map(i => `<tr>${base(i)}<td style="font-size:11px;color:var(--text-2);">${escH(i.raison)}</td></tr>`).join('')}</tbody></table>`;
 
-  // À classer : on peut ignorer volontairement chaque ligne (ou toutes)
+  // À classer : un bloc par source ; on peut ignorer volontairement chaque ligne (ou toutes)
+  const groupes = [];
+  c.aclasser.forEach(i => { let g = groupes.find(x => x.cle === i.srcCle); if (!g) { g = { cle: i.srcCle, nom: i.source, items: [] }; groupes.push(g); } g.items.push(i); });
   const aClasser = c.aclasser.length
-    ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:11px;color:var(--text-3);">Pour chaque ligne : ajoutez son type/descriptif à une catégorie (Paramètres), ou ignorez-la si c'est voulu.</span>${btn('Tout ignorer (' + c.aclasser.length + ')', 'ignorerToutes()')}</div>
-       <table><thead><tr><th>Date</th><th>Source</th><th>Libellé</th><th>Type</th><th class="r">Montant</th><th>Raison</th><th></th></tr></thead><tbody>${c.aclasser.map(i => `<tr>${base(i)}<td style="font-size:11px;color:var(--text-2);">${escH(i.raison)}</td><td>${btn('Ignorer', `ignorerLigne('${jsArg(i.cle)}')`)}</td></tr>`).join('')}</tbody></table>` : '';
+    ? `<div id="ctrl-aclasser"><div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 4px;"><span style="font-size:11px;color:var(--text-3);">Pour chaque ligne : ajoutez son type / descriptif à une catégorie (Paramètres), ou ignorez-la si c'est voulu.</span>${btn('Tout ignorer (' + c.aclasser.length + ')', 'ignorerToutes()')}</div>
+       ${groupes.map(g => `<details id="ctrl-aclasser-${g.cle}" open style="margin:8px 0;"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:#A32D2D;">À classer — ${escH(g.nom)} (${g.items.length})</summary>
+         <div style="max-height:360px;overflow:auto;margin-top:6px;"><table><thead><tr><th>Date</th><th>Source</th><th>Libellé</th><th>Type</th><th class="r">Montant</th><th>Raison</th><th></th></tr></thead><tbody>${g.items.map(i => `<tr>${base(i)}<td style="font-size:11px;color:var(--text-2);">${escH(i.raison)}</td><td>${btn('Ignorer', `ignorerLigne('${jsArg(i.cle)}')`)}</td></tr>`).join('')}</tbody></table></div></details>`).join('')}</div>` : '';
+
   // Doublons : choisir la seule catégorie qui doit compter la ligne
   const doublons = c.doublons.length
     ? `<div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">Choisissez la catégorie qui doit compter la ligne : elle ne sera plus comptée dans les autres.</div>
@@ -1218,7 +1227,7 @@ function controleHtml(c) {
     ${c.sources.filter(x => x.n).map(x => `<tr><td>${escH(x.nom)}</td><td class="r">${x.n}</td><td class="r amount-c">${x.compte}</td><td class="r">${x.neutre}</td><td class="r">${x.info}</td><td class="r">${x.ignoree}</td><td class="r ${x.aclasser.length ? 'amount-d' : ''}" style="font-weight:${x.aclasser.length ? 700 : 400};">${x.aclasser.length}</td></tr>`).join('')}</tbody></table>`;
   return `<div class="card" style="margin-top:14px;"><div class="card-head"><div class="card-title"><i class="ti ti-shield-check"></i> Contrôle d'exhaustivité — ${escH(activePer)}</div></div><div class="card-body">
     ${verdict}<div style="margin-top:10px;">${tab}</div>
-    ${detail('ctrl-aclasser', 'Lignes à classer : reprises par aucune catégorie', aClasser, c.aclasser.length, true)}
+    ${aClasser}
     ${detail('ctrl-doublons', 'Lignes comptées dans plusieurs catégories', doublons, c.doublons.length, true)}
     ${detail('ctrl-ignorees', 'Lignes ignorées volontairement', ignorees, ig.length, false)}
     ${detail('ctrl-forces', 'Lignes affectées à une seule catégorie', forces, fo.length, false)}
