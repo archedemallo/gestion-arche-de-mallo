@@ -1,0 +1,44 @@
+# À placer dans le dépôt GitHub à : .github/workflows/supabase-keepalive.yml
+# (le dossier doit s'appeler « .github » avec le point au début)
+#
+# Empêche la mise en pause du projet Supabase (plan gratuit : pause après 7 jours
+# sans activité) en lui envoyant une requête TOUS LES JOURS.
+#
+# Aucun réglage obligatoire : l'adresse du projet et la clé publique « anon » sont
+# celles de supabase-config.js (elles sont publiques, déjà visibles dans le site).
+# Facultatif : créer les secrets SUPABASE_URL et SUPABASE_ANON_KEY dans le dépôt
+# (Settings > Secrets and variables > Actions) pour les remplacer.
+
+name: Supabase keepalive
+
+on:
+  schedule:
+    # Tous les jours à 07h00 UTC
+    - cron: '0 7 * * *'
+  workflow_dispatch:   # permet aussi de le lancer à la main (onglet Actions > Run workflow)
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Requête vers la base Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://tjefuqqceazdxyhcjupt.supabase.co' }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqZWZ1cXFjZWF6ZHh5aGNqdXB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4MDAzMDEsImV4cCI6MjEwNDM3NjMwMX0.d-IEnu_A4Fb0xECYax0JZy8CI6OzfHMVkSJ9Cvay0uM' }}
+        run: |
+          # Appel d'une fonction lecture seule de la base (accessible avec la clé anon).
+          # Sans connexion elle peut répondre « Accès refusé » (HTTP 4xx) : c'est normal, la requête
+          # a bien été exécutée par la base. Seule une absence de réponse ou une erreur 5xx est un échec.
+          # Ancienne clé anon (eyJ...) : aussi en Authorization. Clé sb_publishable_... : apikey seul.
+          AUTH=()
+          case "$SUPABASE_ANON_KEY" in eyJ*) AUTH=(-H "Authorization: Bearer $SUPABASE_ANON_KEY");; esac
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 --retry 3 --retry-delay 10 \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/noms_animaux_presents" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            "${AUTH[@]}" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "Réponse HTTP : $code"
+          if [ "$code" -ge 500 ] || [ "$code" -eq 000 ]; then
+            echo "Échec : le projet ne répond pas (en pause ?)."; exit 1
+          fi
