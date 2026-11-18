@@ -330,7 +330,6 @@ chargerListeSaisisseurs();
         var data = collectFormData();
         data.onglet = 'famille_accueil_' + typeAccueilActuel;
         data.signatureImage = getSignatureImage();
-        data.htmlContent = encodeBase64Unicode(buildHtmlWithData());
 
         afficherPopupChargement();
 
@@ -374,16 +373,17 @@ chargerListeSaisisseurs();
                 data.filename = buildFilename(data);
                 try {
                     const pdfBytes = await genererPdfFormulaire();
-                    await envoyerMailFormulaire({
+                    // Mail et dépôt Drive en parallèle (au lieu de l'un après l'autre)
+                    const [_rMail, _rDrive] = await Promise.allSettled([
+                        envoyerMailFormulaire({
                         sujet: "Famille d'accueil — " + (data.nom_animal || ''),
                         corps: construireCorpsMail(data),
                         pdfBytes: pdfBytes,
                         pdfNomFichier: data.filename + '.pdf',
                         emailClient: data.email,
                         nomClient: ((data.prenom || '') + ' ' + (data.nom || '')).trim()
-                    });
-                    try {
-                        await enregistrerPdfDrive({
+                    }),
+                        enregistrerPdfDrive({
                             onglet: data.onglet,
                             prenom: data.prenom,
                             nom: data.nom,
@@ -394,11 +394,14 @@ chargerListeSaisisseurs();
                             tableSource: 'familles_accueil',
                             enregistrementId: faId,
                             typeFichier: "Famille d'accueil"
-                        });
-                    } catch (eDrive) {
+                        })
+                    ]);
+                    if (_rDrive.status === 'rejected') {
+                        var eDrive = _rDrive.reason;
                         console.error('Erreur dépôt Drive :', eDrive);
                         avertissementMail += ' ⚠️ Le dépôt du PDF sur Drive a échoué (' + (eDrive.message || eDrive) + ').';
                     }
+                    if (_rMail.status === 'rejected') throw _rMail.reason;
                 } catch (e) {
                     console.error('Erreur envoi PDF/mail :', e);
                     avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué (' + (e.message || e) + ').';

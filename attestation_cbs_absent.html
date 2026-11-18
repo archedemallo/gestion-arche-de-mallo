@@ -224,7 +224,6 @@
         });
         data.motifCBS = motifsCoches.join(', ');
 
-        data.htmlContent = btoa(unescape(encodeURIComponent(document.querySelector('.page-container').outerHTML)));
         return data;
     };
 
@@ -274,16 +273,17 @@ chargerListeSaisisseurs();
                 data.filename = buildFilename(data);
                 try {
                     const pdfBytes = await genererPdfFormulaire();
-                    await envoyerMailFormulaire({
+                    // Mail et dépôt Drive en parallèle (au lieu de l'un après l'autre)
+                    const [_rMail, _rDrive] = await Promise.allSettled([
+                        envoyerMailFormulaire({
                         sujet: 'Attestation CBS absent — ' + (data.nomChat || ''),
                         corps: construireCorpsMail(data),
                         pdfBytes: pdfBytes,
                         pdfNomFichier: data.filename + '.pdf',
                         emailClient: data.email,
                         nomClient: ((data.prenomSignataire || '') + ' ' + (data.nomSignataire || '')).trim()
-                    });
-                    try {
-                        await enregistrerPdfDrive({
+                    }),
+                        enregistrerPdfDrive({
                             onglet: 'Attestation CBS absent',
                             prenom: data.prenomSignataire,
                             nom: data.nomSignataire,
@@ -294,11 +294,14 @@ chargerListeSaisisseurs();
                             tableSource: 'attestations',
                             enregistrementId: attestId,
                             typeFichier: 'Attestation CBS absent'
-                        });
-                    } catch (eDrive) {
+                        })
+                    ]);
+                    if (_rDrive.status === 'rejected') {
+                        var eDrive = _rDrive.reason;
                         console.error('Erreur dépôt Drive :', eDrive);
                         avertissementMail += ' ⚠️ Le dépôt du PDF sur Drive a échoué.';
                     }
+                    if (_rMail.status === 'rejected') throw _rMail.reason;
                 } catch (e) {
                     console.error('Erreur envoi PDF/mail :', e);
                     avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué. L\'attestation est bien enregistrée — vous pouvez l\'imprimer avec le bouton "Imprimer" en attendant.';

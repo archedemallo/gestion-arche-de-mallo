@@ -526,9 +526,12 @@ async function verifierAccesIndex(user) {
         var res = await supabaseClient.from('profils_suivi').select('email').eq('user_id', user.id).maybeSingle();
         if (res.error || !res.data) {
             errEl.textContent = "Ce compte n'est pas autorisé.";
+            try { sessionStorage.removeItem('suivi_acces_' + user.id); } catch (e2) {}
+            document.getElementById('login-screen').style.display = 'flex';
             await supabaseClient.auth.signOut();
             return;
         }
+        try { sessionStorage.setItem('suivi_acces_' + user.id, '1'); } catch (e2) {}
         document.getElementById('login-screen').style.display = 'none';
     } catch (e) {
         afficherErreurChargement(e);
@@ -552,7 +555,13 @@ document.getElementById('login-btn').addEventListener('click', seConnecterIndex)
 });
 
 supabaseClient.auth.getSession().then(function(res) {
-    if (res.data.session) verifierAccesIndex(res.data.session.user);
+    var session = res.data.session;
+    if (!session) return;
+    // Accès déjà vérifié dans cet onglet : page libérée tout de suite, revérifiée en arrière-plan.
+    var dejaVerifie = false;
+    try { dejaVerifie = sessionStorage.getItem('suivi_acces_' + session.user.id) === '1'; } catch (e) {}
+    if (dejaVerifie) document.getElementById('login-screen').style.display = 'none';
+    verifierAccesIndex(session.user);
 }).catch(afficherErreurChargement);
 </script>
 

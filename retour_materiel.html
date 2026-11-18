@@ -356,7 +356,6 @@
             return e && e.classList.contains('checked');
         }).map(function(id) { return id.replace('restitution_',''); }).join(', ');
 
-        data.htmlContent = btoa(unescape(encodeURIComponent(document.querySelector('.page-container').outerHTML)));
         return data;
     };
 
@@ -406,16 +405,17 @@ chargerListeSaisisseurs();
                 data.filename = buildFilename(data);
                 try {
                     const pdfBytes = await genererPdfFormulaire();
-                    await envoyerMailFormulaire({
+                    // Mail et dépôt Drive en parallèle (au lieu de l'un après l'autre)
+                    const [_rMail, _rDrive] = await Promise.allSettled([
+                        envoyerMailFormulaire({
                         sujet: 'Retour de matériel — ' + (data.nomEmprunteur || ''),
                         corps: construireCorpsMail(data),
                         pdfBytes: pdfBytes,
                         pdfNomFichier: data.filename + '.pdf',
                         emailClient: data.emailEmprunteur,
                         nomClient: ((data.prenomEmprunteur || '') + ' ' + (data.nomEmprunteur || '')).trim()
-                    });
-                    try {
-                        await enregistrerPdfDrive({
+                    }),
+                        enregistrerPdfDrive({
                             onglet: 'Retour matériel',
                             prenom: data.prenomEmprunteur,
                             nom: data.nomEmprunteur,
@@ -425,11 +425,14 @@ chargerListeSaisisseurs();
                             tableSource: 'materiel_mouvements',
                             enregistrementId: retourId,
                             typeFichier: 'Retour de matériel'
-                        });
-                    } catch (eDrive) {
+                        })
+                    ]);
+                    if (_rDrive.status === 'rejected') {
+                        var eDrive = _rDrive.reason;
                         console.error('Erreur dépôt Drive :', eDrive);
                         avertissementMail += ' ⚠️ Le dépôt du PDF sur Drive a échoué.';
                     }
+                    if (_rMail.status === 'rejected') throw _rMail.reason;
                 } catch (e) {
                     console.error('Erreur envoi PDF/mail :', e);
                     avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué.';

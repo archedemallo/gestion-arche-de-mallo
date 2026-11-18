@@ -589,7 +589,6 @@ async function saveForm() {
         document.querySelector('.checkbox[data-group="typeDonateur"].checked').parentElement.textContent.trim().indexOf('Société') === 0;
 
     data.signatureImage = getSignatureImage();
-    data.htmlContent = encodeBase64Unicode(buildHtmlWithData());
 
     afficherPopupChargement();
 
@@ -629,16 +628,17 @@ async function saveForm() {
             var estVirement = !!(elVirement && elVirement.classList.contains('checked'));
             try {
                 const pdfBytes = await genererPdfFormulaire();
-                await envoyerMailFormulaire({
+                // Mail et dépôt Drive en parallèle (au lieu de l'un après l'autre)
+                const [_rMail, _rDrive] = await Promise.allSettled([
+                    envoyerMailFormulaire({
                     sujet: 'Reçu de don — ' + (estSociete ? (data.raisonSociale || '') : (data.nom || '')),
                     corps: construireCorpsMail(data),
                     pdfBytes: pdfBytes,
                     pdfNomFichier: data.filename + '.pdf',
                     emailClient: estVirement ? undefined : data.email,
                     nomClient: estSociete ? (data.raisonSociale || '') : ((data.prenom || '') + ' ' + (data.nom || '')).trim()
-                });
-                try {
-                    await enregistrerPdfDrive({
+                }),
+                    enregistrerPdfDrive({
                         onglet: data.onglet,
                         prenom: data.prenom,
                         nom: estSociete ? data.raisonSociale : data.nom,
@@ -648,11 +648,14 @@ async function saveForm() {
                         tableSource: 'dons',
                         enregistrementId: donId,
                         typeFichier: 'Reçu de don'
-                    });
-                } catch (eDrive) {
+                    })
+                ]);
+                if (_rDrive.status === 'rejected') {
+                    var eDrive = _rDrive.reason;
                     console.error('Erreur dépôt Drive :', eDrive);
                     avertissementMail += ' ⚠️ Le dépôt du PDF sur Drive a échoué.';
                 }
+                if (_rMail.status === 'rejected') throw _rMail.reason;
             } catch (e) {
                 console.error('Erreur envoi PDF/mail :', e);
                 avertissementMail = ' ⚠️ Mais l\'envoi du PDF par mail a échoué.';

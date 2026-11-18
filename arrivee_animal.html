@@ -282,14 +282,12 @@ async function aperçuPhoto(input, previewId) {
   const preview = document.getElementById(previewId);
   if (!preview || !input.files || !input.files[0]) return;
   const file = input.files[0];
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    preview._photoBase64 = e.target.result;
-    preview.innerHTML = '<img src="' + e.target.result + '" style="max-width:300px;max-height:225px;border:1px solid #ccc;border-radius:4px;display:block;" alt="Photo animal">' +
+  lireImageReduite(file, function(src) {
+    preview._photoBase64 = src;
+    preview.innerHTML = '<img src="' + src + '" style="max-width:300px;max-height:225px;border:1px solid #ccc;border-radius:4px;display:block;" alt="Photo animal">' +
       '<span style="font-size:10px;color:var(--green);display:block;margin-top:2px;">✔ ' + file.name + '</span>';
     document.getElementById('btn_voir_animal').style.display = 'inline-block';
-  };
-  reader.readAsDataURL(file);
+  });
 }
 
 async function suggererNomArrivee() {
@@ -350,23 +348,29 @@ async function declarerArrivee() {
 
     if (error) throw error;
 
+    // Photo et PDF en parallèle : la génération du PDF (étape la plus lente)
+    // se fait pendant l'envoi de la photo. Le dépôt Drive du PDF attend la fin
+    // de la photo pour ne pas créer deux fois le même dossier.
     let photoOk = true;
-    try {
-      photoOk = await envoyerPhotoAnimal('arrivee animal',
-        document.getElementById('arr-prenom-personne').value.trim(),
-        document.getElementById('arr-nom-personne').value.trim(),
-        nom, date);
-      // Mémorise aussi la photo en base (data = id du nouvel animal)
-      if (!(await enregistrerPhotoAnimalEnBase(data, 'arrivee'))) photoOk = false;
-    } catch (ePhoto) {
-      console.error('Erreur envoi photo :', ePhoto);
-      photoOk = false;
-    }
+    const promessePhoto = (async function() {
+      try {
+        photoOk = await envoyerPhotoAnimal('arrivee animal',
+          document.getElementById('arr-prenom-personne').value.trim(),
+          document.getElementById('arr-nom-personne').value.trim(),
+          nom, date);
+        // Mémorise aussi la photo en base (data = id du nouvel animal)
+        if (!(await enregistrerPhotoAnimalEnBase(data, 'arrivee'))) photoOk = false;
+      } catch (ePhoto) {
+        console.error('Erreur envoi photo :', ePhoto);
+        photoOk = false;
+      }
+    })();
 
     // PDF de la fiche d'arrivée -> Drive (dossier Arrivee_Animal/date) + lien en base
     let pdfOk = true;
-    try { await deposerPdfArrivee(data, nom, date, fichierPhoto); }
+    try { await deposerPdfArrivee(data, nom, date, fichierPhoto, promessePhoto); }
     catch (ePdf) { console.error('Erreur PDF arrivée :', ePdf); pdfOk = false; }
+    await promessePhoto;
 
     msg.textContent = '';
     msg.className = 'msg';
@@ -462,7 +466,7 @@ async function declarerArrivee() {
 }
 
 // Fiche d'arrivée en PDF (HTML autonome : cette page n'est pas un formulaire imprimable)
-async function deposerPdfArrivee(animalId, nom, date, fichierPhoto) {
+async function deposerPdfArrivee(animalId, nom, date, fichierPhoto, attendreAvantDrive) {
   const v = id => (document.getElementById(id).value || '').trim();
   const lib = id => { const e = document.getElementById(id); return e.tagName === 'SELECT' ? (e.options[e.selectedIndex]?.text || '') : e.value.trim(); };
   const esc = x => String(x || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
@@ -486,6 +490,7 @@ async function deposerPdfArrivee(animalId, nom, date, fichierPhoto) {
   html = await _logoEnBase64DansHtml(html);
   const pdfBytes = await genererPdfDepuisHtml(html);
   const filename = ['Arrivee', nom || 'Animal', date].filter(Boolean).join('_').replace(/\s+/g, '_');
+  if (attendreAvantDrive) await attendreAvantDrive;
   await enregistrerPdfDrive({
     onglet: 'arrivee animal', prenom: v('arr-prenom-personne'), nom: v('arr-nom-personne'), animal: nom,
     dateDossier: date, filename: filename, pdfBytes: pdfBytes,

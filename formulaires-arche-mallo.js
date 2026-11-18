@@ -282,6 +282,15 @@ function buildHtmlWithData() {
 
     var html = document.documentElement.outerHTML;
 
+    // Les gros data: URL (photo de l'animal...) sont mis de côté pendant tous
+    // les remplacements ci-dessous (une regex par champ + un replace par case
+    // à cocher, chacun relisant TOUT le HTML), puis remis à la fin.
+    var _grosDataUrl = [];
+    html = html.replace(/(src=")(data:[^"]{2000,})(")/g, function(m, a, b, c) {
+        _grosDataUrl.push(b);
+        return a + '@@DATAURL' + (_grosDataUrl.length - 1) + '@@' + c;
+    });
+
     document.querySelectorAll('input.editable').forEach(function(input) {
         if (!input.id || !input.value) return;
         var val = input.value
@@ -405,6 +414,7 @@ function buildHtmlWithData() {
         }
     }
 
+    html = html.replace(/@@DATAURL(\d+)@@/g, function(m, i) { return _grosDataUrl[+i]; });
     return html;
 }
 
@@ -1018,22 +1028,32 @@ function majObligatoire(group, champIds, valeursOui) {
 // ============================================================
 // PHOTO — aperçu + redimensionnement (partagé)
 // ============================================================
+// Lit une image choisie et renvoie (callback) un data: URL JPEG de 1200 px max.
+// Une photo de téléphone fait 3 à 6 Mo : la garder telle quelle dans la page
+// ralentissait la sérialisation du formulaire ET l'envoi du PDF.
+function lireImageReduite(file, callback) {
+    redimensionnerImage(file, function(b64) {
+        if (b64) { callback('data:image/jpeg;base64,' + b64); return; }
+        // Format non lisible par le canvas : repli sur la lecture brute.
+        var r = new FileReader();
+        r.onload = function(e) { callback(e.target.result); };
+        r.readAsDataURL(file);
+    }, 1200);
+}
+
 function aperçuPhoto(input, previewId) {
     var preview = document.getElementById(previewId);
     if (!preview) return;
     if (!input.files || !input.files[0]) return;
     var file = input.files[0];
-    var reader = new FileReader();
-    reader.onload = function(e) {
-        var src = e.target.result;
+    lireImageReduite(file, function(src) {
         preview.innerHTML = '<img src="' + src + '" style="max-width:200px;max-height:150px;margin-top:4px;border:1px solid #ccc;border-radius:4px;" alt="Photo animal">' +
             '<br><span class="no-print" style="font-size:10px;color:green;">✔ ' + file.name + '</span>';
         // Stocker sur le div ET sur l'img pour retrouver dans buildHtmlWithData
         preview._photoBase64 = src;
         var img = preview.querySelector('img');
         if (img) img._photoBase64 = src;
-    };
-    reader.readAsDataURL(file);
+    });
 }
 
 // Ouvre la photo en plein écran dans un nouvel onglet. Manquait de ce
@@ -1368,9 +1388,13 @@ async function verifierAccesSuivi(user) {
         var res = await supabaseClient.from('profils_suivi').select('email').eq('user_id', user.id).maybeSingle();
         if (res.error || !res.data) {
             if (errEl) errEl.textContent = "Ce compte n'est pas autorisé sur Suivi.";
+            try { sessionStorage.removeItem('suivi_acces_' + user.id); } catch (e2) {}
+            var ecranRefus = document.getElementById('login-screen');
+            if (ecranRefus) ecranRefus.style.display = 'flex';
             await supabaseClient.auth.signOut();
             return;
         }
+        try { sessionStorage.setItem('suivi_acces_' + user.id, '1'); } catch (e2) { /* stockage indisponible : sans effet */ }
         var screen = document.getElementById('login-screen');
         if (screen) screen.style.display = 'none';
     } catch (e) {
@@ -1384,7 +1408,18 @@ async function verifierAccesSuivi(user) {
 // créer supabaseClient (voir note ci-dessus).
 function initSessionSuivi() {
     supabaseClient.auth.getSession().then(function(res) {
-        if (res.data.session) verifierAccesSuivi(res.data.session.user);
+        var session = res.data.session;
+        if (!session) return;
+        // Accès déjà vérifié dans cet onglet : on libère la page tout de suite
+        // et on revérifie en arrière-plan (l'accès aux données reste protégé
+        // côté serveur ; si le compte est refusé, l'écran de connexion revient).
+        var dejaVerifie = false;
+        try { dejaVerifie = sessionStorage.getItem('suivi_acces_' + session.user.id) === '1'; } catch (e) {}
+        if (dejaVerifie) {
+            var ecran = document.getElementById('login-screen');
+            if (ecran) ecran.style.display = 'none';
+        }
+        verifierAccesSuivi(session.user);
     }).catch(function(e) {
         afficherErreurChargement(e);
     });
@@ -1400,10 +1435,22 @@ function initSessionSuivi() {
 async function chargerListeSaisisseurs(selectId) {
     var select = document.getElementById(selectId || 'saisiPar');
     if (!select) return;
+    function remplir(liste) {
+        var valeur = select.value;
+        select.innerHTML = '<option value="">— Choisir —</option>' +
+            (liste || []).map(function(u) { return '<option value="' + u.id + '">' + u.nom.replace(/</g,'&lt;') + '</option>'; }).join('');
+        if (valeur) select.value = valeur;
+    }
+    // Affichage immédiat avec la dernière liste connue (elle change rarement),
+    // puis rafraîchissement silencieux depuis la base.
+    try {
+        var cache = sessionStorage.getItem('suivi_saisisseurs');
+        if (cache) remplir(JSON.parse(cache));
+    } catch (e) { /* cache illisible : on attend la base */ }
     var res = await supabaseClient.from('utilisateurs').select('id, nom').eq('actif', true).order('nom');
     if (res.error) { console.error('[chargerListeSaisisseurs]', res.error.message); return; }
-    select.innerHTML = '<option value="">— Choisir —</option>' +
-        (res.data || []).map(function(u) { return '<option value="' + u.id + '">' + u.nom.replace(/</g,'&lt;') + '</option>'; }).join('');
+    try { sessionStorage.setItem('suivi_saisisseurs', JSON.stringify(res.data || [])); } catch (e) {}
+    remplir(res.data || []);
 }
 
 // ============================================================================
